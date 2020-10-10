@@ -10,6 +10,6 @@ class ENodeB(NodeB):
 
 
 class EUserEquipment(UserEquipment):
-    def __init__(self):
-        super().__init__()
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
         self.ue_type = UEType.E

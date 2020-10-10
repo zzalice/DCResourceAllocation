@@ -10,12 +10,12 @@ class GNodeB(NodeB):
 
 
 class GUserEquipment(UserEquipment):
-    def __init__(self):
-        super().__init__()
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
         self.ue_type = UEType.G
 
 
 class DUserEquipment(UserEquipment):
-    def __init__(self):
-        super().__init__()
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
         self.ue_type = UEType.D
