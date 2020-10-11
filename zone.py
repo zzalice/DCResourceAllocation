@@ -5,12 +5,17 @@ from util_enum import Numerology
 
 
 class Zone:
-    def __init__(self, user_equipments: Tuple[UserEquipment], bandwidth: int):
+    def __init__(self, user_equipments: Tuple[UserEquipment], bandwidth: int, duration: int, frame_time: int):
         assert len({ue.numerology_in_use for ue in user_equipments}) == 1  # make sure all UEs use the same numerology
-
         self.ue_list: List[UserEquipment] = list(user_equipments)
         self.numerology: Numerology = user_equipments[0].numerology_in_use
         self.bandwidth: int = bandwidth
+        self.duration: int = duration  # TODO!!: should be calculated with UE info (how about 4G vs. 5G?)
+        self.frame_time: int = frame_time
+
+    @property
+    def is_full(self) -> bool:
+        raise NotImplementedError  # TODO!: should be implemented
 
 
 class ZoneGroup:

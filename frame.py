@@ -19,9 +19,9 @@ class Layer:
     def allocate_resource_block(self, offset_i: int, offset_j: int, ue: UserEquipment):
         resource_block = ResourceBlock(self, offset_i, offset_j, ue)
         self.rb.append(resource_block)
-        rb_numerology = resource_block.ue.numerology_in_use.value
-        for i in range(0, rb_numerology['HEIGHT']):
-            for j in range(0, rb_numerology['WIDTH']):
+        rb_numerology = resource_block.ue.numerology_in_use
+        for i in range(0, rb_numerology.height):
+            for j in range(0, rb_numerology.width):
                 self.bu[offset_i + i][offset_j + j].set_up_bu(i, j, resource_block)
 
 
@@ -33,8 +33,8 @@ class ResourceBlock:
         self.position: Tuple[Tuple[int, int], Tuple[int, int]] = self.update_position(i_start, j_start)
 
     def update_position(self, i_start: int, j_start: int) -> Tuple[Tuple[int, int], Tuple[int, int]]:
-        height, width = self.numerology.value['HEIGHT'], self.numerology.value['WIDTH']
-        pos_start, pos_end = (i_start, j_start), (i_start + height - 1, j_start + width - 1)
+        pos_start = (i_start, j_start)
+        pos_end = (i_start + self.numerology.height - 1, j_start + self.numerology.width - 1)
         return pos_start, pos_end
 
     @property

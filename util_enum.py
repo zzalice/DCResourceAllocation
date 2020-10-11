@@ -1,4 +1,9 @@
+from __future__ import annotations
+
+import math
+
 from enum import Enum
+from typing import Tuple
 
 
 class Generation(Enum):
@@ -28,16 +33,39 @@ class Numerology(Enum):
     def to_mu(self) -> int:
         return int(self.name[-1:])
 
+    @property
+    def height(self) -> int:
+        return self.value['HEIGHT']
 
-class MCS_E(Enum):
-    WORST = 0.0  # TODO: to be announced
+    @property
+    def width(self) -> int:
+        return self.value['WIDTH']
+
+    @staticmethod
+    def gen_candidate_set(exclude: Tuple[Numerology] = tuple()) -> Tuple[Numerology]:
+        # TODO: fix tuple type annotation issue (3 places)
+        return tuple({n for n in Numerology}.difference(exclude))
+
+
+class MCSUtil(Enum):
+    @classmethod
+    def _missing_(cls, value):
+        raise NotImplementedError
+
+    def calc_required_rb_count(self, request_data_rate: float):
+        # TODO!!: check if (the order of magnitude) is correct
+        return math.ceil(request_data_rate / self.value)
+
+
+class MCS_E(MCSUtil):
+    WORST = 0.1  # TODO!!: to be announced
 
     @classmethod
     def _missing_(cls, value):
-        return MCS_E.WORST  # the worst one
+        return MCS_E.WORST  # the worst one  # TODO!: remember to change when MCS_E is determined
 
 
-class MCS_G(Enum):  # quantifier: kbps
+class MCS_G(MCSUtil):  # quantifier: kbps
     QPSK_1 = 19.90
     QPSK_2 = 30.48
     QPSK_3 = 49.02
