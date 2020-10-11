@@ -19,11 +19,14 @@ class NodeBType(Enum):
 
 class Numerology(Enum):
     # case for area = 16
-    N0 = {'mu': 0, 'HEIGHT': 1, 'WIDTH': 16}
-    N1 = {'mu': 1, 'HEIGHT': 2, 'WIDTH': 8}
-    N2 = {'mu': 2, 'HEIGHT': 4, 'WIDTH': 4}
-    N3 = {'mu': 3, 'HEIGHT': 8, 'WIDTH': 2}
-    N4 = {'mu': 4, 'HEIGHT': 16, 'WIDTH': 1}
+    N0 = {'HEIGHT': 1, 'WIDTH': 16}
+    N1 = {'HEIGHT': 2, 'WIDTH': 8}
+    N2 = {'HEIGHT': 4, 'WIDTH': 4}
+    N3 = {'HEIGHT': 8, 'WIDTH': 2}
+    N4 = {'HEIGHT': 16, 'WIDTH': 1}
+
+    def to_mu(self) -> int:
+        return int(self.name[-1:])
 
 
 class MCS_E(Enum):

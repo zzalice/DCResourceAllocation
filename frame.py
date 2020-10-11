@@ -1,4 +1,4 @@
-from typing import List, Optional
+from typing import List, Optional, Tuple
 
 from ue import UserEquipment
 from util_enum import Numerology
@@ -14,9 +14,11 @@ class Layer:
     def __init__(self, freq: int, time: int):
         # i.e., BU[frequency(height, i)][time(width, j)]
         self.bu: List[List[BaseUnit]] = [[BaseUnit() for j in range(time)] for i in range(freq)]
+        self.rb: List[ResourceBlock] = list()
 
     def allocate_resource_block(self, offset_i: int, offset_j: int, ue: UserEquipment):
         resource_block = ResourceBlock(self, offset_i, offset_j, ue)
+        self.rb.append(resource_block)
         rb_numerology = resource_block.ue.numerology_in_use.value
         for i in range(0, rb_numerology['HEIGHT']):
             for j in range(0, rb_numerology['WIDTH']):
@@ -24,13 +26,32 @@ class Layer:
 
 
 class ResourceBlock:
-    def __init__(self, layer: Layer, starting_i: int, starting_j: int, ue: UserEquipment):
+    def __init__(self, layer: Layer, i_start: int, j_start: int, ue: UserEquipment):
         self.layer: Layer = layer
-        # starting position of this RB withing a Layer
-        self.starting_i: int = starting_i
-        self.starting_j: int = starting_j
         self.ue: UserEquipment = ue
         self.numerology: Numerology = ue.numerology_in_use
+        self.position: Tuple[Tuple[int, int], Tuple[int, int]] = self.update_position(i_start, j_start)
+
+    def update_position(self, i_start: int, j_start: int) -> Tuple[Tuple[int, int], Tuple[int, int]]:
+        height, width = self.numerology.value['HEIGHT'], self.numerology.value['WIDTH']
+        pos_start, pos_end = (i_start, j_start), (i_start + height - 1, j_start + width - 1)
+        return pos_start, pos_end
+
+    @property
+    def i_start(self) -> int:
+        return self.position[0][0]
+
+    @property
+    def i_end(self) -> int:
+        return self.position[1][0]
+
+    @property
+    def j_start(self) -> int:
+        return self.position[0][1]
+
+    @property
+    def j_end(self) -> int:
+        return self.position[1][1]
 
 
 class BaseUnit:
