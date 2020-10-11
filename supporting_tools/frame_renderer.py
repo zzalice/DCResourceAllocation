@@ -1,5 +1,5 @@
-from tmp_test.tmp_test_case import e_frame, g_frame
-from frame import Frame
+from supporting_tools.tmp_test_case import g_frame
+from resource_allocation.frame import Frame
 
 
 class FrameRenderer:
@@ -8,7 +8,7 @@ class FrameRenderer:
             '<style type="text/css">',
             'table {\nborder-collapse: collapse;\ntext-align: center;}',
             'table, th, td {\nborder: 1px solid black;\nfont-family: monospace;\nvertical-align: center;}',
-            'th {background-color: gray;}',
+            'th {background-color: lightgray;}',
             'td {min-width: 32px;}',
             '.Numerology_N0 {background-color: #73A7FE;}',
             '.Numerology_N1 {background-color: #B1DE8C;}',
@@ -38,7 +38,7 @@ class FrameRenderer:
                     tr += f'<td class="{numerology}">{ue}</td>'
                 tr += '\n</tr>'
                 self.body.append(tr)
-            self.body.append(f'\n<tr><td colspan="{width + 1}">Layer {l}</td></tr>')
+            self.body.append(f'\n<tr><td colspan="{width + 1}">Layer {l + 1}</td></tr>')
             self.body.append('</table>')
 
     def render(self, filename: str):
@@ -53,4 +53,4 @@ class FrameRenderer:
 if __name__ == '__main__':
     frame_renderer = FrameRenderer()
     frame_renderer.gen_tables(g_frame)
-    frame_renderer.render('test.html')
+    frame_renderer.render('test_frame.html')

@@ -1,7 +1,7 @@
-from typing import List, Optional, Union
+from typing import Optional, Union
 
 # TODO$ from frame import ResourceBlock
-from util_enum import NodeBType, MCS_E, MCS_G
+from resource_allocation.util_enum import NodeBType, MCS_E, MCS_G
 
 
 class NodeB:

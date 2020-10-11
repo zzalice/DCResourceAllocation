@@ -1,7 +1,7 @@
 from typing import List, Optional, Tuple
 
-from ue import UserEquipment
-from util_enum import Numerology
+from resource_allocation.ue import UserEquipment
+from resource_allocation.util_enum import Numerology
 
 
 class Frame:

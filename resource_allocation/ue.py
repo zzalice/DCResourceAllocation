@@ -1,8 +1,8 @@
 from typing import Optional, Set, Tuple, Union
 from uuid import UUID, uuid4
 
-from nodeb import ENBInfoWithinUE, GNBInfoWithinUE
-from util_enum import MCS_E, MCS_G, Numerology, UEType
+from resource_allocation.nodeb import ENBInfoWithinUE, GNBInfoWithinUE
+from resource_allocation.util_enum import MCS_E, MCS_G, Numerology, UEType
 
 
 class UserEquipment:
