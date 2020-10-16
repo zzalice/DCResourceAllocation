@@ -1,33 +1,33 @@
 from typing import Union
 
+from resource_allocation.enum import E_MCS, G_MCS, NodeBType, UEType
 from resource_allocation.nodeb import NodeB
 from resource_allocation.ue import UserEquipment
-from resource_allocation.util_enum import MCS_E, MCS_G, NodeBType, UEType
 
 
 class GNodeB(NodeB):
     def __init__(self):
         super().__init__()
-        self.nb_type = NodeBType.G
+        self.nb_type: NodeBType = NodeBType.G
 
 
 class GUserEquipment(UserEquipment):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
-        self.ue_type = UEType.G
+        self.ue_type: UEType = UEType.G
         del self.enb_info
 
-    def assign_mcs(self, mcs: MCS_G):
+    def assign_mcs(self, mcs: G_MCS):
         self.gnb_info.mcs = mcs
 
 
 class DUserEquipment(UserEquipment):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
-        self.ue_type = UEType.D
+        self.ue_type: UEType = UEType.D
 
-    def assign_mcs(self, mcs: Union[MCS_E, MCS_G]):
-        if isinstance(mcs, MCS_E):
+    def assign_mcs(self, mcs: Union[E_MCS, G_MCS]):
+        if isinstance(mcs, E_MCS):
             self.enb_info.mcs = mcs
-        elif isinstance(mcs, MCS_G):
+        elif isinstance(mcs, G_MCS):
             self.gnb_info.mcs = mcs

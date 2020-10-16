@@ -1,5 +1,5 @@
-from supporting_tools.tmp_test_case import g_frame
 from resource_allocation.frame import Frame
+from supporting_tools.tmp_test_case import g_frame
 
 
 class FrameRenderer:
@@ -32,7 +32,7 @@ class FrameRenderer:
             for i in range(height):
                 tr = f'<tr><th>j:{i + 1}</th>\n'
                 for j in range(width):
-                    rb = base_unit[i][j].rb
+                    rb = base_unit[i][j].within_rb
                     ue = rb.ue.uuid.hex[:4] if rb is not None else ''
                     numerology = str(rb.numerology).replace('.', '_') if rb is not None else None
                     tr += f'<td class="{numerology}">{ue}</td>'
