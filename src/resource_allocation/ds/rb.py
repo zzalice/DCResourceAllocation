@@ -2,11 +2,11 @@ from __future__ import annotations
 
 from typing import Tuple, TYPE_CHECKING
 
-from resource_allocation.enum import Numerology
+from .enum import Numerology
 
 if TYPE_CHECKING:
-    from resource_allocation.frame import Layer
-    from resource_allocation.ue import UserEquipment
+    from .frame import Layer
+    from .ue import UserEquipment
 
 
 class ResourceBlock:

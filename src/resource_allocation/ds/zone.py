@@ -3,8 +3,8 @@ from __future__ import annotations
 from typing import List, Tuple, TYPE_CHECKING
 
 if TYPE_CHECKING:
-    from resource_allocation.enum import Numerology
-    from resource_allocation.ue import UserEquipment
+    from .enum import Numerology
+    from .ue import UserEquipment
 
 
 class Zone:

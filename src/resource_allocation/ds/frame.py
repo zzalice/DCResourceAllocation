@@ -2,10 +2,10 @@ from __future__ import annotations
 
 from typing import List, Optional, Tuple, TYPE_CHECKING
 
-from resource_allocation.rb import ResourceBlock
+from .rb import ResourceBlock
 
 if TYPE_CHECKING:
-    from resource_allocation.ue import UserEquipment
+    from .ue import UserEquipment
 
 
 class Frame:

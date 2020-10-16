@@ -2,10 +2,10 @@ from __future__ import annotations
 
 from typing import List, Optional, TYPE_CHECKING, Union
 
-from resource_allocation.enum import E_MCS, G_MCS, NodeBType
+from .enum import E_MCS, G_MCS, NodeBType
 
 if TYPE_CHECKING:
-    from resource_allocation.rb import ResourceBlock
+    from .rb import ResourceBlock
 
 
 class NodeB:

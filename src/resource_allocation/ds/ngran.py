@@ -1,8 +1,8 @@
 from typing import Union
 
-from resource_allocation.enum import E_MCS, G_MCS, NodeBType, UEType
-from resource_allocation.nodeb import NodeB
-from resource_allocation.ue import UserEquipment
+from .enum import E_MCS, G_MCS, NodeBType, UEType
+from .nodeb import NodeB
+from .ue import UserEquipment
 
 
 class GNodeB(NodeB):
