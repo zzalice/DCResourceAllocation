@@ -1,19 +1,19 @@
-from resource_allocation.nodeb import NodeB
-from resource_allocation.ue import UserEquipment
-from resource_allocation.util_enum import MCS_E, NodeBType, UEType
+from .nodeb import NodeB
+from .ue import UserEquipment
+from .util_enum import E_MCS, NodeBType, UEType
 
 
 class ENodeB(NodeB):
     def __init__(self):
         super().__init__()
-        self.nb_type = NodeBType.E
+        self.nb_type: NodeBType = NodeBType.E
 
 
 class EUserEquipment(UserEquipment):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
-        self.ue_type = UEType.E
+        self.ue_type: UEType = UEType.E
         del self.gnb_info
 
-    def assign_mcs(self, mcs: MCS_E):
+    def assign_mcs(self, mcs: E_MCS):
         self.enb_info.mcs = mcs

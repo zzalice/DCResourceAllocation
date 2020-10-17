@@ -1,7 +1,11 @@
-from typing import Optional, Union
+from __future__ import annotations
 
-# TODO$ from frame import ResourceBlock
-from resource_allocation.util_enum import NodeBType, MCS_E, MCS_G
+from typing import List, Optional, TYPE_CHECKING, Union
+
+from .util_enum import E_MCS, G_MCS, NodeBType
+
+if TYPE_CHECKING:
+    from .rb import ResourceBlock
 
 
 class NodeB:
@@ -11,40 +15,39 @@ class NodeB:
 
 class _NBInfoWithinUE:
     def __init__(self, request_data_rate: int):
-        self.mcs: Optional[Union[MCS_E, MCS_G]] = None
+        self.mcs: Optional[Union[E_MCS, G_MCS]] = None
         self.sinr: float = float('-inf')
-        # TODO$ self.rb: List[ResourceBlock] = list()  # circular import error
-        self.rb: list = list()
-        self._number_of_rb_determined_by_mcs: int = 0
+        self.rb: List[ResourceBlock] = list()
+        self._num_of_rb_determined_by_mcs: int = 0
 
         # for supporting (won't access by user)
-        self.request_data_rate = request_data_rate
+        self.request_data_rate: int = request_data_rate
         self.nb_type: Optional[NodeBType] = None
 
     @property
     def num_of_rb(self) -> int:
-        return self._number_of_rb_determined_by_mcs
+        return self._num_of_rb_determined_by_mcs
 
-    def update_mcs(self, mcs: Union[MCS_E, MCS_G]):
-        self.mcs = mcs
-        self._number_of_rb_determined_by_mcs = mcs.calc_required_rb_count(self.request_data_rate)
+    def update_mcs(self, mcs: Union[E_MCS, G_MCS]):
+        self.mcs: Union[E_MCS, G_MCS] = mcs
+        self._num_of_rb_determined_by_mcs: int = mcs.calc_required_rb_count(self.request_data_rate)
 
 
-class ENBInfoWithinUE(_NBInfoWithinUE):
+class ENBInfo(_NBInfoWithinUE):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
-        self.nb_type = NodeBType.E
-        self.update_mcs(MCS_E(None))
+        self.nb_type: NodeBType = NodeBType.E
+        self.update_mcs(E_MCS(None))
 
-    def update_mcs(self, mcs: MCS_E):
+    def update_mcs(self, mcs: E_MCS):
         super().update_mcs(mcs)
 
 
-class GNBInfoWithinUE(_NBInfoWithinUE):
+class GNBInfo(_NBInfoWithinUE):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
-        self.nb_type = NodeBType.G
-        self.update_mcs(MCS_G(None))
+        self.nb_type: NodeBType = NodeBType.G
+        self.update_mcs(G_MCS(None))
 
-    def update_mcs(self, mcs: MCS_G):
+    def update_mcs(self, mcs: G_MCS):
         super().update_mcs(mcs)

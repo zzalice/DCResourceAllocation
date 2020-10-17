@@ -1,6 +1,6 @@
+from resource_allocation.util_enum import Numerology
 from resource_allocation.frame import Frame
 from resource_allocation.ngran import GUserEquipment
-from resource_allocation.util_enum import Numerology
 
 e_frame = Frame(time=16, freq=32)
 
