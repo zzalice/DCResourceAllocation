@@ -1,5 +1,5 @@
-from resource_allocation.frame import Frame
-from supporting_tools.tmp_test_case import g_frame
+from src.resource_allocation.ds.frame import Frame
+from utils.frame_visualizer.tmp_test_case import g_frame
 
 
 class FrameRenderer:
