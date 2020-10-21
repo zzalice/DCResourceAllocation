@@ -9,3 +9,5 @@ python_version = "3.8"
 [packages]
 
 [dev-packages]
+pytest = "*"
+pytest-cov = "*"

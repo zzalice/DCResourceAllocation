@@ -17,18 +17,33 @@ class Frame:
 class Layer:
     def __init__(self, freq: int, time: int):
         # i.e., BU[frequency(i|HEIGHT)][time(j|WIDTH)]
-        self.bu: Tuple[Tuple[BaseUnit, ...], ...] = tuple(tuple(BaseUnit() for j in range(time)) for i in range(freq))
+        self.bu: Tuple[Tuple[_BaseUnit, ...], ...] = tuple(tuple(_BaseUnit() for j in range(time)) for i in range(freq))
         self.rb: List[ResourceBlock] = list()
 
+        self._cache_is_valid: bool = False  # valid bit (for _available_block)
+        self._bu_status: Tuple[Tuple[bool, ...], ...] = self.bu_status
+
     def allocate_resource_block(self, offset_i: int, offset_j: int, ue: UserEquipment):
+        self._cache_is_valid: bool = False  # set cache as invalid (for _available_block)
         resource_block: ResourceBlock = ResourceBlock(self, offset_i, offset_j, ue)
         self.rb.append(resource_block)
         for i in range(resource_block.ue.numerology_in_use.height):
             for j in range(resource_block.ue.numerology_in_use.width):
                 self.bu[offset_i + i][offset_j + j].set_up_bu(i, j, resource_block)
 
+    @property
+    def bu_status(self) -> Tuple[Tuple[bool, ...], ...]:
+        if not self._cache_is_valid:
+            self._bu_status = tuple(tuple(column.is_used for column in row) for row in self.bu)
+            self._cache_is_valid: bool = True
+        return self._bu_status
 
-class BaseUnit:
+    @property
+    def available_blocks(self):
+        raise NotImplementedError  # TODO: not decided how to implement yet
+
+
+class _BaseUnit:
     def __init__(self):
         self.relative_i: Optional[int] = None
         self.relative_j: Optional[int] = None

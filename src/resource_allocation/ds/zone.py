@@ -24,17 +24,29 @@ class Zone:
         raise NotImplementedError  # TODO!: should be implemented
 
 
+class _Bin:
+    def __init__(self, capacity: int):
+        self.capacity: int = capacity  # max size of a bin (equals to bandwidth of first zone)
+        self.usage: int = 0
+        self.zone: List[Zone] = list()
+
+    def append_zone(self, zone: Zone) -> bool:
+        is_appendable: bool = self.capacity - self.usage >= zone.bandwidth
+        if is_appendable:
+            self.zone.append(zone)
+            self.usage += zone.bandwidth
+        return is_appendable
+
+
 class ZoneGroup:
     def __init__(self, initial_zone: Zone, num_of_bins: int):
-        self.bin_capacity: int = initial_zone.bandwidth
-        self.bin: Tuple[List[Zone], ...] = tuple(list() for i in range(num_of_bins))
+        self.bin: Tuple[_Bin, ...] = tuple(_Bin(initial_zone.bandwidth) for i in range(num_of_bins))
         self.priority: float = float('-inf')
+        self.bin[0].append_zone(initial_zone)
 
-        self.bin[0].append(initial_zone)
-
-    def append_zone(self, zone: Zone, target_bin: int):
+    def append_zone(self, zone: Zone, target_bin: int) -> bool:
         assert target_bin > 0
-        self.bin[target_bin].append(zone)
+        return self.bin[target_bin].append_zone(zone)  # return True when append succeed
 
     def set_priority(self, priority: float):
         assert self.priority == float('-inf')  # should be set once ONLY
