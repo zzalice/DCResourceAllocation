@@ -4,8 +4,8 @@ from .util_enum import E_MCS, NodeBType, UEType
 
 
 class ENodeB(NodeB):
-    def __init__(self):
-        super().__init__()
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
         self.nb_type: NodeBType = NodeBType.E
 
 

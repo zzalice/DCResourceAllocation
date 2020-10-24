@@ -9,9 +9,18 @@ if TYPE_CHECKING:
 
 
 class Frame:
-    def __init__(self, freq: int = 80, time: int = 32, max_layer: int = 1):
+    def __init__(self, freq: int, time: int, max_layer: int):
         # i.e., one_bu = frame.layer[layer(l|MAX_LAYER)].bu[freq(i|HEIGHT)][time(j|WIDTH)]
         self.layer: Tuple[Layer, ...] = tuple(Layer(freq, time) for l in range(max_layer))
+        self.max_layer: int = max_layer
+
+    @property
+    def frame_height(self) -> int:
+        return len(self.layer[0].bu)
+
+    @property
+    def frame_width(self) -> int:
+        return len(self.layer[0].bu[0])
 
 
 class Layer:

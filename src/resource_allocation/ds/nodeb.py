@@ -2,6 +2,7 @@ from __future__ import annotations
 
 from typing import List, Optional, TYPE_CHECKING, Union
 
+from .frame import Frame
 from .util_enum import E_MCS, G_MCS, NodeBType
 
 if TYPE_CHECKING:
@@ -9,8 +10,10 @@ if TYPE_CHECKING:
 
 
 class NodeB:
-    def __init__(self):
+    def __init__(self, radius: float = 2.0, frame_freq: int = 50, frame_time: int = 160, frame_max_layer: int = 1):
         self.nb_type: Optional[NodeBType] = None
+        self.radius = radius  # default 2.0km
+        self.frame: Frame = Frame(frame_freq, frame_time, frame_max_layer)  # default: 10MHz * 10ms
 
 
 class _NBInfoWithinUE:

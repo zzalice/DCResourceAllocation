@@ -6,8 +6,11 @@ from .util_enum import E_MCS, G_MCS, NodeBType, UEType
 
 
 class GNodeB(NodeB):
-    def __init__(self):
-        super().__init__()
+    def __init__(self, *args, **kwargs):
+        # default: 1.0km, 20MHz * 10ms * 3layers, TODO: check if 20MHz == 100BUs ??
+        default_kwargs = dict(radius=1.0, frame_freq=100, frame_max_layer=3)  # TODO: this workaround should be fixed
+        default_kwargs.update(kwargs)
+        super().__init__(*args, **default_kwargs)
         self.nb_type: NodeBType = NodeBType.G
 
 

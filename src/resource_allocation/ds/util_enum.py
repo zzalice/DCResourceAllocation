@@ -1,8 +1,12 @@
 from __future__ import annotations
 
 import math
+import random
 from enum import Enum
-from typing import Tuple
+from typing import List, TYPE_CHECKING
+
+if TYPE_CHECKING:
+    from .util_type import Numerologies
 
 
 class Generation(Enum):
@@ -42,8 +46,13 @@ class Numerology(Enum):
         return self.value[1]
 
     @staticmethod
-    def gen_candidate_set(exclude: Tuple[Numerology, ...] = tuple()) -> Tuple[Numerology, ...]:
-        return tuple({n for n in Numerology}.difference(exclude))
+    def gen_candidate_set(exclude: Numerologies = tuple(), random_pick: bool = False) -> Numerologies:
+        candidate_set: List[Numerology] = list({n for n in Numerology}.difference(exclude))
+        assert len(candidate_set) > 0
+        if random_pick:
+            candidate_set: List[Numerology] = random.sample(candidate_set, random.randint(1, len(candidate_set)))
+
+        return tuple(sorted(candidate_set, key=lambda x: x.mu))
 
 
 class _MCS(Enum):
