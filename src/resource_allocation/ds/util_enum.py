@@ -6,7 +6,7 @@ from enum import Enum
 from typing import List, TYPE_CHECKING
 
 if TYPE_CHECKING:
-    from .util_type import Numerologies
+    from .util_type import CandidateSet
 
 
 class Generation(Enum):
@@ -46,7 +46,7 @@ class Numerology(Enum):
         return self.value[1]
 
     @staticmethod
-    def gen_candidate_set(exclude: Numerologies = tuple(), random_pick: bool = False) -> Numerologies:
+    def gen_candidate_set(exclude: CandidateSet = tuple(), random_pick: bool = False) -> CandidateSet:
         candidate_set: List[Numerology] = list({n for n in Numerology}.difference(exclude))
         assert len(candidate_set) > 0
         if random_pick:

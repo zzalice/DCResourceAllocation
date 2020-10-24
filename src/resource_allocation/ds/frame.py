@@ -11,8 +11,9 @@ if TYPE_CHECKING:
 class Frame:
     def __init__(self, freq: int, time: int, max_layer: int):
         # i.e., one_bu = frame.layer[layer(l|MAX_LAYER)].bu[freq(i|HEIGHT)][time(j|WIDTH)]
-        self.layer: Tuple[Layer, ...] = tuple(Layer(freq, time) for l in range(max_layer))
-        self.max_layer: int = max_layer
+        self.layer: Tuple[Layer, ...] = tuple(Layer(freq, time) for _ in range(max_layer))
+
+        self._max_layer: int = max_layer
 
     @property
     def frame_height(self) -> int:
@@ -26,11 +27,11 @@ class Frame:
 class Layer:
     def __init__(self, freq: int, time: int):
         # i.e., BU[frequency(i|HEIGHT)][time(j|WIDTH)]
-        self.bu: Tuple[Tuple[_BaseUnit, ...], ...] = tuple(tuple(_BaseUnit() for j in range(time)) for i in range(freq))
+        self.bu: Tuple[Tuple[_BaseUnit, ...], ...] = tuple(tuple(_BaseUnit() for _ in range(time)) for _ in range(freq))
         self.rb: List[ResourceBlock] = list()
 
         self._cache_is_valid: bool = False  # valid bit (for _available_block)
-        self._bu_status: Tuple[Tuple[bool, ...], ...] = self.bu_status
+        self._bu_status: Tuple[Tuple[bool, ...], ...] = tuple()
 
     def allocate_resource_block(self, offset_i: int, offset_j: int, ue: UserEquipment):
         self._cache_is_valid: bool = False  # set cache as invalid (for _available_block)

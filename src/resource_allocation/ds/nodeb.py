@@ -18,18 +18,23 @@ class NodeB:
 
 class _NBInfoWithinUE:
     def __init__(self, request_data_rate: int):
+        self.request_data_rate: int = request_data_rate
+
+        self.nb: Optional[NodeB] = None
+        self.distance: float = float('inf')
         self.mcs: Optional[Union[E_MCS, G_MCS]] = None
         self.sinr: float = float('-inf')
         self.rb: List[ResourceBlock] = list()
         self._num_of_rb_determined_by_mcs: int = 0
 
-        # for supporting (won't access by user)
-        self.request_data_rate: int = request_data_rate
-        self.nb_type: Optional[NodeBType] = None
-
     @property
     def num_of_rb(self) -> int:
         return self._num_of_rb_determined_by_mcs
+
+    @property
+    def nb_type(self) -> NodeBType:
+        assert self.nb is not None
+        return self.nb.nb_type
 
     def update_mcs(self, mcs: Union[E_MCS, G_MCS]):
         self.mcs: Union[E_MCS, G_MCS] = mcs
@@ -39,7 +44,6 @@ class _NBInfoWithinUE:
 class ENBInfo(_NBInfoWithinUE):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
-        self.nb_type: NodeBType = NodeBType.E
         self.update_mcs(E_MCS(None))
 
     def update_mcs(self, mcs: E_MCS):
@@ -49,7 +53,6 @@ class ENBInfo(_NBInfoWithinUE):
 class GNBInfo(_NBInfoWithinUE):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
-        self.nb_type: NodeBType = NodeBType.G
         self.update_mcs(G_MCS(None))
 
     def update_mcs(self, mcs: G_MCS):

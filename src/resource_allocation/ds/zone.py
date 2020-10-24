@@ -40,7 +40,7 @@ class _Bin:
 
 class ZoneGroup:
     def __init__(self, initial_zone: Zone, num_of_bins: int):
-        self.bin: Tuple[_Bin, ...] = tuple(_Bin(initial_zone.bandwidth) for i in range(num_of_bins))
+        self.bin: Tuple[_Bin, ...] = tuple(_Bin(initial_zone.bandwidth) for _ in range(num_of_bins))
         self.priority: float = float('-inf')
         self.bin[0].append_zone(initial_zone)
 

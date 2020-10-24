@@ -6,11 +6,9 @@ from .util_enum import E_MCS, G_MCS, NodeBType, UEType
 
 
 class GNodeB(NodeB):
-    def __init__(self, *args, **kwargs):
+    def __init__(self, radius=1.0, frame_freq=100, frame_max_layer=3, *args, **kwargs):
         # default: 1.0km, 20MHz * 10ms * 3layers, TODO: check if 20MHz == 100BUs ??
-        default_kwargs = dict(radius=1.0, frame_freq=100, frame_max_layer=3)  # TODO: this workaround should be fixed
-        default_kwargs.update(kwargs)
-        super().__init__(*args, **default_kwargs)
+        super().__init__(radius, frame_freq, frame_max_layer, *args, **kwargs)
         self.nb_type: NodeBType = NodeBType.G
 
 
@@ -28,6 +26,7 @@ class DUserEquipment(UserEquipment):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
         self.ue_type: UEType = UEType.D
+        self.enb_info.request_data_rate = 0  # let gNodeB deal with the data_rate requested by dUE first (phase2)
 
     def assign_mcs(self, mcs: Union[E_MCS, G_MCS]):
         if isinstance(mcs, E_MCS):
