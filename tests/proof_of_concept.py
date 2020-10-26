@@ -1,6 +1,7 @@
 import dataclasses
-from typing import Tuple
+from typing import Tuple, cast
 
+from src.resource_allocation.algo.phase1 import Phase1
 from src.resource_allocation.ds.eutran import ENodeB
 from src.resource_allocation.ds.ngran import DUserEquipment, GNodeB, GUserEquipment
 from src.resource_allocation.ds.ue import UserEquipment
@@ -90,3 +91,14 @@ if __name__ == '__main__':
     for index, d_profile in enumerate(d_profiles):
         d_ue_list[index].register_nb(e_nb, d_profile.distance_enb)
         d_ue_list[index].register_nb(g_nb, d_profile.distance)
+
+    # tmp: use first (smallest) numerology in candidate set
+    for g_ue in g_ue_list:
+        g_ue.numerology_in_use = g_ue.candidate_set[0]
+    for d_ue in d_ue_list:
+        d_ue.numerology_in_use = d_ue.candidate_set[0]
+
+    # noinspection PyTypeChecker
+    phase1: Phase1 = Phase1(g_ue_list + d_ue_list)
+    # phase1.calc_inr(0.5)
+    zone_fit, zone_undersized = phase1.form_zones(g_nb)

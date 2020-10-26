@@ -6,9 +6,9 @@ from .util_enum import E_MCS, G_MCS, NodeBType, UEType
 
 
 class GNodeB(NodeB):
-    def __init__(self, radius=1.0, frame_freq=100, frame_max_layer=3, *args, **kwargs):
+    def __init__(self, radius=1.0, frame_freq=100, frame_max_layer=3, **kwargs):
         # default: 1.0km, 20MHz * 10ms * 3layers, TODO: check if 20MHz == 100BUs ??
-        super().__init__(radius, frame_freq, frame_max_layer, *args, **kwargs)
+        super().__init__(radius, frame_freq, frame_max_layer=frame_max_layer, **kwargs)
         self.nb_type: NodeBType = NodeBType.G
 
 

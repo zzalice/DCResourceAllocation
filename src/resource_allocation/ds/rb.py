@@ -16,7 +16,9 @@ class ResourceBlock:
         self.position: Tuple[int, int, int, int] = self.update_position(starting_i, starting_j)
 
     def update_position(self, starting_i: int, starting_j: int) -> Tuple[int, int, int, int]:
-        return starting_i, starting_i + self.numerology.height - 1, starting_j, starting_j + self.numerology.width - 1
+        self.position: Tuple[int, int, int, int] = (starting_i, starting_i + self.numerology.freq - 1,
+                                                    starting_j, starting_j + self.numerology.time - 1)
+        return self.position
 
     @property
     def numerology(self) -> Numerology:

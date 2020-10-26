@@ -16,11 +16,11 @@ class Frame:
         self._max_layer: int = max_layer
 
     @property
-    def frame_height(self) -> int:
+    def frame_freq(self) -> int:
         return len(self.layer[0].bu)
 
     @property
-    def frame_width(self) -> int:
+    def frame_time(self) -> int:
         return len(self.layer[0].bu[0])
 
 
@@ -37,8 +37,8 @@ class Layer:
         self._cache_is_valid: bool = False  # set cache as invalid (for _available_block)
         resource_block: ResourceBlock = ResourceBlock(self, offset_i, offset_j, ue)
         self.rb.append(resource_block)
-        for i in range(resource_block.ue.numerology_in_use.height):
-            for j in range(resource_block.ue.numerology_in_use.width):
+        for i in range(resource_block.ue.numerology_in_use.freq):
+            for j in range(resource_block.ue.numerology_in_use.time):
                 self.bu[offset_i + i][offset_j + j].set_up_bu(i, j, resource_block)
 
     @property

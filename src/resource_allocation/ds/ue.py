@@ -15,8 +15,8 @@ if TYPE_CHECKING:
 class UserEquipment:
     def __init__(self, request_data_rate: int, candidate_set: CandidateSet):
         self.uuid: UUID = uuid4()
-        self.request_data_rate: int = request_data_rate
-        self.candidate_set: Set[Numerology] = set(candidate_set)
+        self.request_data_rate: int = request_data_rate  # quantifier: bps
+        self.candidate_set: CandidateSet = candidate_set
 
         # properties to be configured at runtime
         self.ue_type: Optional[UEType] = None
