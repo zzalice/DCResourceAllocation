@@ -18,9 +18,10 @@ class Zone:
         self.ue_list: Tuple[UserEquipment] = ue_list
         num_of_bu_time: int = sum([(ue.gnb_info if nodeb.nb_type == NodeBType.G else ue.enb_info).num_of_rb
                                    * ue.numerology_in_use.time for ue in ue_list])
-        self.zone_freq: int = (math.ceil(num_of_bu_time / nodeb.frame.frame_time) * self.numerology.freq)
-        self.zone_time: int = nodeb.frame.frame_time
-        self.last_row_duration: int = num_of_bu_time % nodeb.frame.frame_time
+        self.zone_freq: int = (
+                math.ceil(num_of_bu_time / nodeb.frame.frame_time) * self.numerology.freq)  # numbers of BU
+        self.zone_time: int = nodeb.frame.frame_time  # numbers of BU
+        self.last_row_duration: int = num_of_bu_time % self.zone_time or self.zone_time  # = zone_time when % == 0
 
     def merge(self, zone_to_merge: Zone):
         self.ue_list += zone_to_merge.ue_list
@@ -33,7 +34,11 @@ class Zone:
 
     @property
     def is_fit(self) -> bool:
-        return self.zone_freq > 1 or self.zone_time == self.last_row_duration
+        return self.zone_freq > self.numerology.freq or self.zone_time == self.last_row_duration
+
+    @property
+    def last_row_remaining_time(self) -> int:
+        return self.zone_time - self.last_row_duration
 
 
 class _Bin:

@@ -1,5 +1,5 @@
 import dataclasses
-from typing import Tuple, cast
+from typing import Tuple
 
 from src.resource_allocation.algo.phase1 import Phase1
 from src.resource_allocation.ds.eutran import ENodeB
@@ -100,5 +100,8 @@ if __name__ == '__main__':
 
     # noinspection PyTypeChecker
     phase1: Phase1 = Phase1(g_ue_list + d_ue_list)
-    # phase1.calc_inr(0.5)
+    phase1.calc_inr(0.5)
+    phase1.select_init_numerology()
     zone_fit, zone_undersized = phase1.form_zones(g_nb)
+    zone_merged = phase1.merge_zone(zone_undersized)
+    zone_wide, zone_narrow = phase1.categorize_zone(zone_fit, zone_merged)
