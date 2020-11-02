@@ -29,18 +29,7 @@ class NodeBType(Enum):
         return G_MCS if self == NodeBType.G else E_MCS
 
 
-class Numerology(Enum):
-    # immutable Numerology Size (FREQ/HEIGHT, TIME/WIDTH), case where num_of_symbols is 16
-    N0 = (2 ** 0, 2 ** 4)  # F:0, T: 16
-    N1 = (2 ** 1, 2 ** 3)  # F:1, T: 8
-    N2 = (2 ** 2, 2 ** 2)  # F:4, T: 4
-    N3 = (2 ** 3, 2 ** 1)  # F:8, T: 2
-    N4 = (2 ** 4, 2 ** 0)  # F:16, T: 1
-
-    @property
-    def mu(self) -> int:
-        return int(self.name[-1])
-
+class _Numerology(Enum):
     @property
     def freq(self) -> int:
         return self.value[0]
@@ -48,6 +37,23 @@ class Numerology(Enum):
     @property
     def time(self) -> int:
         return self.value[1]
+
+    @staticmethod
+    def gen_candidate_set():
+        raise NotImplementedError
+
+
+class Numerology(_Numerology):
+    # immutable Numerology Size (FREQ/HEIGHT, TIME/WIDTH), case where num_of_symbols is 16
+    N0 = (2 ** 0, 2 ** 4)  # F: 1, T: 16
+    N1 = (2 ** 1, 2 ** 3)  # F: 2, T: 8
+    N2 = (2 ** 2, 2 ** 2)  # F: 4, T: 4
+    N3 = (2 ** 3, 2 ** 1)  # F: 8, T: 2
+    N4 = (2 ** 4, 2 ** 0)  # F: 16, T: 1
+
+    @property
+    def mu(self) -> int:
+        return int(self.name[-1])
 
     @staticmethod
     def gen_candidate_set(exclude: CandidateSet = tuple(), random_pick: bool = False) -> CandidateSet:
@@ -59,7 +65,15 @@ class Numerology(Enum):
         return tuple(sorted(candidate_set, key=lambda x: x.mu))
 
 
-class _MCS(Enum):
+class LTEPhysicalResourceBlock(_Numerology):
+    E = (1, 8)  # F: 1, T: 8
+
+    @staticmethod
+    def gen_candidate_set() -> CandidateSet:
+        return tuple((LTEPhysicalResourceBlock.E,))
+
+
+class _MCS(Enum):  # speed unit: bps per RB
     def calc_required_rb_count(self, request_data_rate: float) -> int:
         # TODO!!: check if (the order of magnitude) is correct
         return math.ceil(request_data_rate / self.value)
@@ -71,15 +85,15 @@ class _MCS(Enum):
 
 # noinspection PyPep8Naming
 class E_MCS(_MCS):
-    WORST = 0.1  # TODO!!: to be announced
+    QPSK_1 = 19900  # TODO: remember to change as real data
 
     @staticmethod
     def get_worst() -> E_MCS:
-        return E_MCS.WORST  # TODO: remember to change
+        return E_MCS.QPSK_1  # TODO: remember to as the worst one
 
 
 # noinspection PyPep8Naming, SpellCheckingInspection
-class G_MCS(_MCS):  # speed unit: bps
+class G_MCS(_MCS):
     QPSK_1 = 19900
     QPSK_2 = 30480
     QPSK_3 = 49020

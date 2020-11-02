@@ -23,10 +23,12 @@ class Zone:
         self.zone_time: int = nodeb.frame.frame_time  # numbers of BU
         self.last_row_duration: int = num_of_bu_time % self.zone_time or self.zone_time  # = zone_time when % == 0
 
-    def merge(self, zone_to_merge: Zone):
-        self.ue_list += zone_to_merge.ue_list
-        self.last_row_duration += zone_to_merge.last_row_duration
-        assert self.last_row_duration <= self.zone_time
+    def merge(self, zone_to_merge: Zone) -> bool:
+        is_mergeable: bool = zone_to_merge.last_row_duration <= self.last_row_remaining_time
+        if is_mergeable:
+            self.ue_list += zone_to_merge.ue_list
+            self.last_row_duration += zone_to_merge.last_row_duration
+        return is_mergeable
 
     @property
     def numerology(self) -> Numerology:

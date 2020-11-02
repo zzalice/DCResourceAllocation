@@ -2,9 +2,9 @@ import dataclasses
 import random
 from typing import NewType, Tuple
 
-from .util_enum import Numerology
+from .util_enum import _Numerology
 
-CandidateSet = NewType('CandidateSet', Tuple[Numerology, ...])
+CandidateSet = NewType('CandidateSet', Tuple[_Numerology, ...])
 
 
 @dataclasses.dataclass

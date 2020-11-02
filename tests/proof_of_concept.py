@@ -2,11 +2,12 @@ import dataclasses
 from typing import Tuple
 
 from src.resource_allocation.algo.phase1 import Phase1
-from src.resource_allocation.ds.eutran import ENodeB
+from src.resource_allocation.ds.eutran import ENodeB, EUserEquipment
 from src.resource_allocation.ds.ngran import DUserEquipment, GNodeB, GUserEquipment
 from src.resource_allocation.ds.ue import UserEquipment
-from src.resource_allocation.ds.util_enum import Numerology
+from src.resource_allocation.ds.util_enum import LTEPhysicalResourceBlock, Numerology
 from src.resource_allocation.ds.util_type import CandidateSet, DistanceRange
+from src.resource_allocation.ds.zone import Zone
 
 
 @dataclasses.dataclass
@@ -35,7 +36,7 @@ class DUEProfiles(UEProfiles):
 
 
 if __name__ == '__main__':
-    GUE_COUNT = DUE_COUNT = 10
+    EUE_COUNT = GUE_COUNT = DUE_COUNT = 10
     NB_DISTANCE: float = 1.0
 
     e_nb: ENodeB = ENodeB()  # radius: 2.0, frame_freq: 50, frame_time: 160, frame_max_layer: 1
@@ -55,6 +56,13 @@ if __name__ == '__main__':
     """
 
     # the recorded random data for POC
+    e_profiles: UEProfiles = UEProfiles(
+        EUE_COUNT,
+        (188400, 2874000, 535200, 2420400, 1876800, 195600, 1188000, 1938000, 369600, 1502400),
+        LTEPhysicalResourceBlock.gen_candidate_set() * EUE_COUNT,  # dummy (unused)
+        (0.1966428804066318, 0.057080955932419464, 1.4405252071379413, 1.0483062430804293, 1.6058972474023123,
+         0.8128944817212764, 0.3657009563462874, 0.0353501680934305, 0.6121033657944013, 1.834894681274421)
+    )
     g_profiles: UEProfiles = UEProfiles(
         GUE_COUNT,
         (2959200, 1178400, 2845200, 115200, 2173200, 982800, 1273200, 87600, 2581200, 40800),
@@ -83,9 +91,12 @@ if __name__ == '__main__':
          1.8159087210729097, 0.4751103185515886, 0.44364239375116, 1.5278385936317163, 0.4160850979483002)
     )
 
+    e_ue_list: Tuple[EUserEquipment] = tuple(EUserEquipment(e.request_data_rate, e.candidate_set) for e in e_profiles)
     g_ue_list: Tuple[GUserEquipment] = tuple(GUserEquipment(g.request_data_rate, g.candidate_set) for g in g_profiles)
     d_ue_list: Tuple[DUserEquipment] = tuple(DUserEquipment(d.request_data_rate, d.candidate_set) for d in d_profiles)
 
+    for index, e_profile in enumerate(e_profiles):
+        e_ue_list[index].register_nb(e_nb, e_profile.distance)
     for index, g_profile in enumerate(g_profiles):
         g_ue_list[index].register_nb(g_nb, g_profile.distance)
     for index, d_profile in enumerate(d_profiles):
@@ -99,9 +110,15 @@ if __name__ == '__main__':
         d_ue.numerology_in_use = d_ue.candidate_set[0]
 
     # noinspection PyTypeChecker
-    phase1: Phase1 = Phase1(g_ue_list + d_ue_list)
-    phase1.calc_inr(0.5)
-    phase1.select_init_numerology()
-    zone_fit, zone_undersized = phase1.form_zones(g_nb)
-    zone_merged = phase1.merge_zone(zone_undersized)
-    zone_wide, zone_narrow = phase1.categorize_zone(zone_fit, zone_merged)
+    g_phase1: Phase1 = Phase1(g_ue_list + d_ue_list)
+    g_phase1.calc_inr(0.5)
+    g_phase1.select_init_numerology()
+    g_zone_fit, g_zone_undersized = g_phase1.form_zones(g_nb)
+    g_zone_merged: Tuple[Zone, ...] = g_phase1.merge_zone(g_zone_undersized)
+    g_zone_wide, g_zone_narrow = g_phase1.categorize_zone(g_zone_fit, g_zone_merged)
+
+    # noinspection PyTypeChecker
+    e_phase1: Phase1 = Phase1(e_ue_list + d_ue_list)  # TODO: remember to change d_ue_list after g_phase2
+    e_zone_fit, e_zone_undersized = e_phase1.form_zones(e_nb)
+    e_zone_merged: Tuple[Zone, ...] = e_phase1.merge_zone(e_zone_undersized)
+    e_zone_wide, e_zone_narrow = e_phase1.categorize_zone(e_zone_fit, e_zone_merged)

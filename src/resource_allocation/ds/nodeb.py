@@ -14,7 +14,7 @@ class NodeB:
                  frame_freq: int = 50, frame_time: int = 160, frame_max_layer: int = 1):
         self.radius: float = radius  # default 2.0km
         self.power_tx: int = power_tx
-        self.frame: Frame = Frame(frame_freq, frame_time, frame_max_layer)  # default: 10MHz * 10ms
+        self.frame: Frame = Frame(frame_freq, frame_time, frame_max_layer, self)  # default: 10MHz * 10ms
 
         self.nb_type: Optional[NodeBType] = None
 
