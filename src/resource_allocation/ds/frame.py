@@ -8,6 +8,7 @@ from .util_enum import LTEPhysicalResourceBlock, NodeBType, Numerology, UEType
 if TYPE_CHECKING:
     from .nodeb import NodeB
     from .ue import UserEquipment
+    from .zone import Zone
 
 
 class Frame:
@@ -43,8 +44,7 @@ class Layer:
         if self.nodeb.nb_type == NodeBType.E and ue.ue_type == UEType.D:
             ue.numerology_in_use = LTEPhysicalResourceBlock.E  # TODO: refactor or redesign
 
-        assert self._available_frequent_offset <= self.FREQ and offset_j + ue.numerology_in_use.time <= self.TIME
-        # check if the offset is valid
+        assert offset_i + ue.numerology_in_use.freq <= self.FREQ and offset_j + ue.numerology_in_use.time <= self.TIME
         self._cache_is_valid: bool = False  # set cache as invalid (for _available_block)
 
         resource_block: ResourceBlock = ResourceBlock(self, offset_i, offset_j, ue)
@@ -59,12 +59,33 @@ class Layer:
     # def move_resource_block
     # def remove_resource_block
 
-    @property
-    def available_frequent_offset(self):
-        return self._available_frequent_offset
+    def allocate_zone(self, zone: Zone) -> bool:
+        is_allocatable: bool = self.available_bandwidth >= zone.zone_freq
+        if is_allocatable:
+            bu_i: int = self._available_frequent_offset
+            bu_j: int = 0
+            for ue in zone.ue_list:
+                for idx_ue_rb in range((ue.gnb_info if self.nodeb.nb_type == NodeBType.G else ue.enb_info).num_of_rb):
+                    self.allocate_resource_block(bu_i, bu_j, ue)
+                    if bu_j + zone.numerology.time < self.nodeb.frame.frame_time:
+                        bu_j += zone.numerology.time  # TODO: is the numerology correct in 4G?
+                    elif bu_j + zone.numerology.time == self.nodeb.frame.frame_time:
+                        bu_i += zone.numerology.freq  # TODO: is the numerology correct in 4G?
+                        bu_j: int = 0
+                    else:
+                        raise Exception("RB allocate error: index increase error")
+            self._available_frequent_offset += zone.zone_freq
+            assert (bu_i if bu_j == 0 else bu_i + zone.numerology.freq) == self._available_frequent_offset, \
+                "index increase error"
+        return is_allocatable
 
     @property
     def available_bandwidth(self):
+        """
+        restrict: used only when zones/RBs are allocated from the smaller frequency domain,
+        i.e. the BUs after self._available_frequent_offset are not allocated.
+        """
+        assert (self.FREQ - self._available_frequent_offset) >= 0
         return self.FREQ - self._available_frequent_offset
 
     @property

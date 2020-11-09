@@ -1,30 +1,15 @@
 import math
 from typing import List, Tuple, Union
 
-from src.resource_allocation.ds.eutran import EUserEquipment
-from src.resource_allocation.ds.frame import Layer
-from src.resource_allocation.ds.ngran import DUserEquipment, GUserEquipment
-from src.resource_allocation.ds.util_enum import NodeBType, UEType
+from src.resource_allocation.ds.eutran import ENodeB, EUserEquipment
+from src.resource_allocation.ds.ngran import DUserEquipment, GNodeB, GUserEquipment
+from src.resource_allocation.ds.util_enum import UEType
 from src.resource_allocation.ds.zone import Zone, ZoneGroup
 
 
 class Phase2:
-    def __init__(self, nodeb: Union[NodeBType.G, NodeBType.E]):
-        self.nodeb: NodeBType = nodeb
-
-    def _allocate_zone(self, layer: Layer, zone: Zone):
-        bu_i: int = layer.available_frequent_offset
-        bu_j: int = 0
-        for ue in zone.ue_list:
-            for idx_ue_rb in range((ue.gnb_info if self.nodeb.nb_type == NodeBType.G else ue.enb_info).num_of_rb):
-                layer.allocate_resource_block(bu_i, bu_j, ue)
-                if bu_j + zone.numerology.time < self.nodeb.frame.frame_time:
-                    bu_j += zone.numerology.time  # TODO: is the numerology correct in 4G?
-                elif bu_j + zone.numerology.time == self.nodeb.frame.frame_time:
-                    bu_i += zone.numerology.freq  # TODO: is the numerology correct in 4G?
-                    bu_j: int = 0
-                else:
-                    raise Exception("RB allocate error: index increase error")
+    def __init__(self, nodeb: Union[GNodeB, ENodeB]):
+        self.nodeb: Union[GNodeB, ENodeB] = nodeb
 
     def calc_layer_using(self, zone_wide: Tuple[Zone, ...]) -> int:
         layer_using: int = min(
@@ -62,20 +47,16 @@ class Phase2:
         zone_groups: List[ZoneGroup] = sorted(zone_groups, key=lambda x: x.bin[0].zone[0].zone_freq, reverse=True)
         zone_groups: List[ZoneGroup] = sorted(zone_groups, key=lambda x: x.priority, reverse=False)
 
-        idx_unallocated_zone_group: int = 0
-        for idx, zone_group in enumerate(zone_groups):
-            if self.nodeb.frame.layer[0].available_bandwidth < zone_group.bin[0].capacity:
-                idx_unallocated_zone_group = idx
-                break
-            for layer, bin_ in enumerate(zone_group.bin):
-                for zone in bin_.zone:
-                    self._allocate_zone(self.nodeb.frame.layer[layer], zone)
-
-        # collect the zones not allocated
         zone_unallocated: List[Zone, ...] = list()
-        for zone_group in zone_groups[idx_unallocated_zone_group:]:
-            for bin_ in zone_group.bin:
-                zone_unallocated.extend(bin_.zone)
+        for zone_group in zone_groups:
+            if self.nodeb.frame.layer[0].available_bandwidth < zone_group.bin[0].capacity:
+                # collect the zones not allocated
+                for bin_ in zone_group.bin:
+                    zone_unallocated.extend(bin_.zone)
+            else:
+                for layer, bin_ in enumerate(zone_group.bin):
+                    for zone in bin_.zone:
+                        self.nodeb.frame.layer[layer].allocate_zone(zone)
         return tuple(zone_unallocated)
 
     def allocate_zone_to_layer(self, zone_set: Tuple[Zone, ...]) -> Tuple[
@@ -86,10 +67,8 @@ class Phase2:
         for zone in zone_set:
             is_allocated: bool = False
             for layer in self.nodeb.frame.layer:
-                # TODO: is done in _allocate_zone(). If _allocate_zone returns true...
-                if layer.available_bandwidth > zone.zone_freq:
-                    self._allocate_zone(layer, zone)
-                    is_allocated: bool = True
+                if is_allocated := layer.allocate_zone(zone):
+                    break
 
             # collect the UEs not allocated    # TODO: do this in data structure
             if not is_allocated:
