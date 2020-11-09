@@ -120,11 +120,11 @@ if __name__ == '__main__':
     g_zone_wide, g_zone_narrow = g_phase1.categorize_zone(g_zone_fit, g_zone_merged)
 
     g_phase2: Phase2 = Phase2(g_nb)
-    g_phase2.calc_layer_using(g_zone_wide)
-    g_zone_groups: Tuple[ZoneGroup, ...] = g_phase2.form_group(g_zone_wide)
+    layer_using: int = g_phase2.calc_layer_using(g_zone_wide)
+    g_zone_groups: Tuple[ZoneGroup, ...] = g_phase2.form_group(g_zone_wide, layer_using)
     g_zone_groups: Tuple[ZoneGroup, ...] = g_phase2.calc_residual_degree(g_zone_groups)
     g_zone_unallocated: Tuple[Zone, ...] = g_phase2.allocate_zone_group(g_zone_groups)
-    g_ue_list_unallocated, d_ue_list_unallocated = g_phase2.allocate_zone_to_layers(g_zone_unallocated)
+    g_ue_list_unallocated, d_ue_list_unallocated = g_phase2.allocate_zone_to_layer(g_zone_unallocated)
     g_ue_list_unallocated, d_ue_list_unallocated = g_phase2.collect_unallocated_ue(g_zone_narrow, g_ue_list_unallocated,
                                                                                    d_ue_list_unallocated)
 
@@ -135,6 +135,6 @@ if __name__ == '__main__':
     e_zone_wide, e_zone_narrow = e_phase1.categorize_zone(e_zone_fit, e_zone_merged)
 
     e_phase2: Phase2 = Phase2(e_nb)
-    e_ue_list_unallocated, d_ue_list_unallocated = e_phase2.allocate_zone_to_layers(e_zone_wide)
+    e_ue_list_unallocated, d_ue_list_unallocated = e_phase2.allocate_zone_to_layer(e_zone_wide)
     e_ue_list_unallocated, d_ue_list_unallocated = e_phase2.collect_unallocated_ue(e_zone_narrow, e_ue_list_unallocated,
                                                                                    d_ue_list_unallocated)
