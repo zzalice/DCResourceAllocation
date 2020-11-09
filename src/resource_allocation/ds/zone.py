@@ -32,7 +32,7 @@ class Zone:
 
     @property
     def numerology(self) -> Numerology:
-        return self.ue_list[0].numerology_in_use
+        return self.ue_list[0].numerology_in_use  # TODO: save the numerology when zone is created
 
     @property
     def is_fit(self) -> bool:
@@ -50,23 +50,28 @@ class _Bin:
         self.zone: List[Zone] = list()
 
     def append_zone(self, zone: Zone) -> bool:
-        is_appendable: bool = self.capacity - self.usage >= zone.zone_freq
+        is_appendable: bool = self.remaining_space >= zone.zone_freq
         if is_appendable:
             self.zone.append(zone)
             self.usage += zone.zone_freq
         return is_appendable
 
+    @property
+    def remaining_space(self) -> int:
+        return self.capacity - self.usage
+
 
 class ZoneGroup:
     def __init__(self, initial_zone: Zone, num_of_bins: int):
+        assert num_of_bins > 0
         self.bin: Tuple[_Bin, ...] = tuple(_Bin(initial_zone.zone_freq) for _ in range(num_of_bins))
         self.priority: float = float('-inf')
         self.bin[0].append_zone(initial_zone)
 
-    def append_zone(self, zone: Zone, target_bin: int) -> bool:
-        assert target_bin > 0
-        return self.bin[target_bin].append_zone(zone)  # return True when append succeed
-
     def set_priority(self, priority: float):
         assert self.priority == float('-inf')  # should be set once ONLY
         self.priority: float = priority
+
+    @property
+    def numerology(self) -> Numerology:
+        return self.bin[0].zone[0].numerology

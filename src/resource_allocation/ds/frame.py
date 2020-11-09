@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from typing import List, Optional, Tuple, TYPE_CHECKING
+from typing import Optional, Tuple, TYPE_CHECKING
 
 from .rb import ResourceBlock
 from .util_enum import LTEPhysicalResourceBlock, NodeBType, Numerology, UEType
@@ -33,7 +33,6 @@ class Layer:
         self.TIME: int = time
         self.nodeb: NodeB = nodeb
         self.bu: Tuple[Tuple[_BaseUnit, ...], ...] = tuple(tuple(_BaseUnit() for _ in range(time)) for _ in range(freq))
-        self.rb: List[ResourceBlock] = list()
 
         self._available_frequent_offset: int = 0
         self._cache_is_valid: bool = False  # valid bit (for _available_block)
@@ -44,17 +43,25 @@ class Layer:
         if self.nodeb.nb_type == NodeBType.E and ue.ue_type == UEType.D:
             ue.numerology_in_use = LTEPhysicalResourceBlock.E  # TODO: refactor or redesign
 
-        self._available_frequent_offset = offset_i + ue.numerology_in_use.freq
         assert self._available_frequent_offset <= self.FREQ and offset_j + ue.numerology_in_use.time <= self.TIME
+        # check if the offset is valid
         self._cache_is_valid: bool = False  # set cache as invalid (for _available_block)
+
         resource_block: ResourceBlock = ResourceBlock(self, offset_i, offset_j, ue)
-        self.rb.append(resource_block)
+        (ue.gnb_info if self.nodeb.nb_type == NodeBType.G else ue.enb_info).rb.append(resource_block)
 
         for i in range(ue.numerology_in_use.freq):
             for j in range(ue.numerology_in_use.time):
                 self.bu[offset_i + i][offset_j + j].set_up_bu(i, j, resource_block)
 
         ue.numerology_in_use = tmp_numerology  # restore
+
+    # def move_resource_block
+    # def remove_resource_block
+
+    @property
+    def available_frequent_offset(self):
+        return self._available_frequent_offset
 
     @property
     def available_bandwidth(self):
