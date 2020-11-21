@@ -41,6 +41,9 @@ class Layer:
         self._bu_status: Tuple[Tuple[bool, ...], ...] = tuple()
 
     def allocate_resource_block(self, offset_i: int, offset_j: int, ue: UserEquipment):
+        if not ue.is_allocated:
+            ue.is_allocated = True
+
         tmp_numerology: Numerology = ue.numerology_in_use
         if self.nodeb.nb_type == NodeBType.E and ue.ue_type == UEType.D:
             ue.numerology_in_use = LTEPhysicalResourceBlock.E  # TODO: refactor or redesign

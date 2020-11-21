@@ -1,9 +1,8 @@
 import math
 from typing import List, Tuple, Union
 
-from src.resource_allocation.ds.eutran import ENodeB, EUserEquipment
-from src.resource_allocation.ds.ngran import DUserEquipment, GNodeB, GUserEquipment
-from src.resource_allocation.ds.util_enum import UEType
+from src.resource_allocation.ds.eutran import ENodeB
+from src.resource_allocation.ds.ngran import GNodeB
 from src.resource_allocation.ds.zone import Zone, ZoneGroup
 
 
@@ -59,40 +58,9 @@ class Phase2:
                         self.nodeb.frame.layer[layer].allocate_zone(zone)
         return tuple(zone_unallocated)
 
-    def allocate_zone_to_layer(self, zone_set: Tuple[Zone, ...]) -> Tuple[
-                                Tuple[Union[GUserEquipment, EUserEquipment], ...], Tuple[DUserEquipment, ...]]:
+    def allocate_zone_to_layer(self, zone_set: Tuple[Zone, ...]):
         zone_set = sorted(zone_set, key=lambda x: x.zone_freq, reverse=True)
-        single_connection_ue_list_unallocated: List[Union[GUserEquipment, EUserEquipment]] = list()
-        d_ue_list_unallocated: List[DUserEquipment] = list()
         for zone in zone_set:
-            is_allocated: bool = False
             for layer in self.nodeb.frame.layer:
-                if is_allocated := layer.allocate_zone(zone):
+                if layer.allocate_zone(zone):
                     break
-
-            # collect the UEs not allocated    # TODO: do this in data structure
-            if not is_allocated:
-                for ue in zone.ue_list:
-                    if ue.ue_type == UEType.D:
-                        ue: DUserEquipment
-                        d_ue_list_unallocated.append(ue)
-                    else:
-                        ue: Union[GUserEquipment, EUserEquipment]
-                        single_connection_ue_list_unallocated.append(ue)
-        return tuple(single_connection_ue_list_unallocated), tuple(d_ue_list_unallocated)
-
-    @staticmethod
-    def collect_unallocated_ue(zone_narrow: Tuple[Zone, ...],
-                               single_connection_ue_list_unallocated: Tuple[Union[GUserEquipment, EUserEquipment], ...],
-                               d_ue_list_unallocated: Tuple[DUserEquipment, ...]) -> Tuple[
-                               Tuple[Union[GUserEquipment, DUserEquipment], ...], Tuple[DUserEquipment, ...]]:
-        # TODO: do this in data structure
-        single_connection_ue_list_unallocated = list(single_connection_ue_list_unallocated)
-        d_ue_list_unallocated = list(d_ue_list_unallocated)
-        for zone in zone_narrow:
-            for ue in zone.ue_list:
-                if isinstance(ue, (GUserEquipment, EUserEquipment)):
-                    single_connection_ue_list_unallocated.append(ue)
-                elif isinstance(ue, DUserEquipment):
-                    d_ue_list_unallocated.append(ue)
-        return tuple(single_connection_ue_list_unallocated), tuple(d_ue_list_unallocated)

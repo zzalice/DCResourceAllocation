@@ -3,6 +3,7 @@ import pickle
 from datetime import datetime
 from typing import Tuple
 
+from src.resource_allocation.algo.assistance import cluster_unallocated_ue
 from src.resource_allocation.algo.phase1 import Phase1
 from src.resource_allocation.algo.phase2 import Phase2
 from src.resource_allocation.ds.eutran import ENodeB, EUserEquipment
@@ -43,7 +44,7 @@ if __name__ == '__main__':
     NB_DISTANCE: float = 1.0
 
     visualize_the_algo: bool = True
-    visualization_file_path = "../utils/frame_visualizer/vis_"+datetime.today().strftime('%Y%m%d')+".pkl"
+    visualization_file_path = "../utils/frame_visualizer/vis_" + datetime.today().strftime('%Y%m%d') + ".P"
 
     e_nb: ENodeB = ENodeB()  # radius: 2.0, frame_freq: 50, frame_time: 160, frame_max_layer: 1
     g_nb: GNodeB = GNodeB()  # radius: 1.0, frame_freq: 100, frame_max_layer: 3
@@ -117,6 +118,7 @@ if __name__ == '__main__':
         d_ue.numerology_in_use = d_ue.candidate_set[0]
 
     # noinspection PyTypeChecker
+    # TODO type checking warning
     g_phase1: Phase1 = Phase1(g_ue_list + d_ue_list)
     g_phase1.calc_inr(0.5)
     g_phase1.select_init_numerology()
@@ -129,9 +131,9 @@ if __name__ == '__main__':
     g_zone_groups: Tuple[ZoneGroup, ...] = g_phase2.form_group(g_zone_wide, layer_using)
     g_zone_groups: Tuple[ZoneGroup, ...] = g_phase2.calc_residual_degree(g_zone_groups)
     g_zone_unallocated: Tuple[Zone, ...] = g_phase2.allocate_zone_group(g_zone_groups)
-    g_ue_list_unallocated, d_ue_list_unallocated = g_phase2.allocate_zone_to_layer(g_zone_unallocated)
-    g_ue_list_unallocated, d_ue_list_unallocated = g_phase2.collect_unallocated_ue(g_zone_narrow, g_ue_list_unallocated,
-                                                                                   d_ue_list_unallocated)
+    g_phase2.allocate_zone_to_layer(g_zone_unallocated)
+    g_ue_list_allocated, g_ue_list_unallocated = cluster_unallocated_ue(g_ue_list)
+    d_ue_list_allocated, d_ue_list_unallocated = cluster_unallocated_ue(d_ue_list)
 
     # noinspection PyTypeChecker
     e_phase1: Phase1 = Phase1(e_ue_list + d_ue_list_unallocated)
@@ -140,9 +142,13 @@ if __name__ == '__main__':
     e_zone_wide, e_zone_narrow = e_phase1.categorize_zone(e_zone_fit, e_zone_merged)
 
     e_phase2: Phase2 = Phase2(e_nb)
-    e_ue_list_unallocated, d_ue_list_unallocated = e_phase2.allocate_zone_to_layer(e_zone_wide)
-    e_ue_list_unallocated, d_ue_list_unallocated = e_phase2.collect_unallocated_ue(e_zone_narrow, e_ue_list_unallocated,
-                                                                                   d_ue_list_unallocated)
+    e_phase2.allocate_zone_to_layer(e_zone_wide)
+    e_ue_list_allocated, e_ue_list_unallocated = cluster_unallocated_ue(e_ue_list)
+    d_ue_list_allocated, d_ue_list_unallocated = cluster_unallocated_ue(d_ue_list)
+
     if visualize_the_algo is True:
         with open(visualization_file_path, "wb") as file_of_frame_and_ue:
-            pickle.dump([g_nb.frame, e_nb.frame, g_ue_list, d_ue_list, e_ue_list], file_of_frame_and_ue)
+            pickle.dump([g_nb.frame, e_nb.frame,
+                        {"allocated": g_ue_list_allocated, "unallocated": g_ue_list_unallocated},
+                        {"allocated": d_ue_list_allocated, "unallocated": d_ue_list_unallocated},
+                        {"allocated": e_ue_list_allocated, "unallocated": e_ue_list_unallocated}], file_of_frame_and_ue)

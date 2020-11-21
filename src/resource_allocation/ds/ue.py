@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from typing import Optional, Set, TYPE_CHECKING, Union
+from typing import Optional, TYPE_CHECKING, Union
 from uuid import UUID, uuid4
 
 from .nodeb import _NBInfoWithinUE, ENBInfo, GNBInfo, NodeB
@@ -21,6 +21,7 @@ class UserEquipment:
         # properties to be configured at runtime
         self.ue_type: Optional[UEType] = None
         self.numerology_in_use: Optional[Numerology] = None
+        self.is_allocated: bool = False
         self.enb_info: ENBInfo = ENBInfo(request_data_rate)
         self.gnb_info: GNBInfo = GNBInfo(request_data_rate)
 
