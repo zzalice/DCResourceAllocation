@@ -168,5 +168,6 @@ Network Trash Folder
 Temporary Items
 .apdisk
 
-### frame.html for test case rendering
+### for test case rendering
 *.html
+*.P

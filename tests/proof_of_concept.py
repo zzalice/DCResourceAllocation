@@ -1,4 +1,6 @@
 import dataclasses
+import pickle
+from datetime import datetime
 from typing import Tuple
 
 from src.resource_allocation.algo.phase1 import Phase1
@@ -39,6 +41,9 @@ class DUEProfiles(UEProfiles):
 if __name__ == '__main__':
     EUE_COUNT = GUE_COUNT = DUE_COUNT = 10
     NB_DISTANCE: float = 1.0
+
+    visualize_the_algo: bool = True
+    visualization_file_path = "../utils/frame_visualizer/vis_"+datetime.today().strftime('%Y%m%d')+".pkl"
 
     e_nb: ENodeB = ENodeB()  # radius: 2.0, frame_freq: 50, frame_time: 160, frame_max_layer: 1
     g_nb: GNodeB = GNodeB()  # radius: 1.0, frame_freq: 100, frame_max_layer: 3
@@ -138,3 +143,6 @@ if __name__ == '__main__':
     e_ue_list_unallocated, d_ue_list_unallocated = e_phase2.allocate_zone_to_layer(e_zone_wide)
     e_ue_list_unallocated, d_ue_list_unallocated = e_phase2.collect_unallocated_ue(e_zone_narrow, e_ue_list_unallocated,
                                                                                    d_ue_list_unallocated)
+    if visualize_the_algo is True:
+        with open(visualization_file_path, "wb") as file_of_frame_and_ue:
+            pickle.dump([g_nb.frame, e_nb.frame, g_ue_list, d_ue_list, e_ue_list], file_of_frame_and_ue)

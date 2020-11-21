@@ -14,7 +14,7 @@ if TYPE_CHECKING:
 class Frame:
     def __init__(self, freq: int, time: int, max_layer: int, nodeb: NodeB):
         # i.e., one_bu = frame.layer[layer(l|MAX_LAYER)].bu[freq(i|HEIGHT)][time(j|WIDTH)]
-        self.layer: Tuple[Layer, ...] = tuple(Layer(freq, time, nodeb) for _ in range(max_layer))
+        self.layer: Tuple[Layer, ...] = tuple(Layer(i, freq, time, nodeb) for i in range(max_layer))
 
         self._max_layer: int = max_layer
 
@@ -28,8 +28,9 @@ class Frame:
 
 
 class Layer:
-    def __init__(self, freq: int, time: int, nodeb: NodeB):
+    def __init__(self, layer_index: int,  freq: int, time: int, nodeb: NodeB):
         # i.e., BU[frequency(i|HEIGHT)][time(j|WIDTH)]
+        self.layer_index: int = layer_index
         self.FREQ: int = freq
         self.TIME: int = time
         self.nodeb: NodeB = nodeb

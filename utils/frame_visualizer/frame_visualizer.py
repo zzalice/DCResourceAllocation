@@ -1,5 +1,9 @@
+import pickle
+from typing import List
+
+from src.resource_allocation.ds.eutran import EUserEquipment
 from src.resource_allocation.ds.frame import Frame
-from utils.frame_visualizer.tmp_test_case import g_frame
+from src.resource_allocation.ds.ngran import DUserEquipment, GUserEquipment
 
 
 class FrameRenderer:
@@ -10,6 +14,7 @@ class FrameRenderer:
             'table, th, td {\nborder: 1px solid black;\nfont-family: monospace;\nvertical-align: center;}',
             'th {background-color: lightgray;}',
             'td {min-width: 32px;}',
+            '.LTEPhysicalResourceBlock_E {background-color: #73A7FE;}',
             '.Numerology_N0 {background-color: #73A7FE;}',
             '.Numerology_N1 {background-color: #B1DE8C;}',
             '.Numerology_N2 {background-color: #F5EF97;}',
@@ -20,8 +25,7 @@ class FrameRenderer:
         self.body = []
 
     def gen_tables(self, frame: Frame):
-        for l in range(len(frame.layer)):
-            layer = frame.layer[l]
+        for layer in frame.layer:
             base_unit = layer.bu
             height, width = len(base_unit), len(base_unit[0])
 
@@ -38,7 +42,8 @@ class FrameRenderer:
                     tr += f'<td class="{numerology}">{ue}</td>'
                 tr += '\n</tr>'
                 self.body.append(tr)
-            self.body.append(f'\n<tr><td colspan="{width + 1}">Layer {l + 1}</td></tr>')
+            self.body.append(f'\n<tr><td colspan="{width + 1}" style="text-align:left;">')
+            self.body.append(f'{layer.nodeb.nb_type.name}NodeB Layer {layer.layer_index + 1}</td></tr>')
             self.body.append('</table>')
 
     def render(self, filename: str):
@@ -51,6 +56,26 @@ class FrameRenderer:
 
 
 if __name__ == '__main__':
+    file_to_visualize = "vis_20201121.P"
+    gFrame: List[Frame] = []
+    eFrame: List[Frame] = []
+    g_ue_list: List[List[GUserEquipment]] = []
+    d_ue_list: List[List[DUserEquipment]] = []
+    e_ue_list: List[List[EUserEquipment]] = []
+
+    with open(file_to_visualize+".P", "rb") as file_of_frame_and_ue:
+        while True:
+            try:
+                gf, ef, gue, due, eue = pickle.load(file_of_frame_and_ue)
+                gFrame.append(gf)
+                eFrame.append(ef)
+                g_ue_list.append(gue)
+                d_ue_list.append(due)
+                e_ue_list.append(eue)
+            except EOFError:
+                break
+
     frame_renderer = FrameRenderer()
-    frame_renderer.gen_tables(g_frame)
-    frame_renderer.render('test_frame.html')
+    frame_renderer.gen_tables(gFrame[0])
+    frame_renderer.gen_tables(eFrame[0])
+    frame_renderer.render(file_to_visualize+'.html')

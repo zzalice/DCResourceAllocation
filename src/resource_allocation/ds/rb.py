@@ -22,7 +22,7 @@ class ResourceBlock:
 
     @property
     def numerology(self) -> Numerology:
-        return self.ue.numerology_in_use
+        return self.ue.numerology_in_use    # TODO: not correct if it's dUE
 
     @property
     def i_start(self) -> int:
