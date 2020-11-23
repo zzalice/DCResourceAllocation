@@ -13,6 +13,7 @@ class ResourceBlock:
     def __init__(self, layer: Layer, starting_i: int, starting_j: int, ue: UserEquipment):
         self.layer: Layer = layer
         self.ue: UserEquipment = ue
+        self._numerology = ue.numerology_in_use
         self.position: Tuple[int, int, int, int] = self.update_position(starting_i, starting_j)
 
     def update_position(self, starting_i: int, starting_j: int) -> Tuple[int, int, int, int]:
@@ -22,7 +23,7 @@ class ResourceBlock:
 
     @property
     def numerology(self) -> Numerology:
-        return self.ue.numerology_in_use    # TODO: not correct if it's dUE
+        return self._numerology
 
     @property
     def i_start(self) -> int:

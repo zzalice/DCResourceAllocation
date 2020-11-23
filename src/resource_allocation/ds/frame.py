@@ -28,7 +28,7 @@ class Frame:
 
 
 class Layer:
-    def __init__(self, layer_index: int,  freq: int, time: int, nodeb: NodeB):
+    def __init__(self, layer_index: int, freq: int, time: int, nodeb: NodeB):
         # i.e., BU[frequency(i|HEIGHT)][time(j|WIDTH)]
         self.layer_index: int = layer_index
         self.FREQ: int = freq
@@ -72,9 +72,9 @@ class Layer:
                 for idx_ue_rb in range((ue.gnb_info if self.nodeb.nb_type == NodeBType.G else ue.enb_info).num_of_rb):
                     self.allocate_resource_block(bu_i, bu_j, ue)
                     if bu_j + zone.numerology.time < self.nodeb.frame.frame_time:
-                        bu_j += zone.numerology.time  # TODO: is the numerology correct in 4G?
+                        bu_j += zone.numerology.time
                     elif bu_j + zone.numerology.time == self.nodeb.frame.frame_time:
-                        bu_i += zone.numerology.freq  # TODO: is the numerology correct in 4G?
+                        bu_i += zone.numerology.freq
                         bu_j: int = 0
                     else:
                         raise Exception("RB allocate error: index increase error")

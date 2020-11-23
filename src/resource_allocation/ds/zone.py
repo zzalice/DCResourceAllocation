@@ -5,7 +5,7 @@ from typing import List, Tuple, TYPE_CHECKING, Union
 
 from .eutran import ENodeB
 from .ngran import GNodeB
-from .util_enum import NodeBType
+from .util_enum import LTEPhysicalResourceBlock, NodeBType
 
 if TYPE_CHECKING:
     from .ue import UserEquipment
@@ -16,6 +16,10 @@ class Zone:
     def __init__(self, ue_list: Tuple[UserEquipment, ...], nodeb: Union[ENodeB, GNodeB]):
         assert len({ue.numerology_in_use for ue in ue_list}) == 1  # make sure all UEs use the same numerology
         self.ue_list: Tuple[UserEquipment] = ue_list
+
+        self._numerology = LTEPhysicalResourceBlock.E if nodeb.nb_type == NodeBType.E else ue_list[0].numerology_in_use
+        # TODO: refactor or redesign
+
         num_of_bu_time: int = sum([(ue.gnb_info if nodeb.nb_type == NodeBType.G else ue.enb_info).num_of_rb
                                    * ue.numerology_in_use.time for ue in ue_list])
         self.zone_freq: int = (
@@ -32,7 +36,7 @@ class Zone:
 
     @property
     def numerology(self) -> Numerology:
-        return self.ue_list[0].numerology_in_use  # TODO: save the numerology when zone is created
+        return self._numerology
 
     @property
     def is_fit(self) -> bool:
