@@ -46,8 +46,8 @@ if __name__ == '__main__':
     visualize_the_algo: bool = True
     visualization_file_path = "../utils/frame_visualizer/vis_" + datetime.today().strftime('%Y%m%d') + ".P"
 
-    e_nb: ENodeB = ENodeB()  # radius: 2.0, frame_freq: 50, frame_time: 160, frame_max_layer: 1
-    g_nb: GNodeB = GNodeB()  # radius: 1.0, frame_freq: 100, frame_max_layer: 3
+    e_nb: ENodeB = ENodeB()
+    g_nb: GNodeB = GNodeB()
     distance_range: DistanceRange = UserEquipment.calc_distance_range(e_nb, g_nb, NB_DISTANCE)
 
     """

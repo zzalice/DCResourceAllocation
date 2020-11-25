@@ -31,13 +31,14 @@ class FrameRenderer:
         rb_list = sorted(rb_list, key=lambda x: x.layer.layer_index)
         rb_list = sorted(rb_list, key=lambda x: x.position[0])
         rb_l: int = -1
-        rb_i: int = -1
+        rb_i: int = 0
         for rb in rb_list:
             if rb.layer.layer_index != rb_l:
                 rb_l: int = rb.layer.layer_index
                 self.body.append(f'\n<br>l: {rb_l} ')
             if rb.position[0] != rb_i:
                 rb_i: int = rb.position[0]
+                self.body.append('<br>')
             self.body.append(f'[{rb.position[0]}, {rb.position[2]}]')
 
     def gen_ue(self, ue_list: Tuple[GUserEquipment, ...]):
@@ -98,7 +99,7 @@ class FrameRenderer:
 
 
 if __name__ == '__main__':
-    file_to_visualize = "vis_20201124"
+    file_to_visualize = "vis_20201125"
 
     with open(file_to_visualize + ".P", "rb") as file_of_frame_and_ue:
         gFrame: List[Frame] = []
