@@ -15,6 +15,7 @@ class ResourceBlock:
         self.ue: UserEquipment = ue
         self._numerology = ue.numerology_in_use
         self.position: Tuple[int, int, int, int] = self.update_position(starting_i, starting_j)
+        self.sinr: float = float('-inf')
 
     def update_position(self, starting_i: int, starting_j: int) -> Tuple[int, int, int, int]:
         self.position: Tuple[int, int, int, int] = (starting_i, starting_i + self.numerology.freq - 1,

@@ -34,7 +34,8 @@ class Layer:
         self.FREQ: int = freq
         self.TIME: int = time
         self.nodeb: NodeB = nodeb
-        self.bu: Tuple[Tuple[_BaseUnit, ...], ...] = tuple(tuple(_BaseUnit() for _ in range(time)) for _ in range(freq))
+        self.bu: Tuple[Tuple[BaseUnit, ...], ...] = tuple(
+            tuple(BaseUnit(i, j, self) for j in range(time)) for i in range(freq))
 
         self._available_frequent_offset: int = 0
         self._cache_is_valid: bool = False  # valid bit (for _available_block)
@@ -104,11 +105,15 @@ class Layer:
         raise NotImplementedError  # TODO: not decided how to implement yet
 
 
-class _BaseUnit:
-    def __init__(self):
+class BaseUnit:
+    def __init__(self, absolute_i: int, absolute_j: int, layer: Layer):
+        self._absolute_i: int = absolute_i
+        self._absolute_j: int = absolute_j
+        self._layer: Layer = layer
         self.relative_i: Optional[int] = None
         self.relative_j: Optional[int] = None
         self.within_rb: Optional[ResourceBlock] = None
+        self.sinr: float = float('-inf')
 
     @property
     def is_used(self) -> bool:
@@ -131,3 +136,15 @@ class _BaseUnit:
     def clear_up_bu(self):
         assert self.is_used
         self.relative_i = self.relative_j = self.within_rb = None
+
+    @property
+    def absolute_i(self) -> int:
+        return self._absolute_i
+
+    @property
+    def absolute_j(self) -> int:
+        return self._absolute_j
+
+    @property
+    def layer(self) -> Layer:
+        return self._layer
