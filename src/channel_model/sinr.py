@@ -24,7 +24,8 @@ class ChannelModel:
         rb.sinr = tmp_sinr_rb
 
     def sinr_bu(self, bu: BaseUnit):
-        ue: UserEquipment = bu.within_rb.ue
+        rb: ResourceBlock = bu.within_rb
+        ue: UserEquipment = rb.ue
         nodeb: NodeB = bu.layer.nodeb
         power_rx: float = self.power_rx(
             (ue.gnb_info if nodeb.nb_type == NodeBType.G else ue.enb_info).distance, nodeb.power_tx)
@@ -32,27 +33,36 @@ class ChannelModel:
         interference_noma: float = 0.0
         interference_ini: float = 0.0
         interference_cross: float = 0.0
-        if nodeb.nb_type == NodeBType.G:
-            for layer in nodeb.frame.layer:
-                if layer != bu.layer:
-                    overlapped_bu: BaseUnit = layer.bu[bu.absolute_i][bu.absolute_j]
-                    try:
-                        overlapped_ue: UserEquipment = overlapped_bu.within_rb.ue
-                    except AttributeError:
-                        continue
-                    overlapped_bu_power_rx = self.power_rx(overlapped_ue.gnb_info.distance, nodeb.power_tx)
-                    if power_rx > overlapped_bu_power_rx:
-                        interference_noma += overlapped_bu_power_rx
-                    if bu.within_rb.numerology != overlapped_bu.within_rb.numerology:
-                        interference_ini += overlapped_bu_power_rx
-            # interference_ini += self.power_rx()     # TODO: co-channel
-            # interference_cross += 0.0               # TODO: co-channel. The other BS, eNB.
-        elif nodeb.nb_type == NodeBType.E:
-            pass
-            # interference_ini += self.power_rx()     # TODO: co-channel
-            # interference_cross += 0.0               # TODO: co-channel
-        awgn_noise = pow(10, 17.4) * 180_000  # awgn noise: mW, awgn: mW/Hz, bu_bandwidth: 180_000 Hz
+        for layer in nodeb.frame.layer:
+            if layer != bu.layer:  # only for gNB, which has multiple layers
+                print(f'layer: {layer.nodeb.nb_type} {layer.layer_index}')
+                overlapped_bu: BaseUnit = layer.bu[bu.absolute_i][bu.absolute_j]
+                if not (overlapped_rb := overlapped_bu.within_rb):  # if the radio resource is not allocated
+                    continue
+                overlapped_bu_power_rx: float = self.power_rx(overlapped_rb.ue.gnb_info.distance,
+                                                              nodeb.power_tx)  # nodeb.power_tx = layer.nodeb.power_tx = overlapped_rb.ue.gnb_info.nb.power_tx
+                if overlapped_bu_power_rx > power_rx:  # TODO: should be comparing channel gain. However, the rx power of the two UE are the same.
+                    interference_noma += overlapped_bu_power_rx
+                    print(f'interference_noma: {interference_noma}')
+                if rb.numerology != overlapped_rb.numerology:
+                    interference_ini += overlapped_bu_power_rx
+                    print(f'interference_ini: {interference_ini}')
+        if bu.is_cochannel:
+            for layer in bu.cochannel_nb.frame.layer:
+                print(f'layer: {layer.nodeb.nb_type} {layer.layer_index}')
+                overlapped_bu: BaseUnit = layer.bu[bu.cochannel_bu_i][bu.absolute_j]
+                if not (overlapped_rb := overlapped_bu.within_rb):  # if the radio resource is allocated
+                    continue
+                overlapped_bu_power_rx: float = self.power_rx(
+                    (overlapped_rb.ue.enb_info if nodeb.nb_type == NodeBType.G else overlapped_rb.ue.gnb_info).distance,
+                    bu.cochannel_nb.power_tx)
+                interference_cross: float = interference_cross
+                print(f'interference_cross: {interference_cross}')
+                if rb.numerology.freq != overlapped_rb.numerology.freq:
+                    interference_ini += overlapped_bu_power_rx
+                    print(f'interference_ini(cross): {interference_ini}')
 
+        awgn_noise: float = pow(10, 17.4) * 180_000  # awgn noise: mW, awgn: mW/Hz, bu_bandwidth: 180_000 Hz
         bu.sinr = power_rx / (interference_noma + interference_ini + interference_cross + awgn_noise)
 
     def power_rx(self, distance: float, power_tx: float) -> float:
@@ -70,7 +80,7 @@ class ChannelModel:
         Channel gain = path loss * shadowing
         :return channel gain: in ratio
         """
-        return self._path_loss(distance) * self.noise(8)
+        return self._path_loss(distance) * self.noise(8)  # TODO: 公式對嗎？path loss直接是channel gain?
 
     @staticmethod
     def _path_loss(distance: float) -> float:

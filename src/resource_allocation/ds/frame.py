@@ -111,16 +111,19 @@ class BaseUnit:
         self._absolute_i: int = absolute_i
         self._absolute_j: int = absolute_j
         self._layer: Layer = layer
-        self._is_cochannel: bool = False
-        self._cochannel_nb: Optional[Union[ENodeB, GNodeB]] = None
         self.relative_i: Optional[int] = None
         self.relative_j: Optional[int] = None
         self.within_rb: Optional[ResourceBlock] = None
         self.sinr: float = float('-inf')
 
-    def set_cochannel(self, nodeb: Union[ENodeB, GNodeB]):
+        self._is_cochannel: bool = False
+        self._cochannel_nb: Optional[Union[ENodeB, GNodeB]] = None
+        self._cochannel_absolute_i: Optional[int] = None
+
+    def set_cochannel(self, nodeb: Union[ENodeB, GNodeB], absolute_i: int):
         self._is_cochannel: bool = True
         self._cochannel_nb: Union[ENodeB, GNodeB] = nodeb
+        self._cochannel_absolute_i: int = absolute_i
 
     @property
     def is_cochannel(self) -> bool:
@@ -129,6 +132,10 @@ class BaseUnit:
     @property
     def cochannel_nb(self) -> Union[ENodeB, GNodeB]:
         return self._cochannel_nb
+
+    @property
+    def cochannel_bu_i(self) -> int:
+        return self._cochannel_absolute_i
 
     @property
     def is_used(self) -> bool:
