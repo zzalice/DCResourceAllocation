@@ -6,6 +6,7 @@ from typing import Tuple
 from src.resource_allocation.algo.assistance import cluster_unallocated_ue
 from src.resource_allocation.algo.phase1 import Phase1
 from src.resource_allocation.algo.phase2 import Phase2
+from src.resource_allocation.ds.cochannel import cochannel
 from src.resource_allocation.ds.eutran import ENodeB, EUserEquipment
 from src.resource_allocation.ds.ngran import DUserEquipment, GNodeB, GUserEquipment
 from src.resource_allocation.ds.ue import UserEquipment
@@ -48,6 +49,7 @@ if __name__ == '__main__':
 
     e_nb: ENodeB = ENodeB()
     g_nb: GNodeB = GNodeB()
+    cochannel(e_nb, g_nb)
     distance_range: DistanceRange = UserEquipment.calc_distance_range(e_nb, g_nb, NB_DISTANCE)
 
     """

@@ -1,11 +1,13 @@
 from __future__ import annotations
 
-from typing import Optional, Tuple, TYPE_CHECKING
+from typing import Optional, Tuple, TYPE_CHECKING, Union
 
 from .rb import ResourceBlock
 from .util_enum import LTEPhysicalResourceBlock, NodeBType, Numerology, UEType
 
 if TYPE_CHECKING:
+    from .eutran import ENodeB
+    from .ngran import GNodeB
     from .nodeb import NodeB
     from .ue import UserEquipment
     from .zone import Zone
@@ -15,7 +17,6 @@ class Frame:
     def __init__(self, freq: int, time: int, max_layer: int, nodeb: NodeB):
         # i.e., one_bu = frame.layer[layer(l|MAX_LAYER)].bu[freq(i|HEIGHT)][time(j|WIDTH)]
         self.layer: Tuple[Layer, ...] = tuple(Layer(i, freq, time, nodeb) for i in range(max_layer))
-
         self._max_layer: int = max_layer
 
     @property
@@ -110,10 +111,24 @@ class BaseUnit:
         self._absolute_i: int = absolute_i
         self._absolute_j: int = absolute_j
         self._layer: Layer = layer
+        self._is_cochannel: bool = False
+        self._cochannel_nb: Optional[Union[ENodeB, GNodeB]] = None
         self.relative_i: Optional[int] = None
         self.relative_j: Optional[int] = None
         self.within_rb: Optional[ResourceBlock] = None
         self.sinr: float = float('-inf')
+
+    def set_cochannel(self, nodeb: Union[ENodeB, GNodeB]):
+        self._is_cochannel: bool = True
+        self._cochannel_nb: Union[ENodeB, GNodeB] = nodeb
+
+    @property
+    def is_cochannel(self) -> bool:
+        return self._is_cochannel
+
+    @property
+    def cochannel_nb(self) -> Union[ENodeB, GNodeB]:
+        return self._cochannel_nb
 
     @property
     def is_used(self) -> bool:

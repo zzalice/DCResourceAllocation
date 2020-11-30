@@ -72,12 +72,12 @@ class FrameRenderer:
             base_unit = layer.bu
             height, width = len(base_unit), len(base_unit[0])
 
-            table_header = '<th></th>' + ''.join([f'<th>i:{i + 1}</th>' for i in range(width)])
+            table_header = '<th></th>' + ''.join([f'<th>j:{i + 1}</th>' for i in range(width)])
 
             self.body.append('<table>')
             self.body.append(f'\n<tr>{table_header}</tr>')
             for i in range(height):
-                tr = f'<tr><th>j:{i + 1}</th>\n'
+                tr = f'<tr><th>i:{i + 1}</th>\n'
                 for j in range(width):
                     rb = base_unit[i][j].within_rb
                     ue = rb.ue.uuid.hex[:4] if rb is not None else ''
@@ -99,7 +99,7 @@ class FrameRenderer:
 
 
 if __name__ == '__main__':
-    file_to_visualize = "vis_20201125"
+    file_to_visualize = "vis_20201130"
 
     with open(file_to_visualize + ".P", "rb") as file_of_frame_and_ue:
         gFrame: List[Frame] = []
