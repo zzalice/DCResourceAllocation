@@ -85,31 +85,45 @@ class _MCS(Enum):  # speed unit: bps per RB
 
 # noinspection PyPep8Naming
 class E_MCS(_MCS):
-    QPSK_1 = 19900  # TODO: remember to change as real data
+    CQI1_QPSK = 12.796875  # bit per 0.5ms(RB)
+    CQI2_QPSK = 19.6875
+    CQI3_QPSK = 31.6640625
+    CQI4_QPSK = 50.53125
+    CQI5_QPSK = 73.6640625
+    CQI6_QPSK = 98.765625
+    CQI7_16QAM = 124.03125
+    CQI8_16QAM = 160.78125
+    CQI9_16QAM = 202.125
+    CQI10_64QAM = 229.359375
+    CQI11_64QAM = 279.0703125
+    CQI12_64QAM = 327.796875
+    CQI13_64QAM = 379.96875
+    CQI14_64QAM = 429.6796875
+    CQI15_64QAM = 466.59375
 
     @staticmethod
     def get_worst() -> E_MCS:
-        return E_MCS.QPSK_1  # TODO: remember to as the worst one
+        return E_MCS.CQI1_QPSK
 
 
 # noinspection PyPep8Naming, SpellCheckingInspection
 class G_MCS(_MCS):
-    QPSK_1 = 19900
-    QPSK_2 = 30480
-    QPSK_3 = 49020
-    QPSK_4 = 78220
-    QPSK_5 = 114030
-    QPSK_6 = 152890
-    QAM16_7 = 192000
-    QAM16_8 = 248890
-    QAM16_9 = 312890
-    QAM16_10 = 355050
-    QAM16_11 = 432000
-    QAM16_12 = 507430
-    QAM16_13 = 588190
-    QAM16_14 = 667430
-    QAM16_15 = 722290
+    CQI1_QPSK = 22.010625  # bit per ms(RB)
+    CQI2_QPSK = 33.8625
+    CQI3_QPSK = 54.4621875
+    CQI4_QPSK = 86.91375
+    CQI5_QPSK = 126.7021875
+    CQI6_QPSK = 169.876875
+    CQI7_16QAM = 213.33375
+    CQI8_16QAM = 276.54375
+    CQI9_16QAM = 347.655
+    CQI10_64QAM = 394.498125
+    CQI11_64QAM = 480.0009375
+    CQI12_64QAM = 563.810625
+    CQI13_64QAM = 653.54625
+    CQI14_64QAM = 739.0490625
+    CQI15_64QAM = 802.54125
 
     @staticmethod
     def get_worst() -> G_MCS:
-        return G_MCS.QPSK_1
+        return G_MCS.CQI1_QPSK
