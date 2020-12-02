@@ -18,6 +18,7 @@ class Frame:
         # i.e., one_bu = frame.layer[layer(l|MAX_LAYER)].bu[freq(i|HEIGHT)][time(j|WIDTH)]
         self.layer: Tuple[Layer, ...] = tuple(Layer(i, freq, time, nodeb) for i in range(max_layer))
         self._max_layer: int = max_layer
+        self._cochannel_offset: int = 0
 
     @property
     def frame_freq(self) -> int:
@@ -26,6 +27,14 @@ class Frame:
     @property
     def frame_time(self) -> int:
         return self.layer[0].TIME
+
+    @property
+    def cochannel_offset(self) -> int:
+        return self._cochannel_offset
+
+    @cochannel_offset.setter
+    def cochannel_offset(self, value):
+        self._cochannel_offset = value
 
 
 class Layer:
@@ -92,6 +101,9 @@ class Layer:
         i.e. the BUs after self._available_frequent_offset are not allocated.
         """
         assert (self.FREQ - self._available_frequent_offset) >= 0
+        if self.nodeb.nb_type == NodeBType.E:
+            # Don't allocate the RBs overlap with gNB on eframe in phase 2
+            return self.nodeb.frame.cochannel_offset - self._available_frequent_offset
         return self.FREQ - self._available_frequent_offset
 
     @property

@@ -23,6 +23,7 @@ class FrameRenderer:
             '.Numerology_N4 {background-color: #FA8783;}',
             '.allocated {background-color: #b1de8c}',
             '.unallocated {background-color: #fa8783}',
+            '.co-channel {border-color: #8d8c8b}',
             '</style>'
         ]
         self.body = []
@@ -82,7 +83,8 @@ class FrameRenderer:
                     rb = base_unit[i][j].within_rb
                     ue = rb.ue.uuid.hex[:4] if rb is not None else ''
                     numerology = str(rb.numerology).replace('.', '_') if rb is not None else None
-                    tr += f'<td class="{numerology}">{ue}</td>'
+                    cochannel = "co-channel" if base_unit[i][j].is_cochannel else None
+                    tr += f'<td class="{numerology} {cochannel}">{ue}</td>'
                 tr += '\n</tr>'
                 self.body.append(tr)
             self.body.append(f'\n<tr><td colspan="{width + 1}" style="text-align:left;">')
@@ -99,7 +101,7 @@ class FrameRenderer:
 
 
 if __name__ == '__main__':
-    file_to_visualize = "vis_20201130"
+    file_to_visualize = "vis_20201202"
 
     with open(file_to_visualize + ".P", "rb") as file_of_frame_and_ue:
         gFrame: List[Frame] = []
