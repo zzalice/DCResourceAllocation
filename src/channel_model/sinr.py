@@ -2,12 +2,14 @@ import math
 from random import randint
 from typing import List
 
+from src.resource_allocation.ds.cochannel import cochannel
+from src.resource_allocation.ds.eutran import ENodeB, EUserEquipment
 from src.resource_allocation.ds.frame import BaseUnit, Layer
 from src.resource_allocation.ds.ngran import DUserEquipment, GNodeB
 from src.resource_allocation.ds.nodeb import NodeB
 from src.resource_allocation.ds.rb import ResourceBlock
 from src.resource_allocation.ds.ue import UserEquipment
-from src.resource_allocation.ds.util_enum import NodeBType, Numerology
+from src.resource_allocation.ds.util_enum import LTEPhysicalResourceBlock, NodeBType, Numerology
 
 
 class ChannelModel:
@@ -60,7 +62,7 @@ class ChannelModel:
                 if not (overlapped_rb := overlapped_bu.within_rb):  # if the radio resource is allocated
                     continue
                 overlapped_bu_power_rx: float = self.power_rx(
-                    (overlapped_rb.ue.enb_info if nodeb.nb_type == NodeBType.G else overlapped_rb.ue.gnb_info).distance,
+                    (overlapped_rb.ue.gnb_info if nodeb.nb_type == NodeBType.G else overlapped_rb.ue.enb_info).distance,
                     bu.cochannel_nb.power_tx)
                 interference_cross: float = interference_cross
                 print(f'interference_cross: {interference_cross}')
@@ -130,25 +132,34 @@ class ChannelModel:
 
 
 if __name__ == '__main__':
-    gNB: NodeB = GNodeB()
+    gNB: GNodeB = GNodeB()
+    eNB: ENodeB = ENodeB()
+    cochannel(eNB, gNB)
+    layer_e: Layer = eNB.frame.layer[0]
     layer_: Layer = gNB.frame.layer[1]
+    layer_2: Layer = gNB.frame.layer[0]
+
     ue_: UserEquipment = DUserEquipment(12345, [Numerology.N1])
     ue_.set_numerology(Numerology.N1)
     ue_.gnb_info.distance = 0.000000000001
-    rb_: ResourceBlock = ResourceBlock(layer_, 2, 2, ue_)
-    layer_.allocate_resource_block(2, 2, ue_)
+    rb_: ResourceBlock = ResourceBlock(layer_, 0, 0, ue_)
+    layer_.allocate_resource_block(0, 0, ue_)
 
-    layer_2: Layer = gNB.frame.layer[0]
     ue_2: UserEquipment = DUserEquipment(12345, [Numerology.N1, Numerology.N2])
     ue_2.set_numerology(Numerology.N2)
     ue_2.gnb_info.distance = 0.000000000001
-    rb_2: ResourceBlock = ResourceBlock(layer_2, 2, 2, ue_2)
-    layer_2.allocate_resource_block(2, 2, ue_2)
+    rb_2: ResourceBlock = ResourceBlock(layer_2, 0, 0, ue_2)
+    layer_2.allocate_resource_block(0, 0, ue_2)
 
     ue_3: UserEquipment = DUserEquipment(12345, [Numerology.N1, Numerology.N2])
     ue_3.set_numerology(Numerology.N2)
     ue_3.gnb_info.distance = 1
-    rb_3: ResourceBlock = ResourceBlock(layer_2, 2, 6, ue_3)
-    layer_2.allocate_resource_block(2, 6, ue_3)
+    rb_3: ResourceBlock = ResourceBlock(layer_2, 0, 4, ue_3)
+    layer_2.allocate_resource_block(0, 4, ue_3)
+
+    ue_4: UserEquipment = EUserEquipment(12345, LTEPhysicalResourceBlock.gen_candidate_set())
+    ue_4.enb_info.distance = 0.000000000001
+    rb_4: ResourceBlock = ResourceBlock(layer_e, 75, 0, ue_4)
+    layer_e.allocate_resource_block(75, 0, ue_4)
 
     ChannelModel().sinr_rb(rb_)
