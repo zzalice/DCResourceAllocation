@@ -7,12 +7,15 @@ from .util_enum import E_MCS, G_MCS, NodeBType
 
 if TYPE_CHECKING:
     from .rb import ResourceBlock
+    from .util_type import Coordinate
 
 
 class NodeB:
-    def __init__(self, radius, power_tx, frame_freq, frame_time, frame_max_layer):
+    def __init__(self, coordinate: Coordinate, radius: float, power_tx: int, frame_freq: int, frame_time: int,
+                 frame_max_layer: int):
+        self.coordinate: Coordinate = coordinate
         self.radius: float = radius  # km
-        self.power_tx: int = power_tx   # dBm
+        self.power_tx: int = power_tx  # dBm
         self.frame: Frame = Frame(frame_freq, frame_time, frame_max_layer, self)
         # the number of BUs in frequency and time domain and the number of NOMA layers in a frame
 
@@ -24,7 +27,6 @@ class _NBInfoWithinUE:
         self.request_data_rate: int = request_data_rate
 
         self.nb: Optional[NodeB] = None
-        self.distance: float = float('inf')
         self.mcs: Optional[Union[E_MCS, G_MCS]] = None
         self.sinr: float = float('-inf')
         self.rb: List[ResourceBlock] = list()

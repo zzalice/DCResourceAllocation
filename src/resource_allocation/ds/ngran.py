@@ -3,13 +3,14 @@ from typing import Union
 from .nodeb import NodeB
 from .ue import UserEquipment
 from .util_enum import E_MCS, G_MCS, NodeBType, UEType
+from .util_type import Coordinate
 
 
 class GNodeB(NodeB):
-    def __init__(self, radius: float = 1.0, power_tx: int = 46,
+    def __init__(self, coordinate: Coordinate, radius: float = 1.0, power_tx: int = 46,
                  frame_freq: int = 216, frame_time: int = 16, frame_max_layer: int = 3):
         # default: 1.0km, 46 dBm, 40MHz * 1ms * 3layers
-        super().__init__(radius, power_tx, frame_freq, frame_time, frame_max_layer)
+        super().__init__(coordinate, radius, power_tx, frame_freq, frame_time, frame_max_layer)
         self.nb_type: NodeBType = NodeBType.G
 
 

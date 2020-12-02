@@ -9,59 +9,45 @@ from src.resource_allocation.algo.phase2 import Phase2
 from src.resource_allocation.ds.cochannel import cochannel
 from src.resource_allocation.ds.eutran import ENodeB, EUserEquipment
 from src.resource_allocation.ds.ngran import DUserEquipment, GNodeB, GUserEquipment
-from src.resource_allocation.ds.ue import UserEquipment
 from src.resource_allocation.ds.util_enum import LTEPhysicalResourceBlock, Numerology
-from src.resource_allocation.ds.util_type import CandidateSet, DistanceRange
+from src.resource_allocation.ds.util_type import CandidateSet, Coordinate
 from src.resource_allocation.ds.zone import Zone, ZoneGroup
 
 
 @dataclasses.dataclass
 class UEProfiles:
     count: int
-    request_data_rate: Tuple[int, ...]
-    candidate_set: Tuple[CandidateSet, ...]
-    distance: Tuple[float, ...]
+    request_data_rate_list: Tuple[int, ...]
+    candidate_set_list: Tuple[CandidateSet, ...]
+    coordinate_list: Tuple[Coordinate, ...]
 
     def __iter__(self):
         single_data = dataclasses.make_dataclass('UEProfile', (
-            ('request_data_rate', int), ('candidate_set', CandidateSet), ('distance', float)))
+            ('request_data_rate', int), ('candidate_set', CandidateSet), ('coordinate', Coordinate)))
         for i in range(self.count):
-            yield single_data(self.request_data_rate[i], self.candidate_set[i], self.distance[i])
-
-
-@dataclasses.dataclass
-class DUEProfiles(UEProfiles):
-    distance_enb: Tuple[float, ...]
-
-    def __iter__(self):
-        single_data = dataclasses.make_dataclass('DUEProfile', (
-            ('request_data_rate', int), ('candidate_set', CandidateSet), ('distance', float), ('distance_enb', float)))
-        for i in range(self.count):
-            yield single_data(self.request_data_rate[i], self.candidate_set[i], self.distance[i], self.distance_enb[i])
+            yield single_data(self.request_data_rate_list[i], self.candidate_set_list[i], self.coordinate_list[i])
 
 
 if __name__ == '__main__':
     EUE_COUNT = GUE_COUNT = DUE_COUNT = 10
-    NB_DISTANCE: float = 1.0
 
     visualize_the_algo: bool = True
     visualization_file_path = "../utils/frame_visualizer/vis_" + datetime.today().strftime('%Y%m%d') + ".P"
 
-    e_nb: ENodeB = ENodeB()
-    g_nb: GNodeB = GNodeB()
+    e_nb: ENodeB = ENodeB(Coordinate(0.0, 0.0))
+    g_nb: GNodeB = GNodeB(Coordinate(0.0, 1.0))
     cochannel(e_nb, g_nb)
-    distance_range: DistanceRange = UserEquipment.calc_distance_range(e_nb, g_nb, NB_DISTANCE)
 
     """
     # # sample code to generate random profiles (the last tuple `distance_range.e_random` ONLY exists in dUE)
     # import random
-    # frame_time = g_nb.frame.frame_time / 16
-    # d_profile: DUEProfiles = DUEProfiles(
+    # frame_time: int = g_nb.frame.frame_time // 16
+    # d_profile: UEProfiles = UEProfiles(
     #     DUE_COUNT,
-    #     tuple(random.randrange(100_000/frame_time, 3_000_000/frame_time + 1, 10_000/frame_time) for _ in range(DUE_COUNT)),
+    #     tuple(random.randrange(100_000 // frame_time, 3_000_000 // frame_time + 1, 10_000 // frame_time) for _ in
+    #           range(DUE_COUNT)),
     #     tuple(Numerology.gen_candidate_set(random_pick=True) for _ in range(DUE_COUNT)),
-    #     tuple(distance_range.g_random for _ in range(DUE_COUNT)),
-    #     tuple(distance_range.e_random for _ in range(DUE_COUNT))
+    #     tuple(Coordinate.random_gen_coordinate(UEType.D, e_nb, g_nb) for _ in range(DUE_COUNT))
     # )
     """
 
@@ -71,8 +57,16 @@ if __name__ == '__main__':
         EUE_COUNT,
         (188, 2874, 535, 2420, 1876, 195, 1188, 1938, 369, 1502),
         LTEPhysicalResourceBlock.gen_candidate_set() * EUE_COUNT,  # dummy (unused)
-        (0.1966428804066318, 0.057080955932419464, 1.4405252071379413, 1.0483062430804293, 1.6058972474023123,
-         0.8128944817212764, 0.3657009563462874, 0.0353501680934305, 0.6121033657944013, 1.834894681274421)
+        (Coordinate(x=0.27904007662973385, y=-0.9072418949440513),
+         Coordinate(x=-0.3391483240699258, y=0.48930798994032465),
+         Coordinate(x=-0.9486397914240245, y=0.07767896808797836),
+         Coordinate(x=-0.9155037410216382, y=0.26428092968920575),
+         Coordinate(x=-0.9407254926164714, y=0.012630089775539699),
+         Coordinate(x=-0.8298324505135541, y=0.48022609317655207),
+         Coordinate(x=0.6810005113203945, y=-0.3757571685462667),
+         Coordinate(x=-0.8540495076040442, y=0.01531854045861003),
+         Coordinate(x=-0.6056142622411749, y=0.7760145252364593),
+         Coordinate(x=0.13873175803050541, y=-0.14590790079943894))
     )
     g_profiles: UEProfiles = UEProfiles(
         GUE_COUNT,
@@ -83,10 +77,18 @@ if __name__ == '__main__':
          (Numerology.N0, Numerology.N1, Numerology.N2, Numerology.N3, Numerology.N4),
          (Numerology.N0, Numerology.N1, Numerology.N2, Numerology.N3, Numerology.N4),
          (Numerology.N3,), (Numerology.N1,), (Numerology.N0, Numerology.N2, Numerology.N3)),
-        (0.7677129770499276, 0.8157435917373685, 0.91368073427943, 0.2757412263344503, 0.5026575657377796,
-         0.32486265346961796, 0.06084168900599651, 0.7298781480380104, 0.6775811631446377, 0.30057089836073225)
+        (Coordinate(x=0.24452366700035255, y=0.5948949369029221),
+         Coordinate(x=0.2661107105487832, y=0.44363940060067414),
+         Coordinate(x=0.2098354808506795, y=0.30426250825903933),
+         Coordinate(x=0.409973928061673, y=1.2014367272001483),
+         Coordinate(x=0.7919789847331831, y=1.4757120857991768),
+         Coordinate(x=0.44153326797988157, y=0.5413104964173447),
+         Coordinate(x=-0.36338936696956803, y=1.3668609167513088),
+         Coordinate(x=0.16420259312996777, y=1.6744026127381029),
+         Coordinate(x=0.028253076196515625, y=0.5007356989615523),
+         Coordinate(x=0.7612334035030806, y=0.42291624133948197))
     )
-    d_profiles: DUEProfiles = DUEProfiles(
+    d_profiles: UEProfiles = UEProfiles(
         DUE_COUNT,
         (2535, 308, 462, 1376, 2979, 642, 1581, 2162, 2506, 1676),
         ((Numerology.N0, Numerology.N1, Numerology.N2, Numerology.N3, Numerology.N4), (Numerology.N3,),
@@ -94,25 +96,27 @@ if __name__ == '__main__':
          (Numerology.N0, Numerology.N2, Numerology.N3), (Numerology.N0, Numerology.N1, Numerology.N2, Numerology.N4),
          (Numerology.N0, Numerology.N2, Numerology.N3), (Numerology.N2, Numerology.N3, Numerology.N4),
          (Numerology.N1, Numerology.N2), (Numerology.N3,), (Numerology.N1, Numerology.N2, Numerology.N3)),
-        # distance to gNB
-        (0.8832104044839353, 0.5754695768065541, 0.6192237346764458, 0.6145347127318851, 0.8673121249758964,
-         0.3271009411141079, 0.16287824560145325, 0.018620056066250723, 0.5140653976735469, 0.4436894194468033),
-        # distance to eNB
-        (0.5400880259947132, 1.8254505595966275, 1.781946824652473, 0.9107641326794418, 1.4510985030401478,
-         1.8159087210729097, 0.4751103185515886, 0.44364239375116, 1.5278385936317163, 0.4160850979483002)
+        (Coordinate(x=-0.17952404175855596, y=0.16714927685897485),
+         Coordinate(x=-0.7855257260719444, y=0.566326771728464),
+         Coordinate(x=-0.8271904468694042, y=0.513193321813546),
+         Coordinate(x=-0.5248486058097599, y=0.7048968514883497),
+         Coordinate(x=0.29977631841909314, y=0.26836097320160734),
+         Coordinate(x=-0.5878335427909898, y=0.5025164790001936),
+         Coordinate(x=-0.39935620740212685, y=0.19936557048711778),
+         Coordinate(x=-0.35961342880992486, y=0.7878628043212192),
+         Coordinate(x=0.2963560576204325, y=0.04833484625898177),
+         Coordinate(x=-0.0887892326101336, y=0.8266906426834533))
     )
 
-    e_ue_list: Tuple[EUserEquipment] = tuple(EUserEquipment(e.request_data_rate, e.candidate_set) for e in e_profiles)
-    g_ue_list: Tuple[GUserEquipment] = tuple(GUserEquipment(g.request_data_rate, g.candidate_set) for g in g_profiles)
-    d_ue_list: Tuple[DUserEquipment] = tuple(DUserEquipment(d.request_data_rate, d.candidate_set) for d in d_profiles)
+    e_ue_list: Tuple[EUserEquipment] = tuple(
+        EUserEquipment(e.request_data_rate, e.candidate_set, e.coordinate) for e in e_profiles)
+    g_ue_list: Tuple[GUserEquipment] = tuple(
+        GUserEquipment(g.request_data_rate, g.candidate_set, g.coordinate) for g in g_profiles)
+    d_ue_list: Tuple[DUserEquipment] = tuple(
+        DUserEquipment(d.request_data_rate, d.candidate_set, d.coordinate) for d in d_profiles)
 
-    for index, e_profile in enumerate(e_profiles):
-        e_ue_list[index].register_nb(e_nb, e_profile.distance)
-    for index, g_profile in enumerate(g_profiles):
-        g_ue_list[index].register_nb(g_nb, g_profile.distance)
-    for index, d_profile in enumerate(d_profiles):
-        d_ue_list[index].register_nb(e_nb, d_profile.distance_enb)
-        d_ue_list[index].register_nb(g_nb, d_profile.distance)
+    for ue in (e_ue_list + g_ue_list + d_ue_list):
+        ue.register_nb(e_nb, g_nb)
 
     # tmp: use first (smallest) numerology in candidate set
     for g_ue in g_ue_list:
@@ -152,6 +156,7 @@ if __name__ == '__main__':
     if visualize_the_algo is True:
         with open(visualization_file_path, "wb") as file_of_frame_and_ue:
             pickle.dump([g_nb.frame, e_nb.frame,
-                        {"allocated": g_ue_list_allocated, "unallocated": g_ue_list_unallocated},
-                        {"allocated": d_ue_list_allocated, "unallocated": d_ue_list_unallocated},
-                        {"allocated": e_ue_list_allocated, "unallocated": e_ue_list_unallocated}], file_of_frame_and_ue)
+                         {"allocated": g_ue_list_allocated, "unallocated": g_ue_list_unallocated},
+                         {"allocated": d_ue_list_allocated, "unallocated": d_ue_list_unallocated},
+                         {"allocated": e_ue_list_allocated, "unallocated": e_ue_list_unallocated}],
+                        file_of_frame_and_ue)
