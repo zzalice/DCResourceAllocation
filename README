@@ -1,0 +1,7 @@
+Input:
+* Be aware that the input time and frequency of the frame is in the form of the number of BUs.
+* Better set the time domain of the eframe and gframe with the same time length.
+* The request data rate of each UE is in bit per frame,
+  e.g. if frame = 1ms and the request data rate is 3Mbps.
+       The input request data rate will be 3_000_000/1000.
+       If frame = 10ms, the input will be 3_000_000/100.
