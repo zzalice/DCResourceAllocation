@@ -15,7 +15,7 @@ if TYPE_CHECKING:
 class UserEquipment:
     def __init__(self, request_data_rate: int, candidate_set: CandidateSet):
         self.uuid: UUID = uuid4()
-        self.request_data_rate: int = request_data_rate  # quantifier: bps
+        self.request_data_rate: int = request_data_rate  # quantifier: bit per frame
         self.candidate_set: CandidateSet = candidate_set
 
         # properties to be configured at runtime

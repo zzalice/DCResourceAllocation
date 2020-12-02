@@ -55,9 +55,10 @@ if __name__ == '__main__':
     """
     # # sample code to generate random profiles (the last tuple `distance_range.e_random` ONLY exists in dUE)
     # import random
+    # frame_time = g_nb.frame.frame_time / 16
     # d_profile: DUEProfiles = DUEProfiles(
     #     DUE_COUNT,
-    #     tuple(random.randrange(1_200, 3_000_000 + 1, 1_200) for _ in range(DUE_COUNT)),
+    #     tuple(random.randrange(100_000/frame_time, 3_000_000/frame_time + 1, 10_000/frame_time) for _ in range(DUE_COUNT)),
     #     tuple(Numerology.gen_candidate_set(random_pick=True) for _ in range(DUE_COUNT)),
     #     tuple(distance_range.g_random for _ in range(DUE_COUNT)),
     #     tuple(distance_range.e_random for _ in range(DUE_COUNT))
@@ -68,14 +69,14 @@ if __name__ == '__main__':
     # the recorded random data for POC
     e_profiles: UEProfiles = UEProfiles(
         EUE_COUNT,
-        (188400, 2874000, 535200, 2420400, 1876800, 195600, 1188000, 1938000, 369600, 1502400),
+        (188, 2874, 535, 2420, 1876, 195, 1188, 1938, 369, 1502),
         LTEPhysicalResourceBlock.gen_candidate_set() * EUE_COUNT,  # dummy (unused)
         (0.1966428804066318, 0.057080955932419464, 1.4405252071379413, 1.0483062430804293, 1.6058972474023123,
          0.8128944817212764, 0.3657009563462874, 0.0353501680934305, 0.6121033657944013, 1.834894681274421)
     )
     g_profiles: UEProfiles = UEProfiles(
         GUE_COUNT,
-        (2959200, 1178400, 2845200, 115200, 2173200, 982800, 1273200, 87600, 2581200, 40800),
+        (2959, 1178, 2845, 115, 2173, 982, 1273, 876, 2581, 408),
         ((Numerology.N0, Numerology.N2), (Numerology.N0, Numerology.N1), (Numerology.N0, Numerology.N1, Numerology.N2),
          (Numerology.N0, Numerology.N2, Numerology.N3, Numerology.N4),
          (Numerology.N1, Numerology.N2, Numerology.N3, Numerology.N4),
@@ -87,7 +88,7 @@ if __name__ == '__main__':
     )
     d_profiles: DUEProfiles = DUEProfiles(
         DUE_COUNT,
-        (2535600, 308400, 462000, 1376400, 2979600, 642000, 1581600, 2162400, 2506800, 1676400),
+        (2535, 308, 462, 1376, 2979, 642, 1581, 2162, 2506, 1676),
         ((Numerology.N0, Numerology.N1, Numerology.N2, Numerology.N3, Numerology.N4), (Numerology.N3,),
          (Numerology.N0, Numerology.N1, Numerology.N2, Numerology.N3, Numerology.N4),
          (Numerology.N0, Numerology.N2, Numerology.N3), (Numerology.N0, Numerology.N1, Numerology.N2, Numerology.N4),
