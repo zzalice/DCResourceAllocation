@@ -51,7 +51,6 @@ if __name__ == '__main__':
     # )
     """
 
-    # TODO: eUE and gUE also need a distance to gNB and eNB respectively
     # the recorded random data for POC
     e_profiles: UEProfiles = UEProfiles(
         EUE_COUNT,
@@ -115,6 +114,7 @@ if __name__ == '__main__':
     d_ue_list: Tuple[DUserEquipment] = tuple(
         DUserEquipment(d.request_data_rate, d.candidate_set, d.coordinate) for d in d_profiles)
 
+    # noinspection PyTypeChecker
     for ue in (e_ue_list + g_ue_list + d_ue_list):
         ue.register_nb(e_nb, g_nb)
 
@@ -125,7 +125,6 @@ if __name__ == '__main__':
         d_ue.numerology_in_use = d_ue.candidate_set[0]
 
     # noinspection PyTypeChecker
-    # TODO type checking warning
     g_phase1: Phase1 = Phase1(g_ue_list + d_ue_list)
     g_phase1.calc_inr(0.5)
     g_phase1.select_init_numerology()

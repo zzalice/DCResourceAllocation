@@ -10,6 +10,7 @@ from src.resource_allocation.ds.nodeb import NodeB
 from src.resource_allocation.ds.rb import ResourceBlock
 from src.resource_allocation.ds.ue import UserEquipment
 from src.resource_allocation.ds.util_enum import LTEPhysicalResourceBlock, NodeBType, Numerology
+from src.resource_allocation.ds.util_type import Coordinate
 
 
 class ChannelModel:
@@ -35,7 +36,7 @@ class ChannelModel:
         ue: UserEquipment = rb.ue
         nodeb: NodeB = bu.layer.nodeb
         power_rx: float = self.power_rx(
-            (ue.gnb_info if nodeb.nb_type == NodeBType.G else ue.enb_info).distance, nodeb.power_tx)
+            ue.coordinate.distance_gnb if nodeb.nb_type == NodeBType.G else ue.coordinate.distance_enb, nodeb.power_tx)
 
         interference_noma: float = 0.0
         interference_ini: float = 0.0
@@ -46,12 +47,15 @@ class ChannelModel:
                 overlapped_bu: BaseUnit = layer.bu[bu.absolute_i][bu.absolute_j]
                 if not (overlapped_rb := overlapped_bu.within_rb):  # if the radio resource is not allocated
                     continue
-                overlapped_bu_power_rx: float = self.power_rx(overlapped_rb.ue.gnb_info.distance,
+                overlapped_bu_power_rx: float = self.power_rx(overlapped_rb.ue.coordinate.distance_gnb,
                                                               nodeb.power_tx)  # nodeb.power_tx = layer.nodeb.power_tx = overlapped_rb.ue.gnb_info.nb.power_tx
                 print(f'{bu.relative_j}power rx: {power_rx}')
+
+                # NOMA interference
                 if overlapped_bu_power_rx > power_rx:  # should be comparing channel gain. However, the rx power of the two UE are the same.
                     interference_noma += overlapped_bu_power_rx
                     print(f'{bu.relative_j}interference_noma: {interference_noma}')
+                # inter-numerology interference
                 if rb.numerology != overlapped_rb.numerology:
                     interference_ini += overlapped_bu_power_rx
                     print(f'{bu.relative_j}interference_ini: {interference_ini}')
@@ -62,10 +66,13 @@ class ChannelModel:
                 if not (overlapped_rb := overlapped_bu.within_rb):  # if the radio resource is allocated
                     continue
                 overlapped_bu_power_rx: float = self.power_rx(
-                    (overlapped_rb.ue.gnb_info if nodeb.nb_type == NodeBType.G else overlapped_rb.ue.enb_info).distance,
+                    overlapped_rb.ue.coordinate.distance_gnb if nodeb.nb_type == NodeBType.G else overlapped_rb.ue.coordinate.distance_enb,
                     bu.cochannel_nb.power_tx)
-                interference_cross: float = interference_cross
+
+                # cross-tier interference
+                interference_cross += overlapped_bu_power_rx
                 print(f'interference_cross: {interference_cross}')
+                # inter-numerology interference
                 if rb.numerology.freq != overlapped_rb.numerology.freq:
                     interference_ini += overlapped_bu_power_rx
                     print(f'interference_ini(cross): {interference_ini}')
@@ -132,33 +139,33 @@ class ChannelModel:
 
 
 if __name__ == '__main__':
-    gNB: GNodeB = GNodeB()
-    eNB: ENodeB = ENodeB()
+    eNB: ENodeB = ENodeB(radius=1, coordinate=Coordinate(0.0, 0.0))
+    gNB: GNodeB = GNodeB(radius=0.5, coordinate=Coordinate(0.5, 0.0))
     cochannel(eNB, gNB)
     layer_e: Layer = eNB.frame.layer[0]
-    layer_: Layer = gNB.frame.layer[1]
+    layer_1: Layer = gNB.frame.layer[1]
     layer_2: Layer = gNB.frame.layer[0]
 
-    ue_: UserEquipment = DUserEquipment(12345, [Numerology.N1])
+    ue_: UserEquipment = DUserEquipment(12345, [Numerology.N1], Coordinate(0.49, 0.0))
+    ue_.register_nb(eNB, gNB)
     ue_.set_numerology(Numerology.N1)
-    ue_.gnb_info.distance = 0.000000000001
-    rb_: ResourceBlock = ResourceBlock(layer_, 0, 0, ue_)
-    layer_.allocate_resource_block(0, 0, ue_)
+    rb_: ResourceBlock = ResourceBlock(layer_1, 0, 0, ue_)
+    layer_1.allocate_resource_block(0, 0, ue_)
 
-    ue_2: UserEquipment = DUserEquipment(12345, [Numerology.N1, Numerology.N2])
+    ue_2: UserEquipment = DUserEquipment(12345, [Numerology.N1, Numerology.N2], Coordinate(0.49, 0.0))
+    ue_2.register_nb(eNB, gNB)
     ue_2.set_numerology(Numerology.N2)
-    ue_2.gnb_info.distance = 0.000000000001
     rb_2: ResourceBlock = ResourceBlock(layer_2, 0, 0, ue_2)
     layer_2.allocate_resource_block(0, 0, ue_2)
 
-    ue_3: UserEquipment = DUserEquipment(12345, [Numerology.N1, Numerology.N2])
+    ue_3: UserEquipment = DUserEquipment(12345, [Numerology.N1, Numerology.N2], Coordinate(0.49, 0.0))
+    ue_3.register_nb(eNB, gNB)
     ue_3.set_numerology(Numerology.N2)
-    ue_3.gnb_info.distance = 1
     rb_3: ResourceBlock = ResourceBlock(layer_2, 0, 4, ue_3)
     layer_2.allocate_resource_block(0, 4, ue_3)
 
-    ue_4: UserEquipment = EUserEquipment(12345, LTEPhysicalResourceBlock.gen_candidate_set())
-    ue_4.enb_info.distance = 0.000000000001
+    ue_4: UserEquipment = EUserEquipment(12345, LTEPhysicalResourceBlock.gen_candidate_set(), Coordinate(0.49, 0.0))
+    ue_4.register_nb(eNB, gNB)
     rb_4: ResourceBlock = ResourceBlock(layer_e, 75, 0, ue_4)
     layer_e.allocate_resource_block(75, 0, ue_4)
 

@@ -30,7 +30,9 @@ class Coordinate:
 
     @staticmethod
     def calc_distance(source: Coordinate, target: Coordinate) -> float:
-        return math.sqrt((source.x - target.x) ** 2 + (source.y - target.y) ** 2)
+        distance: float = math.sqrt((source.x - target.x) ** 2 + (source.y - target.y) ** 2)
+        assert distance != 0.0, "The coordinate of the UE overlaps a BS."
+        return distance
 
     @staticmethod
     def random_gen_coordinate(ue_type: UEType, e_nb: ENodeB, g_nb: GNodeB) -> Coordinate:
