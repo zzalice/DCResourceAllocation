@@ -3,19 +3,33 @@ from random import randint
 from typing import List
 
 from src.resource_allocation.ds.cochannel import cochannel
-from src.resource_allocation.ds.eutran import ENodeB, EUserEquipment
+from src.resource_allocation.ds.eutran import ENodeB
 from src.resource_allocation.ds.frame import BaseUnit, Layer
-from src.resource_allocation.ds.ngran import DUserEquipment, GNodeB, GUserEquipment
+from src.resource_allocation.ds.ngran import DUserEquipment, GNodeB
 from src.resource_allocation.ds.nodeb import NodeB
 from src.resource_allocation.ds.rb import ResourceBlock
 from src.resource_allocation.ds.ue import UserEquipment
-from src.resource_allocation.ds.util_enum import LTEPhysicalResourceBlock, NodeBType, Numerology
+from src.resource_allocation.ds.util_enum import NodeBType, Numerology
 from src.resource_allocation.ds.util_type import Coordinate
 
 
 class ChannelModel:
     def __init__(self):
         pass
+
+    def sinr_ue(self, ue: UserEquipment):
+        """
+        Update the SINR for every RBs in the UE,
+        but this isn't the final SINR of the UE.
+        """
+        if hasattr(ue, 'gnb_info'):
+            for rb in ue.gnb_info.rb:
+                self.sinr_rb(rb)
+            ue.gnb_info.rb.sort(key=lambda x: x.sinr, reverse=True)
+        if hasattr(ue, 'enb_info'):
+            for rb in ue.enb_info.rb:
+                self.sinr_rb(rb)
+            ue.enb_info.rb.sort(key=lambda x: x.sinr, reverse=True)
 
     def sinr_rb(self, rb: ResourceBlock):
         tmp_sinr_rb: float = float('inf')
@@ -142,7 +156,7 @@ class ChannelModel:
             slevel: float = runiform[0] * runiform[0] + runiform[1] * runiform[1]
 
         log_value: float = math.log10(slevel)
-        stemp: float = 2 * log_value / slevel  # original -2
+        stemp: float = 2 * log_value / slevel  # used "-2" in Wang's C code
         noise: float = math.sqrt(noise_variance) * runiform[0] * math.sqrt(stemp)
         return noise  # dB
 

@@ -1,10 +1,10 @@
 from __future__ import annotations
 
-from typing import Optional, TYPE_CHECKING, Union
+from typing import Optional, TYPE_CHECKING
 from uuid import UUID, uuid4
 
 from .nodeb import ENBInfo, GNBInfo
-from .util_enum import E_MCS, G_MCS, Numerology, UEType
+from .util_enum import Numerology, UEType
 from .util_type import CandidateSet
 
 if TYPE_CHECKING:
@@ -17,6 +17,7 @@ class UserEquipment:
     def __init__(self, request_data_rate: int, candidate_set: CandidateSet, coordinate: Coordinate):
         self.uuid: UUID = uuid4()
         self.request_data_rate: int = request_data_rate  # quantifier: bit per frame
+        self.throughput: float = 0.0
         self.candidate_set: CandidateSet = candidate_set
         self.coordinate: Coordinate = coordinate
 
@@ -40,6 +41,3 @@ class UserEquipment:
         if hasattr(self, 'gnb_info'):
             self.gnb_info.nb = g_nb
             assert self.coordinate.distance_gnb <= g_nb.radius
-
-    def assign_mcs(self, mcs: Union[E_MCS, G_MCS]):
-        raise NotImplementedError

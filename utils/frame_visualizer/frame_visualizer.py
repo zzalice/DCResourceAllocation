@@ -101,9 +101,9 @@ class FrameRenderer:
 
 
 if __name__ == '__main__':
-    file_to_visualize = "vis_20201202"
+    file_to_visualize = "vis_20201213_phase3.P"
 
-    with open(file_to_visualize + ".P", "rb") as file_of_frame_and_ue:
+    with open(file_to_visualize, "rb") as file_of_frame_and_ue:
         gFrame: List[Frame] = []
         eFrame: List[Frame] = []
         g_ue_list: List[Dict[str, Tuple[GUserEquipment, ...]]] = []

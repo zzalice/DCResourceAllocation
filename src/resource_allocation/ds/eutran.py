@@ -1,6 +1,6 @@
 from .nodeb import NodeB
 from .ue import UserEquipment
-from .util_enum import E_MCS, LTEPhysicalResourceBlock, NodeBType, UEType
+from .util_enum import LTEPhysicalResourceBlock, NodeBType, UEType
 from .util_type import CandidateSet, Coordinate
 
 
@@ -20,6 +20,3 @@ class EUserEquipment(UserEquipment):
 
         self.candidate_set: CandidateSet = (LTEPhysicalResourceBlock.E,)
         self.numerology_in_use: LTEPhysicalResourceBlock = LTEPhysicalResourceBlock.E
-
-    def assign_mcs(self, mcs: E_MCS):
-        self.enb_info.mcs = mcs
