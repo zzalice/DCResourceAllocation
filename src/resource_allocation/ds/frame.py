@@ -29,6 +29,10 @@ class Frame:
         return self.layer[0].TIME
 
     @property
+    def max_layer(self) -> int:
+        return self._max_layer
+
+    @property
     def cochannel_offset(self) -> int:
         return self._cochannel_offset
 
