@@ -3,6 +3,7 @@ import pickle
 from datetime import datetime
 from typing import Tuple
 
+from src.channel_model.sinr import ChannelModel
 from src.resource_allocation.algo.assistance import cluster_unallocated_ue
 from src.resource_allocation.algo.phase1 import Phase1
 from src.resource_allocation.algo.phase2 import Phase2
@@ -38,7 +39,7 @@ if __name__ == '__main__':
 
     e_nb: ENodeB = ENodeB(coordinate=Coordinate(0.0, 0.0), radius=0.5)
     g_nb: GNodeB = GNodeB(coordinate=Coordinate(0.4, 0.0), radius=0.1)
-    cochannel(e_nb, g_nb)
+    total_bandwidth: int = cochannel(e_nb, g_nb)
 
     """
     # sample code to generate random profiles (the last tuple `distance_range.e_random` ONLY exists in dUE)
@@ -189,7 +190,7 @@ if __name__ == '__main__':
 
     ue_list_allocated: Tuple[UserEquipment] = g_ue_list_allocated + e_ue_list_allocated + d_ue_list_allocated
     ue_list_unallocated: Tuple[UserEquipment] = g_ue_list_unallocated + e_ue_list_unallocated + d_ue_list_unallocated
-    phase3: Phase3 = Phase3(ue_list_allocated, ue_list_unallocated)
+    phase3: Phase3 = Phase3(ChannelModel(total_bandwidth), ue_list_allocated, ue_list_unallocated)
     phase3.improve_system_throughput()
 
     if visualize_the_algo is True:

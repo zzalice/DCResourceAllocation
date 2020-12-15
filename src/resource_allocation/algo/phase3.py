@@ -7,7 +7,8 @@ from src.resource_allocation.ds.util_enum import E_MCS, G_MCS, UEType
 
 
 class Phase3:
-    def __init__(self, ue_list_allocated: Tuple[UserEquipment], ue_list_unallocated: Tuple[UserEquipment]):
+    def __init__(self, channel_model: ChannelModel, ue_list_allocated: Tuple[UserEquipment], ue_list_unallocated: Tuple[UserEquipment]):
+        self.channel_model: ChannelModel = channel_model
         self.ue_list_allocated: Tuple[UserEquipment] = ue_list_allocated
         self.ue_list_unallocated: Tuple[UserEquipment] = ue_list_unallocated
 
@@ -24,7 +25,7 @@ class Phase3:
         #         is_improved: bool = new_system_throughput > system_throughput
 
     def adjust_mcs(self, ue: UserEquipment):
-        ChannelModel().sinr_ue(ue)
+        self.channel_model.sinr_ue(ue)
 
         while True:  # ue_throughput >= QoS
             # sum throughput
