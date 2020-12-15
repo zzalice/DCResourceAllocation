@@ -63,15 +63,26 @@ class Layer:
         if self.nodeb.nb_type == NodeBType.E and ue.ue_type == UEType.D:
             ue.numerology_in_use = LTEPhysicalResourceBlock.E  # TODO: refactor or redesign
 
-        assert offset_i + ue.numerology_in_use.freq <= self.FREQ and offset_j + ue.numerology_in_use.time <= self.TIME
-        self._cache_is_valid: bool = False  # set cache as invalid (for _available_block)
+        assert offset_i + ue.numerology_in_use.freq <= self.FREQ and offset_j + ue.numerology_in_use.time <= self.TIME, "The RB is not in the legal domain of the frame."
 
         resource_block: ResourceBlock = ResourceBlock(self, offset_i, offset_j, ue)
-        (ue.gnb_info if self.nodeb.nb_type == NodeBType.G else ue.enb_info).rb.append(resource_block)
-
         for i in range(ue.numerology_in_use.freq):
             for j in range(ue.numerology_in_use.time):
-                self.bu[offset_i + i][offset_j + j].set_up_bu(i, j, resource_block)
+                bu: BaseUnit = self.bu[offset_i + i][offset_j + j]
+                # UE shouldn't overlap with itself
+                for layer in self.nodeb.frame.layer:
+                    if layer != self:
+                        overlapped_rb: Optional[ResourceBlock] = layer.bu[bu.absolute_i][bu.absolute_j].within_rb
+                        assert overlapped_rb.ue is not ue if overlapped_rb else True, "The new RB will overlap with the UE itself."
+                if bu.is_cochannel:
+                    for layer in bu.cochannel_nb.frame.layer:
+                        overlapped_rb: Optional[ResourceBlock] = layer.bu[bu.cochannel_bu_i][bu.absolute_j].within_rb
+                        assert overlapped_rb.ue is not ue if overlapped_rb else True, "The new RB will overlap with the UE itself."
+
+                bu.set_up_bu(i, j, resource_block)
+        (ue.gnb_info if self.nodeb.nb_type == NodeBType.G else ue.enb_info).rb.append(resource_block)
+
+        self._cache_is_valid: bool = False  # set cache as invalid (for _available_block)
 
         ue.numerology_in_use = tmp_numerology  # restore
 

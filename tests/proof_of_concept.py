@@ -180,7 +180,7 @@ if __name__ == '__main__':
     d_ue_list_allocated, d_ue_list_unallocated = cluster_unallocated_ue(d_ue_list)
 
     if visualize_the_algo is True:
-        with open(visualization_file_path + ".P", "ab+") as file_of_frame_and_ue:
+        with open(visualization_file_path + ".P", "wb") as file_of_frame_and_ue:
             pickle.dump(["Phase2",
                          g_nb.frame, e_nb.frame,
                          {"allocated": g_ue_list_allocated, "unallocated": g_ue_list_unallocated},

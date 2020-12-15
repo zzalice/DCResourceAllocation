@@ -181,7 +181,7 @@ class ChannelModel:
         for bs in self.channel_bs[bu.absolute_i]:
             dist: float = bs.calc_distance(bs, bu.within_rb.ue.coordinate)
             interference += self.power_rx(NodeBType.E, dist, 46)
-        print(f'interference_BSs: {10 * math.log10(interference)}')
+        if interference: print(f'interference_BSs: {10 * math.log10(interference)}')
 
         return interference
 

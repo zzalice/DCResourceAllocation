@@ -199,7 +199,7 @@ class FrameRenderer:
 
 
 if __name__ == '__main__':
-    file_to_visualize = "vis_20201214"
+    file_to_visualize = "vis_20201215"
 
     frame_renderer = FrameRenderer()
     s, gf, ef, gue, due, eue = frame_renderer.open_file(file_to_visualize + ".P")
