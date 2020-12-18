@@ -70,14 +70,8 @@ class Layer:
             for j in range(ue.numerology_in_use.time):
                 bu: BaseUnit = self.bu[offset_i + i][offset_j + j]
                 # UE shouldn't overlap with itself
-                for layer in self.nodeb.frame.layer:
-                    if layer != self:
-                        overlapped_rb: Optional[ResourceBlock] = layer.bu[bu.absolute_i][bu.absolute_j].within_rb
-                        assert overlapped_rb.ue is not ue if overlapped_rb else True, "The new RB will overlap with the UE itself."
-                if bu.is_cochannel:
-                    for layer in bu.cochannel_nb.frame.layer:
-                        overlapped_rb: Optional[ResourceBlock] = layer.bu[bu.cochannel_bu_i][bu.absolute_j].within_rb
-                        assert overlapped_rb.ue is not ue if overlapped_rb else True, "The new RB will overlap with the UE itself."
+                for overlapped_rb in bu.overlapped_rb:
+                    assert overlapped_rb.ue is not ue, "The new RB will overlap with the UE itself."
 
                 bu.set_up_bu(i, j, resource_block)
         (ue.gnb_info if self.nodeb.nb_type == NodeBType.G else ue.enb_info).rb.append(resource_block)
