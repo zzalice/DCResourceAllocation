@@ -67,7 +67,12 @@ class ChannelModel:
                 ue.coordinate.distance_gnb if overlapped_rb.layer.nodeb.nb_type == NodeBType.G else ue.coordinate.distance_enb)
             if overlapped_rb.layer.nodeb.nb_type == NodeBType.G and nodeb.nb_type == NodeBType.G:
                 # NOMA interference
-                if overlapped_bu_power_rx > power_rx:  # should compare by channel gain. Although rx power are the same. TODO: 改成用channel gain比較
+                """
+                The formal way is compared by |h|^2 / N.
+                As the reference bellow, this part is done by comparing power and power is related to distance.
+                https://ecewireless.blogspot.com/2020/04/how-to-simulate-ber-capacity-and-outage.html
+                """
+                if overlapped_rb.ue.coordinate.distance_gnb < ue.coordinate.distance_gnb:
                     interference_noma += overlapped_bu_power_rx
                     print(f'interference_noma: {10 * math.log10(interference_noma)}')
             if overlapped_rb.layer.nodeb.nb_type != nodeb.nb_type:
@@ -125,6 +130,8 @@ class ChannelModel:
         """
         AWGN times bandwidth, reference by Techplayon, Signal to Interference and Noise Ratio (SINR),
         http://www.techplayon.com/signal-to-interference-and-noise-ratio-snir/?fbclid=IwAR3cvJQAzcDfA4o1u5zEtbO_Q-ADdPm6wxUS6-dBA7VYjMBNVJLcegTOrnE
+        Confirmed by https://www.everythingrf.com/rf-calculators/noise-power-calculator,
+            Temperature = 20 C, Bandwidth = 180_000 Hz
         """
         power_spectral_density: int = -174  # dBm/Hz
         bandwidth: int = 180_000  # Hz, for a BU
@@ -266,4 +273,4 @@ if __name__ == '__main__':
     rb_6: ResourceBlock = gue_4.gnb_info.rb[0]
 
     channel_model: ChannelModel = ChannelModel(co_index)
-    channel_model.sinr_rb(rb_5)
+    channel_model.sinr_rb(rb_6)
