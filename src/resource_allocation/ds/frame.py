@@ -132,14 +132,50 @@ class BaseUnit:
         self._absolute_i: int = absolute_i
         self._absolute_j: int = absolute_j
         self._layer: Layer = layer
+        self._is_cochannel: bool = False
+        self._cochannel_nb: Optional[Union[ENodeB, GNodeB]] = None
+        self._cochannel_absolute_i: Optional[int] = None
+
+        # properties to be configured at runtime
         self.relative_i: Optional[int] = None
         self.relative_j: Optional[int] = None
         self.within_rb: Optional[ResourceBlock] = None
         self.sinr: float = float('-inf')
 
-        self._is_cochannel: bool = False
-        self._cochannel_nb: Optional[Union[ENodeB, GNodeB]] = None
-        self._cochannel_absolute_i: Optional[int] = None
+    def set_up_bu(self, relative_i: int, relative_j: int, resource_block: ResourceBlock):
+        # relative position of this BU withing a RB
+        assert not self.is_used
+        assert relative_i >= 0 and relative_j >= 0
+        self.relative_i: int = relative_i
+        self.relative_j: int = relative_j
+        self.within_rb: ResourceBlock = resource_block
+
+    def clear_up_bu(self):
+        assert self.is_used
+        self.relative_i = self.relative_j = self.within_rb = None
+
+    @property
+    def overlapped_rb(self) -> List[ResourceBlock]:
+        rb_list: List[ResourceBlock] = []
+        for layer in self.layer.nodeb.frame.layer:
+            if layer is not self.layer:
+                if rb := layer.bu[self.absolute_i][self.absolute_j].within_rb:
+                    rb_list.append(rb)
+        if self.is_cochannel:
+            for layer in self.cochannel_nb.frame.layer:
+                if rb := layer.bu[self.cochannel_bu_i][self.absolute_j].within_rb:
+                    rb_list.append(rb)
+        return rb_list
+
+    @property
+    def is_used(self) -> bool:
+        return self.within_rb is not None   # TODO: refactor as variable might improve the efficiency of code
+
+    @property
+    def is_at_upper_left(self) -> bool:
+        # return True if this BU is at the upper left corner of the RB it belongs to
+        assert self.is_used
+        return self.relative_i == 0 and self.relative_j == 0
 
     def set_cochannel(self, nodeb: Union[ENodeB, GNodeB], absolute_i: int):
         self._is_cochannel: bool = True
@@ -157,41 +193,6 @@ class BaseUnit:
     @property
     def cochannel_bu_i(self) -> int:
         return self._cochannel_absolute_i
-
-    @property
-    def overlapped_rb(self) -> List[ResourceBlock]:
-        rb_list: List[ResourceBlock] = []
-        for layer in self.layer.nodeb.frame.layer:
-            if layer is not self.layer:
-                if rb := layer.bu[self.absolute_i][self.absolute_j].within_rb:
-                    rb_list.append(rb)
-        if self.is_cochannel:
-            for layer in self.cochannel_nb.frame.layer:
-                if rb := layer.bu[self.cochannel_bu_i][self.absolute_j].within_rb:
-                    rb_list.append(rb)
-        return rb_list
-
-    @property
-    def is_used(self) -> bool:
-        return self.within_rb is not None
-
-    @property
-    def is_at_upper_left(self) -> bool:
-        # return True if this BU is at the upper left corner of the RB it belongs to
-        assert self.is_used
-        return self.relative_i == 0 and self.relative_j == 0
-
-    def set_up_bu(self, relative_i: int, relative_j: int, resource_block: ResourceBlock):
-        # relative position of this BU withing a RB
-        assert not self.is_used
-        assert relative_i >= 0 and relative_j >= 0
-        self.relative_i: int = relative_i
-        self.relative_j: int = relative_j
-        self.within_rb: ResourceBlock = resource_block
-
-    def clear_up_bu(self):
-        assert self.is_used
-        self.relative_i = self.relative_j = self.within_rb = None
 
     @property
     def absolute_i(self) -> int:

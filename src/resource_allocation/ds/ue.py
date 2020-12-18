@@ -17,16 +17,17 @@ class UserEquipment:
     def __init__(self, request_data_rate: int, candidate_set: CandidateSet, coordinate: Coordinate):
         self.uuid: UUID = uuid4()
         self.request_data_rate: int = request_data_rate  # quantifier: bit per frame
-        self.throughput: float = 0.0
         self.candidate_set: CandidateSet = candidate_set
         self.coordinate: Coordinate = coordinate
 
         # properties to be configured at runtime
         self.ue_type: Optional[UEType] = None
         self.numerology_in_use: Optional[Numerology] = None
-        self.is_allocated: bool = False
         self.enb_info: ENBInfo = ENBInfo(request_data_rate)
         self.gnb_info: GNBInfo = GNBInfo(request_data_rate)
+        self.is_allocated: bool = False
+        self.is_to_recalculate_mcs: bool = True
+        self.throughput: float = 0.0
 
     def set_numerology(self, numerology: Numerology):
         assert numerology in self.candidate_set

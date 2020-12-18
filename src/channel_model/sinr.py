@@ -6,11 +6,11 @@ from typing import Dict, List, Tuple
 from src.resource_allocation.ds.cochannel import cochannel
 from src.resource_allocation.ds.eutran import ENodeB
 from src.resource_allocation.ds.frame import BaseUnit, Layer
-from src.resource_allocation.ds.ngran import GNodeB, GUserEquipment
+from src.resource_allocation.ds.ngran import GNodeB
 from src.resource_allocation.ds.nodeb import NodeB
 from src.resource_allocation.ds.rb import ResourceBlock
 from src.resource_allocation.ds.ue import UserEquipment
-from src.resource_allocation.ds.util_enum import NodeBType, Numerology
+from src.resource_allocation.ds.util_enum import NodeBType
 from src.resource_allocation.ds.util_type import Coordinate
 
 
@@ -86,9 +86,60 @@ class ChannelModel:
         interference_channel: float = self.channel_interference(bu)
 
         sinr = power_rx / (
-                interference_noma + interference_ini + interference_cross + interference_channel + self.awgn_noise)  # ratio
+            interference_noma + interference_ini + interference_cross + interference_channel + self.awgn_noise)  # ratio
         bu.sinr = 10 * math.log10(sinr)  # ratio to dB
         print(f'BU SINR: {bu.sinr}')
+
+    def channel_interference(self, bu: BaseUnit) -> float:
+        """
+        The interference from far away BSs using the same channel.
+        Assume the BSs are all eNB.
+        """
+        e_nb: ENodeB = ENodeB(Coordinate(4, 8))  # just for generating rx power
+
+        if bu.layer.nodeb.nb_type == NodeBType.E:
+            channel: int = bu.absolute_i
+        else:
+            channel: int = bu.absolute_i + self.cochannel_index['e_freq'] - self.cochannel_index['co_bandwidth']
+
+        interference: float = 0.0
+        for bs in self.channel_bs[channel]:
+            dist: float = bs.calc_distance(bs, bu.within_rb.ue.coordinate)
+            interference += self.power_rx(e_nb, dist)
+        if interference:
+            print(f'interference_BSs: {10 * math.log10(interference)}')
+
+        return interference
+
+    def gen_channel_interference(self) -> Tuple[List[Coordinate], ...]:
+        """
+        interference_info =
+            (BU1[BS[coordinate], BS[], BS[]],
+             BU2[BS[]],
+             BU3[BS[], BS[]],
+             BU4[BS[], BS[], BS[]],
+             ...,
+             BUi[BS[]])
+        """
+        bs1: Coordinate = Coordinate(x=2, y=0)
+        bs2: Coordinate = Coordinate(x=0, y=2)
+        bs3: Coordinate = Coordinate(x=-2, y=0)
+        bs4: Coordinate = Coordinate(x=0, y=-2)
+        total_bw: int = self.cochannel_index['e_freq'] + self.cochannel_index['g_freq'] - self.cochannel_index[
+            'co_bandwidth']  # the total bandwidth of gNB and eNB, in the number of BUs
+        interference_info: Tuple[List[Coordinate], ...] = tuple([] for _ in range(total_bw))
+
+        # deploy the channels to BSs
+        j = 0
+        bs: List[Coordinate] = []
+        for i in range(total_bw):
+            if not j % 25:  # all the BSs' channel bandwidth are 5MHz, 25 RBs
+                bs: List[Coordinate] = random.sample([bs1, bs2, bs3, bs4], k=random.choice([0, 1, 2, 3]))
+                j = 0
+            interference_info[i].extend(bs)
+            j += 1
+
+        return interference_info
 
     def power_rx(self, tx_nb: NodeB, distance: float) -> float:
         """
@@ -163,59 +214,12 @@ class ChannelModel:
         seed: float = (1103515245 * seed + 12345) & 0x7fffffff
         return seed
 
-    def channel_interference(self, bu: BaseUnit) -> float:
-        """
-        The interference from far away BSs using the same channel.
-        Assume the BSs are all eNB.
-        """
-        e_nb: ENodeB = ENodeB(Coordinate(4, 8))  # just for generating rx power
-
-        if bu.layer.nodeb.nb_type == NodeBType.E:
-            channel: int = bu.absolute_i
-        else:
-            channel: int = bu.absolute_i + self.cochannel_index['e_freq'] - self.cochannel_index['co_bandwidth']
-
-        interference: float = 0.0
-        for bs in self.channel_bs[channel]:
-            dist: float = bs.calc_distance(bs, bu.within_rb.ue.coordinate)
-            interference += self.power_rx(e_nb, dist)
-        if interference:
-            print(f'interference_BSs: {10 * math.log10(interference)}')
-
-        return interference
-
-    def gen_channel_interference(self) -> Tuple[List[Coordinate], ...]:
-        """
-        interference_info =
-            (BU1[BS[coordinate], BS[], BS[]],
-             BU2[BS[]],
-             BU3[BS[], BS[]],
-             BU4[BS[], BS[], BS[]],
-             ...,
-             BUi[BS[]])
-        """
-        bs1: Coordinate = Coordinate(x=2, y=0)
-        bs2: Coordinate = Coordinate(x=0, y=2)
-        bs3: Coordinate = Coordinate(x=-2, y=0)
-        bs4: Coordinate = Coordinate(x=0, y=-2)
-        total_bw: int = self.cochannel_index['e_freq'] + self.cochannel_index['g_freq'] - self.cochannel_index[
-            'co_bandwidth']  # the total bandwidth of gNB and eNB, in the number of BUs
-        interference_info: Tuple[List[Coordinate], ...] = tuple([] for _ in range(total_bw))
-
-        # deploy the channels to BSs
-        j = 0
-        bs: List[Coordinate] = []
-        for i in range(total_bw):
-            if not j % 25:  # all the BSs' channel bandwidth are 5MHz, 25 RBs
-                bs: List[Coordinate] = random.sample([bs1, bs2, bs3, bs4], k=random.choice([0, 1, 2, 3]))
-                j = 0
-            interference_info[i].extend(bs)
-            j += 1
-
-        return interference_info
-
 
 if __name__ == '__main__':
+    from src.resource_allocation.ds.eutran import EUserEquipment
+    from src.resource_allocation.ds.ngran import DUserEquipment, GUserEquipment
+    from src.resource_allocation.ds.util_enum import LTEPhysicalResourceBlock, Numerology
+
     eNB: ENodeB = ENodeB(radius=0.5, coordinate=Coordinate(0.0, 0.0))
     gNB: GNodeB = GNodeB(radius=0.1, coordinate=Coordinate(0.4, 0.0))
     co_index: Dict = cochannel(eNB, gNB)

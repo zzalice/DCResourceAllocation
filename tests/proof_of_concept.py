@@ -55,8 +55,8 @@ if __name__ == '__main__':
                          {"allocated": e_ue_list_allocated, "unallocated": e_ue_list_unallocated}],
                         file_of_frame_and_ue)
 
-    ue_list_allocated: Tuple[UserEquipment] = g_ue_list_allocated + e_ue_list_allocated + d_ue_list_allocated
-    ue_list_unallocated: Tuple[UserEquipment] = g_ue_list_unallocated + e_ue_list_unallocated + d_ue_list_unallocated
+    ue_list_allocated: Tuple[Tuple[UserEquipment, ...], ...] = (g_ue_list_allocated, d_ue_list_allocated, e_ue_list_allocated)
+    ue_list_unallocated: Tuple[Tuple[UserEquipment, ...], ...] = (g_ue_list_unallocated, d_ue_list_unallocated, e_ue_list_unallocated)
     phase3: Phase3 = Phase3(ChannelModel(cochannel_index), ue_list_allocated, ue_list_unallocated)
     phase3.improve_system_throughput()
 

@@ -2,10 +2,10 @@ from __future__ import annotations
 
 from typing import Optional, Tuple, TYPE_CHECKING, Union
 
-from .util_enum import E_MCS, G_MCS, Numerology, SINRtoMCS
+from .util_enum import E_MCS, G_MCS, NodeBType, Numerology, SINRtoMCS
 
 if TYPE_CHECKING:
-    from .frame import Layer
+    from .frame import BaseUnit, Layer
     from .ue import UserEquipment
 
 
@@ -33,16 +33,23 @@ class ResourceBlock:
         The UE throughput and MCS are updated in Phase3.py.
         """
         # Remove this RB in the UE RB list
-        try:
+        if self.layer.nodeb.nb_type == NodeBType.G:
             self.ue.gnb_info.rb.remove(self)
-        except (AttributeError, ValueError):
+        else:
             self.ue.enb_info.rb.remove(self)
 
         # Remove the RB in the layer
         for bu_i in range(self.i_start, self.i_end + 1):
             for bu_j in range(self.j_start, self.j_end + 1):
-                self.layer.bu[bu_i][bu_j].clear_up_bu()
-                # Mark the affected UEs TODO
+                bu: BaseUnit = self.layer.bu[bu_i][bu_j]
+
+                # Mark the affected UEs
+                for rb in bu.overlapped_rb:
+                    rb.ue.is_to_recalculate_mcs = True
+
+                bu.clear_up_bu()
+
+
 
     @property
     def sinr(self) -> float:

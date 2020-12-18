@@ -7,14 +7,26 @@ from src.resource_allocation.ds.util_enum import E_MCS, G_MCS, UEType
 
 
 class Phase3:
-    def __init__(self, channel_model: ChannelModel, ue_list_allocated: Tuple[UserEquipment], ue_list_unallocated: Tuple[UserEquipment]):
+    def __init__(self, channel_model: ChannelModel, ue_list_allocated: Tuple[Tuple[UserEquipment, ...], ...],
+                 ue_list_unallocated: Tuple[Tuple[UserEquipment, ...], ...]):
         self.channel_model: ChannelModel = channel_model
-        self.ue_list_allocated: Tuple[UserEquipment] = ue_list_allocated
-        self.ue_list_unallocated: Tuple[UserEquipment] = ue_list_unallocated
+        self.gue_allocated: Tuple[UserEquipment, ...] = ue_list_allocated[0]
+        self.gue_unallocated: Tuple[UserEquipment, ...] = ue_list_unallocated[0]
+        self.due_allocated: Tuple[UserEquipment, ...] = ue_list_allocated[1]
+        self.due_unallocated: Tuple[UserEquipment, ...] = ue_list_unallocated[1]
+        self.eue_allocated: Tuple[UserEquipment, ...] = ue_list_allocated[2]
+        self.eue_unallocated: Tuple[UserEquipment, ...] = ue_list_unallocated[2]
 
     def improve_system_throughput(self):
-        for ue in self.ue_list_allocated:   # TODO: the affected UEs need to recalculate
-            self.adjust_mcs(ue)
+        # adjust the mcs of the UEs
+        while True:
+            is_all_adjusted: bool = True
+            for ue in self.gue_allocated + self.eue_allocated + self.due_allocated:
+                if ue.is_to_recalculate_mcs:
+                    is_all_adjusted: bool = False
+                    self.adjust_mcs(ue)
+            if is_all_adjusted:
+                break
 
         # for mcs in E_MCS.__members__:
         #     # print('{:15} = {}'.format(mcs.name, mcs.value))
@@ -70,6 +82,7 @@ class Phase3:
                     if ue.enb_info.rb:
                         ue.enb_info.update_mcs(ue.enb_info.rb[-1].mcs)
                 break
+        ue.is_to_recalculate_mcs = False
 
     @staticmethod
     def _throughput_ue(rb_list: List[ResourceBlock]) -> float:
