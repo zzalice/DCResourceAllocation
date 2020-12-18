@@ -44,7 +44,6 @@ class Phase1:
 
     @staticmethod
     def merge_zone(zone_undersized: Tuple[Zone, ...]) -> Tuple[Zone, ...]:
-        assert len({zone.numerology for zone in zone_undersized}) <= 1  # make sure all Zones use the same numerology
         zone_merged: List[Zone] = list()
 
         for original_zone in zone_undersized:
