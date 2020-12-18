@@ -4,13 +4,13 @@ from random import randint
 from typing import Dict, List, Tuple
 
 from src.resource_allocation.ds.cochannel import cochannel
-from src.resource_allocation.ds.eutran import ENodeB, EUserEquipment
+from src.resource_allocation.ds.eutran import ENodeB
 from src.resource_allocation.ds.frame import BaseUnit, Layer
 from src.resource_allocation.ds.ngran import GNodeB, GUserEquipment
 from src.resource_allocation.ds.nodeb import NodeB
 from src.resource_allocation.ds.rb import ResourceBlock
 from src.resource_allocation.ds.ue import UserEquipment
-from src.resource_allocation.ds.util_enum import LTEPhysicalResourceBlock, NodeBType, Numerology
+from src.resource_allocation.ds.util_enum import NodeBType, Numerology
 from src.resource_allocation.ds.util_type import Coordinate
 
 
@@ -45,7 +45,7 @@ class ChannelModel:
 
     def sinr_bu(self, bu: BaseUnit):
         """
-        SINR(ratio) = rx power(mW) / (interference_noma(mW) + interference_ini(mW) + interference_cross(mW) + interference_channel(mW) + awgn(mW))
+        SINR(ratio) = rx power(mW) / (noma(mW) + ini(mW) + cross-tier(mW) + interference from other BSs(mW) + awgn(mW))
         :param bu: The BU to calculate its' SINR.
         :return: SINR in dB
         """
@@ -54,66 +54,48 @@ class ChannelModel:
         ue: UserEquipment = rb.ue
         nodeb: NodeB = bu.layer.nodeb
         power_rx: float = self.power_rx(
-            nodeb.nb_type,
-            ue.coordinate.distance_gnb if nodeb.nb_type == NodeBType.G else ue.coordinate.distance_enb,
-            nodeb.power_tx)
+            nodeb,
+            ue.coordinate.distance_gnb if nodeb.nb_type == NodeBType.G else ue.coordinate.distance_enb)
         print(f'power rx: {10 * math.log10(power_rx)}')
 
         interference_noma: float = 0.0
         interference_ini: float = 0.0
         interference_cross: float = 0.0
-        for layer in nodeb.frame.layer:
-            if layer != bu.layer:  # only for gNB, which has multiple layers
-                overlapped_bu: BaseUnit = layer.bu[bu.absolute_i][bu.absolute_j]
-                if not (overlapped_rb := overlapped_bu.within_rb):  # if the radio resource is not allocated
-                    continue
-                overlapped_bu_power_rx: float = self.power_rx(nodeb.nb_type,
-                                                              overlapped_rb.ue.coordinate.distance_gnb,
-                                                              nodeb.power_tx)  # nodeb.power_tx = layer.nodeb.power_tx = overlapped_rb.ue.gnb_info.nb.power_tx
-
+        for overlapped_rb in bu.overlapped_rb:
+            overlapped_bu_power_rx: float = self.power_rx(
+                overlapped_rb.layer.nodeb,
+                ue.coordinate.distance_gnb if overlapped_rb.layer.nodeb.nb_type == NodeBType.G else ue.coordinate.distance_enb)
+            if overlapped_rb.layer.nodeb.nb_type == NodeBType.G and nodeb.nb_type == NodeBType.G:
                 # NOMA interference
-                if overlapped_bu_power_rx > power_rx:  # should be comparing channel gain. However, the rx power of the two UE are the same.
+                if overlapped_bu_power_rx > power_rx:  # should compare by channel gain. Although rx power are the same. TODO: 改成用channel gain比較
                     interference_noma += overlapped_bu_power_rx
                     print(f'interference_noma: {10 * math.log10(interference_noma)}')
-                # inter-numerology interference
-                if rb.numerology != overlapped_rb.numerology:
-                    interference_ini += overlapped_bu_power_rx
-                    print(f'interference_ini: {10 * math.log10(interference_ini)}')
-        if bu.is_cochannel:
-            for layer in bu.cochannel_nb.frame.layer:
-                overlapped_bu: BaseUnit = layer.bu[bu.cochannel_bu_i][bu.absolute_j]
-                if not (overlapped_rb := overlapped_bu.within_rb):  # if the radio resource is allocated
-                    continue
-                overlapped_bu_power_rx: float = self.power_rx(
-                    nodeb.nb_type,
-                    overlapped_rb.ue.coordinate.distance_gnb if nodeb.nb_type == NodeBType.G else overlapped_rb.ue.coordinate.distance_enb,
-                    bu.cochannel_nb.power_tx)
-
+            if overlapped_rb.layer.nodeb.nb_type != nodeb.nb_type:
                 # cross-tier interference
                 interference_cross += overlapped_bu_power_rx
                 print(f'interference_cross: {10 * math.log10(interference_cross)}')
-                # inter-numerology interference
-                if rb.numerology.freq != overlapped_rb.numerology.freq:
-                    interference_ini += overlapped_bu_power_rx
-                    print(f'interference_ini(cross): {10 * math.log10(interference_ini)}')
+            # inter-numerology interference
+            if overlapped_rb.numerology.freq != rb.numerology.freq:
+                interference_ini += overlapped_bu_power_rx
+                print(f'interference_ini: {10 * math.log10(interference_ini)}')
         interference_channel: float = self.channel_interference(bu)
 
         sinr = power_rx / (
                 interference_noma + interference_ini + interference_cross + interference_channel + self.awgn_noise)  # ratio
         bu.sinr = 10 * math.log10(sinr)  # ratio to dB
+        print(f'BU SINR: {bu.sinr}')
 
-    def power_rx(self, nb_type: NodeBType, distance: float, power_tx: float) -> float:
+    def power_rx(self, tx_nb: NodeB, distance: float) -> float:
         """
         Calculate the degraded signal transmitted by the BS to the UE.
         rx power(dBm) = tx power(dBm) - path loss(dB) - shadowing(dB)
-        :param nb_type: Either eNB or gNB.
+        :param tx_nb: The signal is transmitted by tx_nb.
         :param distance: in km. The distance from the BS to the UE.
-        :param power_tx: in dBm. The transmit power from BS to UE.
         :return power_rx: in mW. The receive power from BS of UE.
         """
-        path_loss: float = self._path_loss_marco(distance) if nb_type == NodeBType.E else self._path_loss_mirco(
+        path_loss: float = self._path_loss_marco(distance) if tx_nb.nb_type == NodeBType.E else self._path_loss_mirco(
             distance)
-        power_rx: float = power_tx - path_loss - self.noise(8)  # dBm
+        power_rx: float = tx_nb.power_tx - path_loss - self.noise(8)  # dBm
         return pow(10, power_rx / 10)  # dBm to mW
 
     @staticmethod
@@ -131,7 +113,8 @@ class ChannelModel:
         """
         A UMi (urban micro-cell) outdoor path loss model.
         ref: Proportional Fairness through Dual Connectivity in Heterogeneous Networks
-             Dual-Connectivity Enabled Resource Allocation Approach With eICIC for Throughput Maximization in HetNets With Backhaul Constraint
+             Dual-Connectivity Enabled Resource Allocation Approach With eICIC
+             for Throughput Maximization in HetNets With Backhaul Constraint.
         :param distance: in kilometer
         :return path loss: in dB
         """
@@ -178,6 +161,8 @@ class ChannelModel:
         The interference from far away BSs using the same channel.
         Assume the BSs are all eNB.
         """
+        e_nb: ENodeB = ENodeB(Coordinate(4, 8))  # just for generating rx power
+
         if bu.layer.nodeb.nb_type == NodeBType.E:
             channel: int = bu.absolute_i
         else:
@@ -186,8 +171,9 @@ class ChannelModel:
         interference: float = 0.0
         for bs in self.channel_bs[channel]:
             dist: float = bs.calc_distance(bs, bu.within_rb.ue.coordinate)
-            interference += self.power_rx(NodeBType.E, dist, 46)
-        if interference: print(f'interference_BSs: {10 * math.log10(interference)}')
+            interference += self.power_rx(e_nb, dist)
+        if interference:
+            print(f'interference_BSs: {10 * math.log10(interference)}')
 
         return interference
 
@@ -200,13 +186,13 @@ class ChannelModel:
              BU4[BS[], BS[], BS[]],
              ...,
              BUi[BS[]])
-        :param cochannel_index: The freq size of eNB, gNB, and co-channel bandwidth in BU.
         """
         bs1: Coordinate = Coordinate(x=2, y=0)
         bs2: Coordinate = Coordinate(x=0, y=2)
         bs3: Coordinate = Coordinate(x=-2, y=0)
         bs4: Coordinate = Coordinate(x=0, y=-2)
-        total_bw: int = self.cochannel_index['e_freq'] + self.cochannel_index['g_freq'] - self.cochannel_index['co_bandwidth']     # the total bandwidth of gNB and eNB, in the number of BUs
+        total_bw: int = self.cochannel_index['e_freq'] + self.cochannel_index['g_freq'] - self.cochannel_index[
+            'co_bandwidth']  # the total bandwidth of gNB and eNB, in the number of BUs
         interference_info: Tuple[List[Coordinate], ...] = tuple([] for _ in range(total_bw))
 
         # deploy the channels to BSs
@@ -232,10 +218,10 @@ if __name__ == '__main__':
     layer_2: Layer = gNB.frame.layer[2]
 
     # EUE, in co-channel area
-    eue_1: UserEquipment = EUserEquipment(12345, [LTEPhysicalResourceBlock], Coordinate(0.3, 0.0))
-    eue_1.register_nb(eNB, gNB)
-    layer_e.allocate_resource_block(75, 0, eue_1)
-    rb_0: ResourceBlock = eue_1.enb_info.rb[0]
+    # eue_1: UserEquipment = EUserEquipment(12345, [LTEPhysicalResourceBlock], Coordinate(0.3, 0.0))
+    # eue_1.register_nb(eNB, gNB)
+    # layer_e.allocate_resource_block(75, 0, eue_1)
+    # rb_0: ResourceBlock = eue_1.enb_info.rb[0]
 
     # DUE in eNB, in co-channel area
     # due_1: UserEquipment = DUserEquipment(12345, [Numerology.N0, Numerology.N1], Coordinate(0.5, 0.0))
@@ -248,22 +234,22 @@ if __name__ == '__main__':
     # due_2: UserEquipment = DUserEquipment(12345, [Numerology.N0, Numerology.N1], Coordinate(0.399, 0.0))
     # due_2.register_nb(eNB, gNB)
     # due_2.set_numerology(Numerology.N0)
-    # layer_1.allocate_resource_block(0, 0, due_2)
+    # layer_0.allocate_resource_block(0, 0, due_2)
     # rb_2: ResourceBlock = due_2.gnb_info.rb[0]
 
     # GUE, N0
-    # gue_1: UserEquipment = GUserEquipment(12345, [Numerology.N0, Numerology.N1, Numerology.N2], Coordinate(0.30000001, 0.0))
+    # gue_1: UserEquipment = GUserEquipment(12345, [Numerology.N0, Numerology.N1], Coordinate(0.30000001, 0.0))
     # gue_1.register_nb(eNB, gNB)
     # gue_1.set_numerology(Numerology.N0)
     # layer_1.allocate_resource_block(0, 0, gue_1)
     # rb_3: ResourceBlock = gue_1.gnb_info.rb[0]
 
     # GUE, N1
-    # gue_2: UserEquipment = GUserEquipment(12345, [Numerology.N1, Numerology.N2], Coordinate(0.43, 0.0))
-    # gue_2.register_nb(eNB, gNB)
-    # gue_2.set_numerology(Numerology.N1)
-    # layer_0.allocate_resource_block(0, 0, gue_2)
-    # rb_4: ResourceBlock = gue_2.gnb_info.rb[0]
+    gue_2: UserEquipment = GUserEquipment(12345, [Numerology.N1, Numerology.N2], Coordinate(0.43, 0.0))
+    gue_2.register_nb(eNB, gNB)
+    gue_2.set_numerology(Numerology.N1)
+    layer_0.allocate_resource_block(0, 0, gue_2)
+    rb_4: ResourceBlock = gue_2.gnb_info.rb[0]
 
     # GUE, N2
     gue_3: UserEquipment = GUserEquipment(12345, [Numerology.N1, Numerology.N2], Coordinate(0.5, 0.0))
@@ -273,11 +259,11 @@ if __name__ == '__main__':
     rb_5: ResourceBlock = gue_3.gnb_info.rb[0]
 
     # GUE, N3
-    # gue_4: UserEquipment = GUserEquipment(12345, [Numerology.N1, Numerology.N2, Numerology.N3], Coordinate(0.5, 0.0))
-    # gue_4.register_nb(eNB, gNB)
-    # gue_4.set_numerology(Numerology.N3)
-    # layer_2.allocate_resource_block(0, 0, gue_4)
-    # rb_6: ResourceBlock = gue_4.gnb_info.rb[0]
+    gue_4: UserEquipment = GUserEquipment(12345, [Numerology.N1, Numerology.N2, Numerology.N3], Coordinate(0.5, 0.0))
+    gue_4.register_nb(eNB, gNB)
+    gue_4.set_numerology(Numerology.N3)
+    layer_2.allocate_resource_block(0, 0, gue_4)
+    rb_6: ResourceBlock = gue_4.gnb_info.rb[0]
 
     channel_model: ChannelModel = ChannelModel(co_index)
-    channel_model.sinr_rb(rb_0)
+    channel_model.sinr_rb(rb_5)

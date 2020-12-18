@@ -28,7 +28,6 @@ class _NBInfoWithinUE:
 
         self.nb: Optional[NodeB] = None
         self.mcs: Optional[Union[E_MCS, G_MCS]] = None
-        self.sinr: float = float('-inf')  # TODO: remove
         self.rb: List[ResourceBlock] = list()
         self._num_of_rb_determined_by_mcs: int = 0
 

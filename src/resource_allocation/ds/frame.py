@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from typing import Optional, Tuple, TYPE_CHECKING, Union
+from typing import List, Optional, Tuple, TYPE_CHECKING, Union
 
 from .rb import ResourceBlock
 from .util_enum import LTEPhysicalResourceBlock, NodeBType, Numerology, UEType
@@ -163,6 +163,19 @@ class BaseUnit:
     @property
     def cochannel_bu_i(self) -> int:
         return self._cochannel_absolute_i
+
+    @property
+    def overlapped_rb(self) -> List[ResourceBlock]:
+        rb_list: List[ResourceBlock] = []
+        for layer in self.layer.nodeb.frame.layer:
+            if layer is not self.layer:
+                if rb := layer.bu[self.absolute_i][self.absolute_j].within_rb:
+                    rb_list.append(rb)
+        if self.is_cochannel:
+            for layer in self.cochannel_nb.frame.layer:
+                if rb := layer.bu[self.cochannel_bu_i][self.absolute_j].within_rb:
+                    rb_list.append(rb)
+        return rb_list
 
     @property
     def is_used(self) -> bool:
