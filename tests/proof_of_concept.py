@@ -16,7 +16,7 @@ if __name__ == '__main__':
     data_set_file_path = "../src/resource_allocation/simulation/data/" + "data_generator" + ".P"
 
     with open(data_set_file_path, "rb") as file_of_frame_and_ue:
-        g_nb, e_nb, total_bandwidth, g_ue_list, d_ue_list, e_ue_list = pickle.load(file_of_frame_and_ue)
+        g_nb, e_nb, cochannel_index, g_ue_list, d_ue_list, e_ue_list = pickle.load(file_of_frame_and_ue)
 
     # noinspection PyTypeChecker
     g_phase1: Phase1 = Phase1(g_ue_list + d_ue_list)
@@ -57,7 +57,7 @@ if __name__ == '__main__':
 
     ue_list_allocated: Tuple[UserEquipment] = g_ue_list_allocated + e_ue_list_allocated + d_ue_list_allocated
     ue_list_unallocated: Tuple[UserEquipment] = g_ue_list_unallocated + e_ue_list_unallocated + d_ue_list_unallocated
-    phase3: Phase3 = Phase3(ChannelModel(total_bandwidth), ue_list_allocated, ue_list_unallocated)
+    phase3: Phase3 = Phase3(ChannelModel(cochannel_index), ue_list_allocated, ue_list_unallocated)
     phase3.improve_system_throughput()
 
     if visualize_the_algo is True:

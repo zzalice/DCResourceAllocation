@@ -1,22 +1,23 @@
 import math
 import random
 from random import randint
-from typing import List, Tuple
+from typing import Dict, List, Tuple
 
 from src.resource_allocation.ds.cochannel import cochannel
-from src.resource_allocation.ds.eutran import ENodeB
+from src.resource_allocation.ds.eutran import ENodeB, EUserEquipment
 from src.resource_allocation.ds.frame import BaseUnit, Layer
-from src.resource_allocation.ds.ngran import DUserEquipment, GNodeB, GUserEquipment
+from src.resource_allocation.ds.ngran import GNodeB, GUserEquipment
 from src.resource_allocation.ds.nodeb import NodeB
 from src.resource_allocation.ds.rb import ResourceBlock
 from src.resource_allocation.ds.ue import UserEquipment
-from src.resource_allocation.ds.util_enum import NodeBType, Numerology
+from src.resource_allocation.ds.util_enum import LTEPhysicalResourceBlock, NodeBType, Numerology
 from src.resource_allocation.ds.util_type import Coordinate
 
 
 class ChannelModel:
-    def __init__(self, total_bandwidth: int):
-        self.channel_bs: Tuple[List[Coordinate], ...] = self.gen_channel_interference(total_bandwidth)
+    def __init__(self, cochannel_index: Dict):
+        self.cochannel_index: Dict = cochannel_index
+        self.channel_bs: Tuple[List[Coordinate], ...] = self.gen_channel_interference()
 
     def sinr_ue(self, ue: UserEquipment):
         """
@@ -177,16 +178,20 @@ class ChannelModel:
         The interference from far away BSs using the same channel.
         Assume the BSs are all eNB.
         """
+        if bu.layer.nodeb.nb_type == NodeBType.E:
+            channel: int = bu.absolute_i
+        else:
+            channel: int = bu.absolute_i + self.cochannel_index['e_freq'] - self.cochannel_index['co_bandwidth']
+
         interference: float = 0.0
-        for bs in self.channel_bs[bu.absolute_i]:
+        for bs in self.channel_bs[channel]:
             dist: float = bs.calc_distance(bs, bu.within_rb.ue.coordinate)
             interference += self.power_rx(NodeBType.E, dist, 46)
         if interference: print(f'interference_BSs: {10 * math.log10(interference)}')
 
         return interference
 
-    @staticmethod
-    def gen_channel_interference(total_bandwidth: int) -> Tuple[List[Coordinate], ...]:
+    def gen_channel_interference(self) -> Tuple[List[Coordinate], ...]:
         """
         interference_info =
             (BU1[BS[coordinate], BS[], BS[]],
@@ -195,18 +200,19 @@ class ChannelModel:
              BU4[BS[], BS[], BS[]],
              ...,
              BUi[BS[]])
-        :param total_bandwidth: Is the total bandwidth of gNB and eNB, in the number of BUs.
+        :param cochannel_index: The freq size of eNB, gNB, and co-channel bandwidth in BU.
         """
         bs1: Coordinate = Coordinate(x=2, y=0)
         bs2: Coordinate = Coordinate(x=0, y=2)
         bs3: Coordinate = Coordinate(x=-2, y=0)
         bs4: Coordinate = Coordinate(x=0, y=-2)
-        interference_info: Tuple[List[Coordinate], ...] = tuple([] for _ in range(total_bandwidth))
+        total_bw: int = self.cochannel_index['e_freq'] + self.cochannel_index['g_freq'] - self.cochannel_index['co_bandwidth']     # the total bandwidth of gNB and eNB, in the number of BUs
+        interference_info: Tuple[List[Coordinate], ...] = tuple([] for _ in range(total_bw))
 
         # deploy the channels to BSs
         j = 0
         bs: List[Coordinate] = []
-        for i in range(total_bandwidth):
+        for i in range(total_bw):
             if not j % 25:  # all the BSs' channel bandwidth are 5MHz, 25 RBs
                 bs: List[Coordinate] = random.sample([bs1, bs2, bs3, bs4], k=random.choice([0, 1, 2, 3]))
                 j = 0
@@ -219,17 +225,17 @@ class ChannelModel:
 if __name__ == '__main__':
     eNB: ENodeB = ENodeB(radius=0.5, coordinate=Coordinate(0.0, 0.0))
     gNB: GNodeB = GNodeB(radius=0.1, coordinate=Coordinate(0.4, 0.0))
-    total_bw: int = cochannel(eNB, gNB)
+    co_index: Dict = cochannel(eNB, gNB)
     layer_e: Layer = eNB.frame.layer[0]
     layer_0: Layer = gNB.frame.layer[0]
     layer_1: Layer = gNB.frame.layer[1]
     layer_2: Layer = gNB.frame.layer[2]
 
     # EUE, in co-channel area
-    # eue_1: UserEquipment = EUserEquipment(12345, [LTEPhysicalResourceBlock], Coordinate(0.3, 0.0))
-    # eue_1.register_nb(eNB, gNB)
-    # layer_e.allocate_resource_block(75, 0, eue_1)
-    # rb_0: ResourceBlock = eue_1.enb_info.rb[0]
+    eue_1: UserEquipment = EUserEquipment(12345, [LTEPhysicalResourceBlock], Coordinate(0.3, 0.0))
+    eue_1.register_nb(eNB, gNB)
+    layer_e.allocate_resource_block(75, 0, eue_1)
+    rb_0: ResourceBlock = eue_1.enb_info.rb[0]
 
     # DUE in eNB, in co-channel area
     # due_1: UserEquipment = DUserEquipment(12345, [Numerology.N0, Numerology.N1], Coordinate(0.5, 0.0))
@@ -273,5 +279,5 @@ if __name__ == '__main__':
     # layer_2.allocate_resource_block(0, 0, gue_4)
     # rb_6: ResourceBlock = gue_4.gnb_info.rb[0]
 
-    channel_model: ChannelModel = ChannelModel(total_bw)
-    channel_model.sinr_rb(rb_5)
+    channel_model: ChannelModel = ChannelModel(co_index)
+    channel_model.sinr_rb(rb_0)

@@ -1,8 +1,10 @@
+from typing import Dict
+
 from src.resource_allocation.ds.eutran import ENodeB
 from src.resource_allocation.ds.ngran import GNodeB
 
 
-def cochannel(enb: ENodeB, gnb: GNodeB, cochannel_bandwidth: int = 25) -> int:
+def cochannel(enb: ENodeB, gnb: GNodeB, cochannel_bandwidth: int = 25) -> Dict:
     #                                   5MHz * 1ms
     assert cochannel_bandwidth <= enb.frame.frame_freq and cochannel_bandwidth <= gnb.frame.frame_freq
     # the end of the eNB frame overlaps with the beginning of the gNB frame
@@ -16,5 +18,7 @@ def cochannel(enb: ENodeB, gnb: GNodeB, cochannel_bandwidth: int = 25) -> int:
             for layer in gnb.frame.layer:
                 layer.bu[i][j].set_cochannel(enb, i + enb.frame.cochannel_offset)
 
-    total_bandwidth: int = enb.frame.frame_freq + gnb.frame.frame_freq - cochannel_bandwidth
-    return total_bandwidth
+    cochannel_index: Dict = {"g_freq": gnb.frame.frame_freq,
+                             "e_freq": enb.frame.frame_freq,
+                             "co_bandwidth": cochannel_bandwidth}
+    return cochannel_index

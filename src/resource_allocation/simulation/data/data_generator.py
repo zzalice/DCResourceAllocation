@@ -1,9 +1,8 @@
-from pathlib import Path
-import pickle
 import dataclasses
+import pickle
 import random
-from typing import Tuple
-import os
+from pathlib import Path
+from typing import Dict, Tuple
 
 from src.resource_allocation.ds.cochannel import cochannel
 from src.resource_allocation.ds.eutran import ENodeB, EUserEquipment
@@ -31,7 +30,7 @@ if __name__ == '__main__':
 
     e_nb: ENodeB = ENodeB(coordinate=Coordinate(0.0, 0.0), radius=0.5)
     g_nb: GNodeB = GNodeB(coordinate=Coordinate(0.4, 0.0), radius=0.1)
-    total_bandwidth: int = cochannel(e_nb, g_nb)
+    cochannel_index: Dict = cochannel(e_nb, g_nb)
 
     # sample code to generate random profiles (the last tuple `distance_range.e_random` ONLY exists in dUE)
     sec_to_frame: int = 1000 // (e_nb.frame.frame_time // 16)
@@ -77,4 +76,4 @@ if __name__ == '__main__':
         d_ue.numerology_in_use = d_ue.candidate_set[0]
 
     with open(Path(__file__).stem + ".P", "wb") as file_of_frame_and_ue:
-        pickle.dump([g_nb, e_nb, total_bandwidth, g_ue_list, d_ue_list, e_ue_list], file_of_frame_and_ue)
+        pickle.dump([g_nb, e_nb, cochannel_index, g_ue_list, d_ue_list, e_ue_list], file_of_frame_and_ue)
