@@ -13,7 +13,7 @@ class Phase3:
         self.ue_list_unallocated: Tuple[UserEquipment] = ue_list_unallocated
 
     def improve_system_throughput(self):
-        for ue in self.ue_list_allocated:
+        for ue in self.ue_list_allocated:   # TODO: the affected UEs need to recalculate
             self.adjust_mcs(ue)
 
         # for mcs in E_MCS.__members__:
