@@ -54,7 +54,8 @@ class ChannelModel:
         ue: UserEquipment = rb.ue
         nodeb: NodeB = bu.layer.nodeb
         power_rx: float = self.power_rx(
-            nodeb,
+            nodeb.nb_type,
+            nodeb.power_tx,
             ue.coordinate.distance_gnb if nodeb.nb_type == NodeBType.G else ue.coordinate.distance_enb)
         print(f'power rx: {10 * math.log10(power_rx)}')
 
@@ -63,10 +64,11 @@ class ChannelModel:
         interference_cross: float = 0.0
         for overlapped_rb in bu.overlapped_rb:
             overlapped_bu_power_rx: float = self.power_rx(
-                overlapped_rb.layer.nodeb,
+                overlapped_rb.layer.nodeb.nb_type,
+                overlapped_rb.layer.nodeb.power_tx,
                 ue.coordinate.distance_gnb if overlapped_rb.layer.nodeb.nb_type == NodeBType.G else ue.coordinate.distance_enb)
+            # NOMA interference
             if overlapped_rb.layer.nodeb.nb_type == NodeBType.G and nodeb.nb_type == NodeBType.G:
-                # NOMA interference
                 """
                 The formal way is compared by |h|^2 / N.
                 As the reference bellow, this part is done by comparing power and power is related to distance.
@@ -75,8 +77,8 @@ class ChannelModel:
                 if overlapped_rb.ue.coordinate.distance_gnb < ue.coordinate.distance_gnb:
                     interference_noma += overlapped_bu_power_rx
                     print(f'interference_noma: {10 * math.log10(interference_noma)}')
+            # cross-tier interference
             if overlapped_rb.layer.nodeb.nb_type != nodeb.nb_type:
-                # cross-tier interference
                 interference_cross += overlapped_bu_power_rx
                 print(f'interference_cross: {10 * math.log10(interference_cross)}')
             # inter-numerology interference
@@ -95,8 +97,6 @@ class ChannelModel:
         The interference from far away BSs using the same channel.
         Assume the BSs are all eNB.
         """
-        e_nb: ENodeB = ENodeB(Coordinate(4, 8))  # just for generating rx power
-
         if bu.layer.nodeb.nb_type == NodeBType.E:
             channel: int = bu.absolute_i
         else:
@@ -105,7 +105,7 @@ class ChannelModel:
         interference: float = 0.0
         for bs in self.channel_bs[channel]:
             dist: float = bs.calc_distance(bs, bu.within_rb.ue.coordinate)
-            interference += self.power_rx(e_nb, dist)
+            interference += self.power_rx(NodeBType.E, 46, dist)
         if interference:
             print(f'interference_BSs: {10 * math.log10(interference)}')
 
@@ -141,17 +141,18 @@ class ChannelModel:
 
         return interference_info
 
-    def power_rx(self, tx_nb: NodeB, distance: float) -> float:
+    def power_rx(self, tx_nb_type: NodeBType, power_tx: float, distance: float) -> float:
         """
         Calculate the degraded signal transmitted by the BS to the UE.
         rx power(dBm) = tx power(dBm) - path loss(dB) - shadowing(dB)
-        :param tx_nb: The signal is transmitted by tx_nb.
+        :param tx_nb_type: The signal is transmitted by tx_nb.
+        :param power_tx: The transmit power.
         :param distance: in km. The distance from the BS to the UE.
         :return power_rx: in mW. The receive power from BS of UE.
         """
-        path_loss: float = self._path_loss_marco(distance) if tx_nb.nb_type == NodeBType.E else self._path_loss_mirco(
+        path_loss: float = self._path_loss_marco(distance) if tx_nb_type == NodeBType.E else self._path_loss_mirco(
             distance)
-        power_rx: float = tx_nb.power_tx - path_loss - self.noise(8)  # dBm
+        power_rx: float = power_tx - path_loss - self.noise(8)  # dBm
         return pow(10, power_rx / 10)  # dBm to mW
 
     @staticmethod
