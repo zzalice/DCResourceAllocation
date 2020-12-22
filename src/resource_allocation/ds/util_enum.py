@@ -50,7 +50,6 @@ class Numerology(_Numerology):
     N1 = (2 ** 1, 2 ** 3)  # F: 2, T: 8
     N2 = (2 ** 2, 2 ** 2)  # F: 4, T: 4
     N3 = (2 ** 3, 2 ** 1)  # F: 8, T: 2
-    N4 = (2 ** 4, 2 ** 0)  # F: 16, T: 1
 
     @property
     def mu(self) -> int:
@@ -91,6 +90,7 @@ class E_MCS(_MCS):
          data rate(bit per RB) = data rate in Mbps * 0.0005 * 1000
     ref: [Resource Allocation for Multi-Carrier Cellular Networks](https://ieeexplore.ieee.org/abstract/document/8376971)
     """
+    CQI0 = 0.0
     CQI1_QPSK = 12.796875  # bit per 0.5ms(RB)
     CQI2_QPSK = 19.6875
     CQI3_QPSK = 31.6640625
@@ -106,7 +106,6 @@ class E_MCS(_MCS):
     CQI13_64QAM = 379.96875
     CQI14_64QAM = 429.6796875
     CQI15_64QAM = 466.59375
-    CQI0 = 12.796876    # TODO: delete
 
     @staticmethod
     def get_worst() -> E_MCS:
@@ -123,6 +122,7 @@ class G_MCS(_MCS):
          [TS 38.306 4.1.2](https://www.etsi.org/deliver/etsi_ts/138300_138399/138306/15.03.00_60/ts_138306v150300p.pdf)
          [5G NR Throughput calculator](https://5g-tools.com/5g-nr-throughput-calculator/)
     """
+    CQI0 = 0.0
     CQI1_QPSK = 22.010625  # bit per ms(RB)
     CQI2_QPSK = 33.8625
     CQI3_QPSK = 54.4621875
@@ -138,7 +138,6 @@ class G_MCS(_MCS):
     CQI13_64QAM = 653.54625
     CQI14_64QAM = 739.0490625
     CQI15_64QAM = 802.54125
-    CQI0 = 22.010626    # TODO: delete
 
     @staticmethod
     def get_worst() -> G_MCS:
@@ -167,9 +166,8 @@ class SINRtoMCS:
 
     @staticmethod
     def sinr_to_mcs(sinr: float, nb_type: NodeBType) -> Union[E_MCS, G_MCS, Boolean]:
-        if sinr < SINRtoMCS.CQI1_QPSK:
-            return G_MCS.CQI0 if nb_type == NodeBType.G else E_MCS.CQI0  # TODO: delete
-            # raise ValueError    # SINR out of range
+        if sinr < SINRtoMCS.CQI1_QPSK:  # SINR out of range
+            return G_MCS.CQI0 if nb_type == NodeBType.G else E_MCS.CQI0
         elif SINRtoMCS.CQI1_QPSK <= sinr < SINRtoMCS.CQI2_QPSK:
             return G_MCS.CQI1_QPSK if nb_type == NodeBType.G else E_MCS.CQI1_QPSK
         elif SINRtoMCS.CQI2_QPSK <= sinr < SINRtoMCS.CQI3_QPSK:

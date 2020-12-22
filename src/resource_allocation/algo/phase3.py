@@ -1,6 +1,7 @@
 from typing import List, Optional, Tuple, Union
 
 from src.channel_model.sinr import ChannelModel
+from src.resource_allocation.algo.assistance import divid_ue
 from src.resource_allocation.ds.rb import ResourceBlock
 from src.resource_allocation.ds.ue import UserEquipment
 from src.resource_allocation.ds.util_enum import E_MCS, G_MCS, UEType
@@ -10,12 +11,12 @@ class Phase3:
     def __init__(self, channel_model: ChannelModel, ue_list_allocated: Tuple[Tuple[UserEquipment, ...], ...],
                  ue_list_unallocated: Tuple[Tuple[UserEquipment, ...], ...]):
         self.channel_model: ChannelModel = channel_model
-        self.gue_allocated: Tuple[UserEquipment, ...] = ue_list_allocated[0]
-        self.gue_unallocated: Tuple[UserEquipment, ...] = ue_list_unallocated[0]
-        self.due_allocated: Tuple[UserEquipment, ...] = ue_list_allocated[1]
-        self.due_unallocated: Tuple[UserEquipment, ...] = ue_list_unallocated[1]
-        self.eue_allocated: Tuple[UserEquipment, ...] = ue_list_allocated[2]
-        self.eue_unallocated: Tuple[UserEquipment, ...] = ue_list_unallocated[2]
+        self.gue_allocated: List[UserEquipment, ...] = list(ue_list_allocated[0])
+        self.gue_unallocated: List[UserEquipment, ...] = list(ue_list_unallocated[0])
+        self.due_allocated: List[UserEquipment, ...] = list(ue_list_allocated[1])
+        self.due_unallocated: List[UserEquipment, ...] = list(ue_list_unallocated[1])
+        self.eue_allocated: List[UserEquipment, ...] = list(ue_list_allocated[2])
+        self.eue_unallocated: List[UserEquipment, ...] = list(ue_list_unallocated[2])
 
     def improve_system_throughput(self):
         # adjust the mcs of the UEs
@@ -37,6 +38,7 @@ class Phase3:
         #         is_improved: bool = new_system_throughput > system_throughput
 
     def adjust_mcs(self, ue: UserEquipment):
+        # TODO: 反向操作，先看SINR最好的RB需要幾個RB > 更新MCS > 再算一次需要幾個RB > 刪掉多餘SINR較差的RB (RB照freq time排序)
         self.channel_model.sinr_ue(ue)
 
         while True:  # ue_throughput >= QoS
@@ -71,8 +73,8 @@ class Phase3:
             if tmp_ue_throughput > ue.request_data_rate:
                 # Officially remove the RB
                 worst_rb.remove()
-            else:
-                assert ue_throughput >= ue.request_data_rate, "The number of RB a UE get isn't enough."
+                continue
+            elif ue_throughput >= ue.request_data_rate:
                 # Update the MCS and throughput of the UE
                 ue.throughput = ue_throughput
                 if hasattr(ue, 'gnb_info'):
@@ -81,8 +83,28 @@ class Phase3:
                 if hasattr(ue, 'enb_info'):
                     if ue.enb_info.rb:
                         ue.enb_info.update_mcs(ue.enb_info.rb[-1].mcs)
+                ue.is_to_recalculate_mcs = False
                 break
-        ue.is_to_recalculate_mcs = False
+            else:
+                assert ue_throughput <= 0.0, "There's bug in this algorithm."
+                # if SINR is out of range, kick out this UE and put in a new one.
+                ue.remove()
+                if ue.ue_type == UEType.G:
+                    self.gue_allocated.remove(ue)
+                    self.gue_unallocated.append(ue)
+                elif ue.ue_type == UEType.D:
+                    self.due_allocated.remove(ue)
+                    self.due_unallocated.append(ue)
+                elif ue.ue_type == UEType.E:
+                    self.eue_allocated.remove(ue)
+                    self.eue_unallocated.append(ue)
+                break
+
+    def calc_system_throughput(self) -> float:
+        system_throughput: float = 0.0
+        for ue in self.gue_allocated + self.due_allocated + self.eue_allocated:
+            system_throughput += ue.throughput
+        return system_throughput
 
     @staticmethod
     def _throughput_ue(rb_list: List[ResourceBlock]) -> float:

@@ -4,7 +4,7 @@ from typing import Optional, TYPE_CHECKING
 from uuid import UUID, uuid4
 
 from .nodeb import ENBInfo, GNBInfo
-from .util_enum import Numerology, UEType
+from .util_enum import E_MCS, G_MCS, Numerology, UEType
 from .util_type import CandidateSet
 
 if TYPE_CHECKING:
@@ -42,3 +42,20 @@ class UserEquipment:
         if hasattr(self, 'gnb_info'):
             self.gnb_info.nb = g_nb
             assert self.coordinate.distance_gnb <= g_nb.radius
+
+    def remove(self):
+        self.is_allocated: bool = False
+        self.is_to_recalculate_mcs: bool = True
+        self.throughput: float = 0.0
+
+        # empty the allocated RBs & MCS
+        if hasattr(self, 'enb_info'):
+            self.enb_info.mcs = E_MCS.get_worst()
+            while self.enb_info.rb:
+                self.enb_info.rb[0].remove()
+            assert not self.enb_info.rb, "The RB remove failed."
+        if hasattr(self, 'gnb_info'):
+            self.gnb_info.mcs = G_MCS.get_worst()
+            while self.gnb_info.rb:
+                self.gnb_info.rb[0].remove()
+            assert not self.gnb_info.rb, "The RB remove failed."

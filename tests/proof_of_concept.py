@@ -3,7 +3,7 @@ from datetime import datetime
 from typing import Tuple
 
 from src.channel_model.sinr import ChannelModel
-from src.resource_allocation.algo.assistance import cluster_unallocated_ue
+from src.resource_allocation.algo.assistance import divid_ue
 from src.resource_allocation.algo.phase1 import Phase1
 from src.resource_allocation.algo.phase2 import Phase2
 from src.resource_allocation.algo.phase3 import Phase3
@@ -15,8 +15,8 @@ if __name__ == '__main__':
     visualization_file_path = "../utils/frame_visualizer/vis_" + datetime.today().strftime('%Y%m%d')
     data_set_file_path = "../src/resource_allocation/simulation/data/" + "data_generator" + ".P"
 
-    with open(data_set_file_path, "rb") as file_of_frame_and_ue:
-        g_nb, e_nb, cochannel_index, g_ue_list, d_ue_list, e_ue_list = pickle.load(file_of_frame_and_ue)
+    with open(data_set_file_path, "rb") as file:
+        g_nb, e_nb, cochannel_index, g_ue_list, d_ue_list, e_ue_list = pickle.load(file)
 
     # noinspection PyTypeChecker
     g_phase1: Phase1 = Phase1(g_ue_list + d_ue_list)
@@ -32,8 +32,8 @@ if __name__ == '__main__':
     g_zone_groups: Tuple[ZoneGroup, ...] = g_phase2.calc_residual_degree(g_zone_groups)
     g_zone_unallocated: Tuple[Zone, ...] = g_phase2.allocate_zone_group(g_zone_groups)
     g_phase2.allocate_zone_to_layer(g_zone_unallocated)
-    g_ue_list_allocated, g_ue_list_unallocated = cluster_unallocated_ue(g_ue_list)
-    d_ue_list_allocated, d_ue_list_unallocated = cluster_unallocated_ue(d_ue_list)
+    g_ue_list_allocated, g_ue_list_unallocated = divid_ue(g_ue_list)
+    d_ue_list_allocated, d_ue_list_unallocated = divid_ue(d_ue_list)
 
     # noinspection PyTypeChecker
     e_phase1: Phase1 = Phase1(e_ue_list + d_ue_list_unallocated)
@@ -43,28 +43,29 @@ if __name__ == '__main__':
 
     e_phase2: Phase2 = Phase2(e_nb)
     e_phase2.allocate_zone_to_layer(e_zone_wide)
-    e_ue_list_allocated, e_ue_list_unallocated = cluster_unallocated_ue(e_ue_list)
-    d_ue_list_unallocated = cluster_unallocated_ue(d_ue_list)[1]
+    e_ue_list_allocated, e_ue_list_unallocated = divid_ue(e_ue_list)
+    d_ue_list_unallocated = divid_ue(d_ue_list)[1]
 
     if visualize_the_algo is True:
-        with open(visualization_file_path + ".P", "wb") as file_of_frame_and_ue:
+        with open(visualization_file_path + ".P", "wb") as file:
             pickle.dump(["Phase2",
-                         g_nb.frame, e_nb.frame,
+                         g_nb.frame, e_nb.frame, 0,
                          {"allocated": g_ue_list_allocated, "unallocated": g_ue_list_unallocated},
                          {"allocated": d_ue_list_allocated, "unallocated": d_ue_list_unallocated},
                          {"allocated": e_ue_list_allocated, "unallocated": e_ue_list_unallocated}],
-                        file_of_frame_and_ue)
+                        file)
 
     ue_list_allocated: Tuple[Tuple[UserEquipment, ...], ...] = (g_ue_list_allocated, d_ue_list_allocated, e_ue_list_allocated)
     ue_list_unallocated: Tuple[Tuple[UserEquipment, ...], ...] = (g_ue_list_unallocated, d_ue_list_unallocated, e_ue_list_unallocated)
     phase3: Phase3 = Phase3(ChannelModel(cochannel_index), ue_list_allocated, ue_list_unallocated)
     phase3.improve_system_throughput()
+    system_throughput: float = phase3.calc_system_throughput()
 
     if visualize_the_algo is True:
-        with open(visualization_file_path + ".P", "ab+") as file_of_frame_and_ue:
+        with open(visualization_file_path + ".P", "ab+") as file:
             pickle.dump(["Phase3",
-                         g_nb.frame, e_nb.frame,
+                         g_nb.frame, e_nb.frame, system_throughput,
                          {"allocated": g_ue_list_allocated, "unallocated": g_ue_list_unallocated},
                          {"allocated": d_ue_list_allocated, "unallocated": d_ue_list_unallocated},
                          {"allocated": e_ue_list_allocated, "unallocated": e_ue_list_unallocated}],
-                        file_of_frame_and_ue)
+                        file)

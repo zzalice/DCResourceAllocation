@@ -113,7 +113,7 @@ class FrameRenderer:
         self.body.append(f'{layer.nodeb.nb_type.name}NodeB Layer {layer.layer_index + 1}</td></tr>')
         self.body.append('</table>')
 
-    def gen_phase(self, stage, g_frame, e_frame, g_ue_list, d_ue_list, e_ue_list):
+    def gen_phase(self, stage, g_frame, e_frame, system_throughput, g_ue_list, d_ue_list, e_ue_list):
         tab_title_id: List[String] = []
         tab_div: String = '<div class="tab-demo">'
         tab_title_end: String = '</ul>'
@@ -127,9 +127,9 @@ class FrameRenderer:
             tab_title_id.append(title_id)
             self.body.extend([f'<li><a href="#{stage[s]}_g_{l}">{stage[s]}</a></li>' for s in range(len(stage))])
             self.body.append(tab_title_end)
-            for s in range(len(stage)):
-                self.body.append(f'<div id="{stage[s]}_g_{l}" class="tab-inner">')
-                self.gen_layer(g_frame[s].layer[l])
+            for _s in range(len(stage)):
+                self.body.append(f'<div id="{stage[_s]}_g_{l}" class="tab-inner">')
+                self.gen_layer(g_frame[_s].layer[l])
                 self.body.append(div_end)
             self.body.append(div_end)
 
@@ -140,24 +140,28 @@ class FrameRenderer:
         tab_title_id.append(title_id)
         self.body.extend([f'<li><a href="#{stage[s]}_e">{stage[s]}</a></li>' for s in range(len(stage))])
         self.body.append(tab_title_end)
-        for s in range(len(stage)):
-            self.body.append(f'<div id="{stage[s]}_e" class="tab-inner">')
-            self.gen_layer(e_frame[s].layer[0])
+        for _s in range(len(stage)):
+            self.body.append(f'<div id="{stage[_s]}_e" class="tab-inner">')
+            self.gen_layer(e_frame[_s].layer[0])
             self.body.append(div_end)
         self.body.append(div_end)
 
-        # UEs
+        # system throughput & UEs
         self.body.append(tab_div)
         title_id: String = f'ue'
         self.body.append(f'<ul id="{title_id}" class="tab-title">')
         tab_title_id.append(title_id)
         self.body.extend([f'<li><a href="#{stage[s]}_ue">{stage[s]}</a></li>' for s in range(len(stage))])
         self.body.append(tab_title_end)
-        for s in range(len(stage)):
-            self.body.append(f'<div id="{stage[s]}_ue" class="tab-inner">')
-            self.gen_ue_list(g_ue_list[s])
-            self.gen_ue_list(d_ue_list[s])
-            self.gen_ue_list(e_ue_list[s])
+        for _s in range(len(stage)):
+            self.body.append(f'<div id="{stage[_s]}_ue" class="tab-inner">')
+
+            self.body.append(
+                f'<div>system throughput: {(system_throughput[_s] / 1000_000) * (1000 / g_frame[_s].frame_time)} Mbps</div>')
+
+            self.gen_ue_list(g_ue_list[_s])
+            self.gen_ue_list(d_ue_list[_s])
+            self.gen_ue_list(e_ue_list[_s])
             self.body.append(div_end)
         self.body.append(div_end)
         return tab_title_id
@@ -168,26 +172,29 @@ class FrameRenderer:
             stage: List[String] = []
             g_frame: List[Frame] = []
             e_frame: List[Frame] = []
+            system_throughput: List[float] = []
             g_ue_list: List[Dict[str, Tuple[GUserEquipment, ...]]] = []
             d_ue_list: List[Dict[str, Tuple[GUserEquipment, ...]]] = []
             e_ue_list: List[Dict[str, Tuple[GUserEquipment, ...]]] = []
             while True:
                 try:
-                    _s, _gf, _ef, _gue, _due, _eue = pickle.load(file_of_frame_and_ue)
+                    _s, _gf, _ef, _t, _gue, _due, _eue = pickle.load(file_of_frame_and_ue)
                     stage.append(_s)
                     g_frame.append(_gf)
                     e_frame.append(_ef)
+                    system_throughput.append(_t)
                     g_ue_list.append(_gue)
                     d_ue_list.append(_due)
                     e_ue_list.append(_eue)
                 except EOFError:
                     g_frame: Tuple[Frame, ...] = tuple(g_frame)
                     e_frame: Tuple[Frame, ...] = tuple(e_frame)
+                    system_throughput: Tuple[float] = tuple(system_throughput)
                     g_ue_list: Tuple[Dict[str, Tuple[GUserEquipment, ...]], ...] = tuple(g_ue_list)
                     d_ue_list: Tuple[Dict[str, Tuple[GUserEquipment, ...]], ...] = tuple(d_ue_list)
                     e_ue_list: Tuple[Dict[str, Tuple[GUserEquipment, ...]], ...] = tuple(e_ue_list)
                     break
-        return stage, g_frame, e_frame, g_ue_list, d_ue_list, e_ue_list
+        return stage, g_frame, e_frame, system_throughput, g_ue_list, d_ue_list, e_ue_list
 
     def render(self, filename: str):
         with open(filename, 'w') as w:
@@ -199,10 +206,10 @@ class FrameRenderer:
 
 
 if __name__ == '__main__':
-    file_to_visualize = "vis_20201218"
+    file_to_visualize = "vis_20201222"
 
     frame_renderer = FrameRenderer()
-    s, gf, ef, gue, due, eue = frame_renderer.open_file(file_to_visualize + ".P")
-    tab_title = frame_renderer.gen_phase(s, gf, ef, gue, due, eue)
+    s, gf, ef, t, gue, due, eue = frame_renderer.open_file(file_to_visualize + ".P")
+    tab_title = frame_renderer.gen_phase(s, gf, ef, t, gue, due, eue)
     frame_renderer.tab_script(tab_title)
     frame_renderer.render(file_to_visualize + '.html')

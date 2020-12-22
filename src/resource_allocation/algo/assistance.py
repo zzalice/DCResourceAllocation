@@ -3,7 +3,7 @@ from typing import List, Tuple
 from src.resource_allocation.ds.ue import UserEquipment
 
 
-def cluster_unallocated_ue(ue_list: Tuple[UserEquipment, ...]) -> Tuple[
+def divid_ue(ue_list: Tuple[UserEquipment, ...]) -> Tuple[
                            Tuple[UserEquipment, ...], Tuple[UserEquipment, ...]]:
     allocated_ue: List = []
     unallocated_ue: List = []
