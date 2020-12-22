@@ -21,7 +21,6 @@ class ResourceBlock:
     def update_position(self, starting_i: int, starting_j: int) -> Tuple[int, int, int, int]:
         self.position: Tuple[int, int, int, int] = (starting_i, starting_i + self.numerology.freq - 1,
                                                     starting_j, starting_j + self.numerology.time - 1)
-        # TODO: update numerology
         return self.position
 
     def remove(self):

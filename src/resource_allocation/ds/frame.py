@@ -122,10 +122,6 @@ class Layer:
             self._cache_is_valid: bool = True
         return self._bu_status
 
-    @property
-    def available_blocks(self):
-        raise NotImplementedError  # TODO: not decided how to implement yet
-
 
 class BaseUnit:
     def __init__(self, absolute_i: int, absolute_j: int, layer: Layer):

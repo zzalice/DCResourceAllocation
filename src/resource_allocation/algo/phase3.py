@@ -1,16 +1,23 @@
-from typing import List, Optional, Tuple, Union
+from typing import Dict, List, Optional, Tuple, Union
+
+from hungarian_algorithm import algorithm  # https://github.com/benchaplin/hungarian-algorithm
 
 from src.channel_model.sinr import ChannelModel
-from src.resource_allocation.algo.assistance import divid_ue
+from src.resource_allocation.algo.space import empty_space, Space
+from src.resource_allocation.ds.eutran import ENodeB
+from src.resource_allocation.ds.ngran import GNodeB
 from src.resource_allocation.ds.rb import ResourceBlock
 from src.resource_allocation.ds.ue import UserEquipment
 from src.resource_allocation.ds.util_enum import E_MCS, G_MCS, UEType
 
 
 class Phase3:
-    def __init__(self, channel_model: ChannelModel, ue_list_allocated: Tuple[Tuple[UserEquipment, ...], ...],
+    def __init__(self, channel_model: ChannelModel, gnb: GNodeB, enb: ENodeB,
+                 ue_list_allocated: Tuple[Tuple[UserEquipment, ...], ...],
                  ue_list_unallocated: Tuple[Tuple[UserEquipment, ...], ...]):
         self.channel_model: ChannelModel = channel_model
+        self.gnb: GNodeB = gnb
+        self.enb: ENodeB = enb
         self.gue_allocated: List[UserEquipment, ...] = list(ue_list_allocated[0])
         self.gue_unallocated: List[UserEquipment, ...] = list(ue_list_unallocated[0])
         self.due_allocated: List[UserEquipment, ...] = list(ue_list_allocated[1])
@@ -29,7 +36,29 @@ class Phase3:
             if is_all_adjusted:
                 break
 
-        # for mcs in E_MCS.__members__:
+        # find empty spaces
+        gnb_empty_space: List[Space] = []
+        for layer in self.gnb.frame.layer:
+            gnb_empty_space.extend(empty_space(layer))
+        enb_empty_space: List[Space] = []
+        enb_empty_space.extend(empty_space(self.enb.frame.layer[0]))
+
+        # G: Dict[Dict] = {
+        #     'Ann': {'RB': 3, 'CAM': 2, 'GK': 1},
+        #     'Ben': {'LW': 3, 'S': 2, 'CM': 1},
+        #     'Cal': {'CAM': 3, 'RW': 2, 'SWP': 1},
+        #     'Dan': {'S': 3, 'LW': 2, 'GK': 1},
+        #     'Ela': {'GK': 3, 'LW': 2, 'F': 1},
+        #     'Fae': {'CM': 3, 'GK': 2, 'CAM': 1},
+        #     'Gio': {'GK': 3, 'CM': 2, 'S': 1},
+        #     'Hol': {'CAM': 3, 'F': 2, 'SWP': 1},
+        #     'Ian': {'S': 3, 'RW': 2, 'RB': 1},
+        #     'Jon': {'F': 3, 'LW': 2, 'CB': 1},
+        #     'Kay': {'GK': 3, 'RW': 2, 'LW': 1, 'LB': 0}
+        # }
+        # output: List[Tuple[Tuple[UserEquipment, Space], float]] = algorithm.find_matching(G, matching_type='max', return_type='list')
+
+        # for mcs in E_MCS:
         #     # print('{:15} = {}'.format(mcs.name, mcs.value))
         #     is_improved: bool = True
         #     while is_improved:
