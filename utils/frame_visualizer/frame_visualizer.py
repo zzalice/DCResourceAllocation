@@ -71,11 +71,11 @@ class FrameRenderer:
             self.body.append(f'\nnumerology: {ue.numerology_in_use}')
             self.body.append(f'\nQos: {ue.request_data_rate}')
             if ue.ue_type == UEType.G or ue.ue_type == UEType.D:
-                self.body.append(f'\n<br>gnb_info: MCS: {ue.gnb_info.mcs.name}')
+                self.body.append(f'\n<br>gnb_info: MCS: {ue.gnb_info.mcs.name if ue.gnb_info.mcs else "None"}')
                 self.body.append(f'\nthe number of RBs: {len(ue.gnb_info.rb)}')
                 self.gen_rb(ue.gnb_info.rb)
             if ue.ue_type == UEType.E or ue.ue_type == UEType.D:
-                self.body.append(f'\n<br>enb_info: MCS: {ue.enb_info.mcs.name}')
+                self.body.append(f'\n<br>enb_info: MCS: {ue.enb_info.mcs.name if ue.enb_info.mcs else "None"}')
                 self.body.append(f'\nthe number of RBs: {len(ue.enb_info.rb)}')
                 self.gen_rb(ue.enb_info.rb)
             self.body.append('\n</div>\n</div>')
@@ -206,7 +206,7 @@ class FrameRenderer:
 
 
 if __name__ == '__main__':
-    file_to_visualize = "vis_20201222"
+    file_to_visualize = "vis_20201223"
 
     frame_renderer = FrameRenderer()
     s, gf, ef, t, gue, due, eue = frame_renderer.open_file(file_to_visualize + ".P")

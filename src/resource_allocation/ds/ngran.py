@@ -23,4 +23,3 @@ class DUserEquipment(UserEquipment):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
         self.ue_type: UEType = UEType.D
-        self.enb_info.request_data_rate = 0  # let gNodeB deal with the data_rate requested by dUE first (phase2)

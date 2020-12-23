@@ -3,7 +3,7 @@ from __future__ import annotations
 from typing import List, Optional, Tuple, TYPE_CHECKING, Union
 
 from .rb import ResourceBlock
-from .util_enum import LTEPhysicalResourceBlock, NodeBType, Numerology, UEType
+from .util_enum import E_MCS, G_MCS, LTEPhysicalResourceBlock, NodeBType, Numerology, UEType
 
 if TYPE_CHECKING:
     from .eutran import ENodeB
@@ -80,16 +80,15 @@ class Layer:
 
         ue.numerology_in_use = tmp_numerology  # restore
 
-    # def move_resource_block
-    # def remove_resource_block
-
     def allocate_zone(self, zone: Zone) -> bool:
         is_allocatable: bool = self.available_bandwidth >= zone.zone_freq
         if is_allocatable:
             bu_i: int = self._available_frequent_offset
             bu_j: int = 0
             for ue in zone.ue_list:
-                for idx_ue_rb in range((ue.gnb_info if self.nodeb.nb_type == NodeBType.G else ue.enb_info).num_of_rb):
+                for idx_ue_rb in range(
+                        (G_MCS if self.nodeb.nb_type == NodeBType.G else E_MCS).get_worst().calc_required_rb_count(
+                            ue.request_data_rate)):
                     self.allocate_resource_block(bu_i, bu_j, ue)
                     if bu_j + zone.numerology.time < self.nodeb.frame.frame_time:
                         bu_j += zone.numerology.time
@@ -165,7 +164,7 @@ class BaseUnit:
 
     @property
     def is_used(self) -> bool:
-        return self.within_rb is not None   # TODO: refactor as variable might improve the efficiency of code
+        return self.within_rb is not None  # TODO: refactor as variable might improve the efficiency of code
 
     @property
     def is_at_upper_left(self) -> bool:

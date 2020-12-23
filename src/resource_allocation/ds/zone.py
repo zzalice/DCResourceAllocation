@@ -5,7 +5,7 @@ from typing import List, Tuple, TYPE_CHECKING, Union
 
 from .eutran import ENodeB
 from .ngran import GNodeB
-from .util_enum import LTEPhysicalResourceBlock, NodeBType, UEType
+from .util_enum import E_MCS, G_MCS, LTEPhysicalResourceBlock, NodeBType, UEType
 
 if TYPE_CHECKING:
     from .ue import UserEquipment
@@ -19,14 +19,19 @@ class Zone:
             assert len({ue.numerology_in_use for ue in ue_list}) <= 1
         else:
             for ue in ue_list:
-                assert ue.ue_type == UEType.D or ue.ue_type == UEType.E     # TODO: refactor or redesign
+                assert ue.ue_type == UEType.D or ue.ue_type == UEType.E  # TODO: refactor or redesign
 
         self.ue_list: Tuple[UserEquipment] = ue_list
         self._numerology = LTEPhysicalResourceBlock.E if nodeb.nb_type == NodeBType.E else ue_list[0].numerology_in_use
         # TODO: refactor or redesign
 
-        num_of_bu_time: int = sum([(ue.gnb_info if nodeb.nb_type == NodeBType.G else ue.enb_info).num_of_rb
-                                   * ue.numerology_in_use.time for ue in ue_list])
+        # calculate the total number of BU in time domain if RBs are lined in a row
+        num_of_bu_time: int = 0
+        for ue in ue_list:
+            num_of_rb: int = (G_MCS if nodeb.nb_type == NodeBType.G else E_MCS).get_worst().calc_required_rb_count(
+                ue.request_data_rate)
+            num_of_bu_time += num_of_rb * ue.numerology_in_use.time
+
         self.zone_freq: int = (
                 math.ceil(num_of_bu_time / nodeb.frame.frame_time) * self.numerology.freq)  # numbers of BU
         self.zone_time: int = nodeb.frame.frame_time  # numbers of BU

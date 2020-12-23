@@ -23,40 +23,22 @@ class NodeB:
 
 
 class _NBInfoWithinUE:
-    def __init__(self, request_data_rate: int):
-        self.request_data_rate: int = request_data_rate
-
+    def __init__(self):
         self.nb: Optional[NodeB] = None
         self.mcs: Optional[Union[E_MCS, G_MCS]] = None
         self.rb: List[ResourceBlock] = list()
-        self._num_of_rb_determined_by_mcs: int = 0
-
-    @property
-    def num_of_rb(self) -> int:
-        return self.mcs.calc_required_rb_count(self.request_data_rate)
 
     @property
     def nb_type(self) -> NodeBType:
         assert self.nb is not None
         return self.nb.nb_type
 
-    def update_mcs(self, mcs: Union[E_MCS, G_MCS]):
-        self.mcs: Union[E_MCS, G_MCS] = mcs
-
 
 class ENBInfo(_NBInfoWithinUE):
-    def __init__(self, *args, **kwargs):
-        super().__init__(*args, **kwargs)
-        self.update_mcs(E_MCS.get_worst())
-
-    def update_mcs(self, mcs: E_MCS):
-        super().update_mcs(mcs)
+    def __init__(self):
+        super().__init__()
 
 
 class GNBInfo(_NBInfoWithinUE):
-    def __init__(self, *args, **kwargs):
-        super().__init__(*args, **kwargs)
-        self.update_mcs(G_MCS.get_worst())
-
-    def update_mcs(self, mcs: G_MCS):
-        super().update_mcs(mcs)
+    def __init__(self):
+        super().__init__()
