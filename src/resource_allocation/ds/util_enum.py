@@ -75,10 +75,21 @@ class LTEPhysicalResourceBlock(_Numerology):
 
 class _MCS(Enum):
     def calc_required_rb_count(self, request_data_rate: float) -> int:
-        return math.ceil(request_data_rate / self.value)
+        return math.ceil(request_data_rate / self.value)  # TODO: 用這個
 
     @staticmethod
     def get_worst() -> _MCS:
+        raise NotImplementedError
+
+    @property
+    def efficiency(self) -> float:
+        """
+        The transmit efficiency of a LTE RB is always higher than NR RB.
+        e.g. E_MCS.CQI1_QPSK * 2 > G_MCS.CQI1_QPSK
+        In some cases, LTE RB is even one level higher than NR RB.
+        e.g. E_MCS.CQI9_16QAM * 2 > G_MCS.CQI10_64QAM
+        This is why we should calculate the efficiency of MCS.
+        """
         raise NotImplementedError
 
 
@@ -111,6 +122,10 @@ class E_MCS(_MCS):
     def get_worst() -> E_MCS:
         return E_MCS.CQI1_QPSK
 
+    @property
+    def efficiency(self) -> float:
+        return self.value / 8
+
 
 # noinspection PyPep8Naming, SpellCheckingInspection
 class G_MCS(_MCS):
@@ -142,6 +157,10 @@ class G_MCS(_MCS):
     @staticmethod
     def get_worst() -> G_MCS:
         return G_MCS.CQI1_QPSK
+
+    @property
+    def efficiency(self) -> float:
+        return self.value / 16
 
 
 class SINRtoMCS:

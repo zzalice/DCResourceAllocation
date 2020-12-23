@@ -41,7 +41,7 @@ class ChannelModel:
                 if tmp_sinr_rb > rb.layer.bu[bu_i][bu_j].sinr:
                     tmp_sinr_rb: float = rb.layer.bu[bu_i][bu_j].sinr
         rb.sinr = tmp_sinr_rb
-        print(f'RB SINR: {rb.sinr}')
+        # print(f'RB SINR: {rb.sinr}')
 
     def sinr_bu(self, bu: BaseUnit):
         """
@@ -49,7 +49,7 @@ class ChannelModel:
         :param bu: The BU to calculate its' SINR.
         :return: SINR in dB
         """
-        print(f'rb({bu.relative_i},{bu.relative_j})')
+        # print(f'rb({bu.relative_i},{bu.relative_j})')
         rb: ResourceBlock = bu.within_rb
         ue: UserEquipment = rb.ue
         nodeb: NodeB = bu.layer.nodeb
@@ -57,7 +57,7 @@ class ChannelModel:
             nodeb.nb_type,
             nodeb.power_tx,
             ue.coordinate.distance_gnb if nodeb.nb_type == NodeBType.G else ue.coordinate.distance_enb)
-        print(f'power rx: {10 * math.log10(power_rx)}')
+        # print(f'power rx: {10 * math.log10(power_rx)}')
 
         interference_noma: float = 0.0
         interference_ini: float = 0.0
@@ -76,21 +76,21 @@ class ChannelModel:
                 """
                 if overlapped_rb.ue.coordinate.distance_gnb < ue.coordinate.distance_gnb:
                     interference_noma += overlapped_bu_power_rx
-                    print(f'interference_noma: {10 * math.log10(interference_noma)}')
+                    # print(f'interference_noma: {10 * math.log10(interference_noma)}')
             # cross-tier interference
             if overlapped_rb.layer.nodeb.nb_type != nodeb.nb_type:
                 interference_cross += overlapped_bu_power_rx
-                print(f'interference_cross: {10 * math.log10(interference_cross)}')
+                # print(f'interference_cross: {10 * math.log10(interference_cross)}')
             # inter-numerology interference
             if overlapped_rb.numerology.freq != rb.numerology.freq:
                 interference_ini += overlapped_bu_power_rx
-                print(f'interference_ini: {10 * math.log10(interference_ini)}')
+                # print(f'interference_ini: {10 * math.log10(interference_ini)}')
         interference_channel: float = self.channel_interference(bu)
 
         sinr = power_rx / (
             interference_noma + interference_ini + interference_cross + interference_channel + self.awgn_noise)  # ratio
         bu.sinr = 10 * math.log10(sinr)  # ratio to dB
-        print(f'BU SINR: {bu.sinr}')
+        # print(f'BU SINR: {bu.sinr}')
 
     def channel_interference(self, bu: BaseUnit) -> float:
         """
@@ -106,8 +106,8 @@ class ChannelModel:
         for bs in self.channel_bs[channel]:
             dist: float = bs.calc_distance(bs, bu.within_rb.ue.coordinate)
             interference += self.power_rx(NodeBType.E, 46, dist)
-        if interference:
-            print(f'interference_BSs: {10 * math.log10(interference)}')
+        # if interference:
+            # print(f'interference_BSs: {10 * math.log10(interference)}')
 
         return interference
 
