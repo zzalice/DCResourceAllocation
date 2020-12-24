@@ -1,6 +1,6 @@
-from typing import List, Optional, Tuple, Union
+from typing import Dict, List, Optional, Tuple, Union
 
-from hungarian_algorithm import algorithm  # https://github.com/benchaplin/hungarian-algorithm
+from hungarian_algorithm import algorithm
 
 from src.channel_model.sinr import ChannelModel
 from src.resource_allocation.algo.space import empty_space, Space
@@ -27,7 +27,7 @@ class Phase3:
 
         self.mcs_ordered: Tuple[Union[E_MCS, G_MCS], ...] = self.order_mcs()
 
-    def improve_system_throughput(self):
+    def decrease_num_of_rb(self):
         self.adjust_mcs_allocated_ues()
 
         for mcs in self.mcs_ordered:
@@ -48,18 +48,14 @@ class Phase3:
             gnb_empty_space: List[Space] = []
             for layer in self.gnb.frame.layer:
                 gnb_empty_space.extend(empty_space(layer))
-            enb_empty_space: List[Space] = []
-            enb_empty_space.extend(empty_space(self.enb.frame.layer[0]))
+            gnb_empty_space: Tuple[Space] = tuple(gnb_empty_space)
+            enb_empty_space: Tuple[Space] = empty_space(self.enb.frame.layer[0])
 
             # calculate the weight of ue to space
-            # self.calc_weight(ue_list, gnb_empty_space, enb_empty_space)
+            graph: Dict[str, Dict[str, float]] = self.calc_weight(mcs, ue_list, gnb_empty_space, enb_empty_space)
 
-        # for mcs in E_MCS:
-        #     is_improved: bool = True
-        #     while is_improved:
-        #         system_throughput: float = 0.0
-        #         new_system_throughput: float = 0.0
-        #         is_improved: bool = new_system_throughput > system_throughput
+            # bipartite matching
+            match: List[Tuple[Tuple[str, str], float]] = self.matching(graph)
 
     def adjust_mcs_allocated_ues(self):
         while True:
@@ -134,26 +130,49 @@ class Phase3:
                     self.eue_unallocated.append(ue)
                 break
 
-    def calc_weight(self, ue_list: List[UserEquipment], gnb_spaces: List[List[Space]], enb_spaces: List[List[Space]]):
-        raise NotImplementedError
+    def calc_weight(self, mcs: Union[E_MCS, G_MCS], ue_list: List[UserEquipment], gnb_spaces: Tuple[Space],
+                    enb_spaces: Tuple[Space]) -> Dict[str, Dict[str, float]]:
+        for ue in ue_list:
+            # fetch the index of the first RB with the mcs in the ue
+            idx_rb: int = -1
+            for i, rb in enumerate((ue.gnb_info if isinstance(mcs, G_MCS) else ue.enb_info).rb):
+                if rb.mcs is mcs:
+                    idx_rb: int = i
+                    break
 
-    def hungarian_algo(self, weight):
-        """https://github.com/benchaplin/hungarian-algorithm"""
-        raise NotImplementedError
-        # G: Dict[Dict] = {
-        #     'Ann': {'RB': 3, 'CAM': 2, 'GK': 1},
-        #     'Ben': {'LW': 3, 'S': 2, 'CM': 1},
-        #     'Cal': {'CAM': 3, 'RW': 2, 'SWP': 1},
-        #     'Dan': {'S': 3, 'LW': 2, 'GK': 1},
-        #     'Ela': {'GK': 3, 'LW': 2, 'F': 1},
-        #     'Fae': {'CM': 3, 'GK': 2, 'CAM': 1},
-        #     'Gio': {'GK': 3, 'CM': 2, 'S': 1},
-        #     'Hol': {'CAM': 3, 'F': 2, 'SWP': 1},
-        #     'Ian': {'S': 3, 'RW': 2, 'RB': 1},
-        #     'Jon': {'F': 3, 'LW': 2, 'CB': 1},
-        #     'Kay': {'GK': 3, 'RW': 2, 'LW': 1, 'LB': 0}
-        # }
-        # output: List[Tuple[Tuple[UserEquipment, Space], float]] = algorithm.find_matching(G, matching_type='max', return_type='list')
+            if ue.ue_type == UEType.G or ue.ue_type == UEType.D:
+                for space in gnb_spaces:
+                    if ue.numerology_in_use in space.numerology:
+                        # 每放一個RB，檢查mcs是否<目前(未搬移)，if <: continue，else
+                        pass
+            if ue.ue_type == UEType.E or ue.ue_type == UEType.D:
+                for space in enb_spaces:
+                    pass
+
+    @staticmethod
+    def matching(graph) -> List[Tuple[Tuple[str, str], float]]:
+        if len(graph) <= 1:
+            # greedy
+            max_weight: float = -1
+            max_weight_space: str = ''
+            output: List[Tuple[Tuple[str, str], float]] = []
+            for ue in graph:
+                for space in graph[ue]:
+                    if graph[ue][space] > max_weight:
+                        max_weight: float = graph[ue][space]
+                        max_weight_space: str = space
+                output: List[Tuple[Tuple[str, str], float]] = [((ue, max_weight_space), max_weight)]
+        else:
+            """
+            Hungarian Algorithm: https://github.com/benchaplin/hungarian-algorithm
+            Constraint in directed graph:
+                1. The starting vertexes must be more than one.
+                2. The starting vertexes and ending vertexes should not be the same.
+            Tip:
+                1. Do not input too many edges. Ignore the edge <= 0.
+            """
+            output: List[Tuple[Tuple[str, str], float]] = algorithm.find_matching(graph)
+        return output
 
     def calc_system_throughput(self) -> float:
         system_throughput: float = 0.0

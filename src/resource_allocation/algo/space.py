@@ -3,6 +3,7 @@ from __future__ import annotations
 import dataclasses
 from copy import deepcopy
 from typing import List, Tuple
+from uuid import UUID, uuid4
 
 from src.resource_allocation.ds.frame import Layer
 from src.resource_allocation.ds.util_enum import Numerology
@@ -10,6 +11,7 @@ from src.resource_allocation.ds.util_enum import Numerology
 
 class Space:
     def __init__(self, layer: Layer, starting_i: int, starting_j: int, ending_i: int, ending_j: int):
+        self.uuid: UUID = uuid4()
         self.layer: Layer = layer
         self.absolute_position: Tuple[int, int, int, int] = (starting_i, starting_j, ending_i, ending_j)
         self.numerology: List[Tuple[Numerology, int]] = self.possible_numerology()
