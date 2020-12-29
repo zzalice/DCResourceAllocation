@@ -27,11 +27,9 @@ class ChannelModel:
         if hasattr(ue, 'gnb_info'):
             for rb in ue.gnb_info.rb:
                 self.sinr_rb(rb)
-            ue.gnb_info.rb.sort(key=lambda x: x.sinr, reverse=True)
         if hasattr(ue, 'enb_info'):
             for rb in ue.enb_info.rb:
                 self.sinr_rb(rb)
-            ue.enb_info.rb.sort(key=lambda x: x.sinr, reverse=True)
 
     def sinr_rb(self, rb: ResourceBlock):
         tmp_sinr_rb: float = float('inf')

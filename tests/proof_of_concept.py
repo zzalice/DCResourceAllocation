@@ -58,7 +58,7 @@ if __name__ == '__main__':
     ue_list_allocated: Tuple[Tuple[UserEquipment, ...], ...] = (g_ue_list_allocated, d_ue_list_allocated, e_ue_list_allocated)
     ue_list_unallocated: Tuple[Tuple[UserEquipment, ...], ...] = (g_ue_list_unallocated, d_ue_list_unallocated, e_ue_list_unallocated)
     phase3: Phase3 = Phase3(ChannelModel(cochannel_index), g_nb, e_nb, ue_list_allocated, ue_list_unallocated)
-    phase3.decrease_num_of_rb()
+    phase3.increase_resource_efficiency()
     system_throughput: float = phase3.calc_system_throughput()
 
     if visualize_the_algo is True:

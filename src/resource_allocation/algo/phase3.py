@@ -1,14 +1,18 @@
+import copy
 from typing import Dict, List, Optional, Tuple, Union
 
 from hungarian_algorithm import algorithm
 
 from src.channel_model.sinr import ChannelModel
 from src.resource_allocation.algo.space import empty_space, Space
+from src.resource_allocation.ds.cochannel import cochannel
 from src.resource_allocation.ds.eutran import ENodeB
-from src.resource_allocation.ds.ngran import GNodeB
+from src.resource_allocation.ds.frame import Layer
+from src.resource_allocation.ds.ngran import GNodeB, GUserEquipment
 from src.resource_allocation.ds.rb import ResourceBlock
 from src.resource_allocation.ds.ue import UserEquipment
-from src.resource_allocation.ds.util_enum import E_MCS, G_MCS, UEType
+from src.resource_allocation.ds.util_enum import E_MCS, G_MCS, Numerology, UEType
+from src.resource_allocation.ds.util_type import Coordinate
 
 
 class Phase3:
@@ -27,7 +31,7 @@ class Phase3:
 
         self.mcs_ordered: Tuple[Union[E_MCS, G_MCS], ...] = self.order_mcs()
 
-    def decrease_num_of_rb(self):
+    def increase_resource_efficiency(self):
         self.adjust_mcs_allocated_ues()
 
         for mcs in self.mcs_ordered:
@@ -63,13 +67,17 @@ class Phase3:
             for ue in self.gue_allocated + self.due_allocated + self.eue_allocated:
                 if ue.is_to_recalculate_mcs:
                     is_all_adjusted: bool = False
+                    self.channel_model.sinr_ue(ue)
                     self.adjust_mcs(ue)
             if is_all_adjusted:
                 break
 
-    def adjust_mcs(self, ue: UserEquipment):
+    def adjust_mcs(self, ue: UserEquipment, is_hungarian: bool = False):
         # TODO: 反向操作，先看SINR最好的RB需要幾個RB > 更新MCS > 再算一次需要幾個RB > 刪掉多餘SINR較差的RB (RB照freq time排序)
-        self.channel_model.sinr_ue(ue)
+        if hasattr(ue, 'gnb_info'):
+            ue.gnb_info.rb.sort(key=lambda x: x.sinr, reverse=True)
+        if hasattr(ue, 'enb_info'):
+            ue.enb_info.rb.sort(key=lambda x: x.sinr, reverse=True)
 
         while True:  # ue_throughput >= QoS
             # sum throughput
@@ -94,11 +102,22 @@ class Phase3:
                     worst_enb_rb: Optional[ResourceBlock] = None
                     worst_enb_rb_eff: float = 0.0
                 worst_rb: ResourceBlock = worst_gnb_rb if worst_gnb_rb_eff > worst_enb_rb_eff else worst_enb_rb
-                worst_rb_data_rate: float = worst_rb.mcs.value
+                if isinstance(worst_rb.mcs, G_MCS):
+                    tmp_ue_throughput: float = self._throughput_ue(ue.gnb_info.rb[:-1]) + self._throughput_ue(
+                        ue.enb_info.rb)
+                elif isinstance(worst_rb.mcs, E_MCS):
+                    tmp_ue_throughput: float = self._throughput_ue(ue.enb_info.rb[:-1]) + self._throughput_ue(
+                        ue.gnb_info.rb)
+                else:
+                    raise AttributeError
+            elif ue.ue_type == UEType.G:
+                worst_rb: ResourceBlock = ue.gnb_info.rb[-1]
+                tmp_ue_throughput: float = self._throughput_ue(ue.gnb_info.rb[:-1])
+            elif ue.ue_type == UEType.E:
+                worst_rb: ResourceBlock = ue.enb_info.rb[-1]
+                tmp_ue_throughput: float = self._throughput_ue(ue.enb_info.rb[:-1])
             else:
-                worst_rb: ResourceBlock = (ue.gnb_info if ue.ue_type == UEType.G else ue.enb_info).rb[-1]
-                worst_rb_data_rate: float = worst_rb.mcs.value
-            tmp_ue_throughput: float = ue_throughput - worst_rb_data_rate
+                raise AttributeError
 
             if tmp_ue_throughput > ue.request_data_rate:
                 # Officially remove the RB
@@ -115,9 +134,11 @@ class Phase3:
                         ue.enb_info.mcs = ue.enb_info.rb[-1].mcs
                 ue.is_to_recalculate_mcs = False
                 break
-            else:
-                assert ue_throughput <= 0.0, "There's bug in this algorithm."
-                # if SINR is out of range, kick out this UE and put in a new one.
+            elif is_hungarian:
+                # the temporarily moved UE has negative effected to this UE
+                return False
+            elif ue_throughput == 0.0:
+                # if SINR is out of range, kick out this UE.
                 ue.remove()
                 if ue.ue_type == UEType.G:
                     self.gue_allocated.remove(ue)
@@ -129,25 +150,96 @@ class Phase3:
                     self.eue_allocated.remove(ue)
                     self.eue_unallocated.append(ue)
                 break
+            else:
+                raise ValueError
 
     def calc_weight(self, mcs: Union[E_MCS, G_MCS], ue_list: List[UserEquipment], gnb_spaces: Tuple[Space],
                     enb_spaces: Tuple[Space]) -> Dict[str, Dict[str, float]]:
-        for ue in ue_list:
-            # fetch the index of the first RB with the mcs in the ue
-            idx_rb: int = -1
-            for i, rb in enumerate((ue.gnb_info if isinstance(mcs, G_MCS) else ue.enb_info).rb):
-                if rb.mcs is mcs:
-                    idx_rb: int = i
-                    break
+        restore_nb_ue: RestoreNodebUE = RestoreNodebUE(self)
 
+        weight: Dict[str, Dict[str, float]] = {}
+        num_of_bu_origin: int = self._calc_num_bu(self.gue_allocated + self.due_allocated + self.eue_allocated)
+        for ue in ue_list:
+            weight[str(ue.uuid)] = {}
             if ue.ue_type == UEType.G or ue.ue_type == UEType.D:
                 for space in gnb_spaces:
-                    if ue.numerology_in_use in space.numerology:
-                        # 每放一個RB，檢查mcs是否<目前(未搬移)，if <: continue，else
-                        pass
+                    self.ue_to_space(ue, space, mcs)
+                    num_of_bu_new: int = self._calc_num_bu(self.gue_allocated + self.due_allocated + self.eue_allocated)
+                    weight[str(ue.uuid)][str(space.uuid)] = num_of_bu_origin - num_of_bu_new
+                    assert weight[str(ue.uuid)][str(space.uuid)] >= 0, "There are UE getting lower mcs than before."
+                    restore_nb_ue.restore()
             if ue.ue_type == UEType.E or ue.ue_type == UEType.D:
                 for space in enb_spaces:
-                    pass
+                    restore_nb_ue.restore()
+        return weight
+
+    def ue_to_space(self, ue: UserEquipment, space: Space, mcs: Union[E_MCS, G_MCS]) -> bool:
+        for numerology in space.numerology:
+            if ue.numerology_in_use is numerology[0]:
+                # the space can place at least one RB of the numerology the UE is using
+                bu_i: int = space.absolute_position[0]
+                bu_j: int = space.absolute_position[1]
+                while True:
+                    if not self.gnb.frame.layer[space.layer_idx].allocate_resource_block(bu_i, bu_j, ue):
+                        # UE overlapped with itself
+                        # the coordination of next RB
+                        if bu := space.next_rb(bu_i, bu_j, ue.numerology_in_use):
+                            bu_i: int = bu[0]
+                            bu_j: int = bu[1]
+                            continue
+                        else:
+                            # running out of space
+                            return False
+
+                    self.channel_model.sinr_rb(ue.gnb_info.rb[-1])
+                    if ue.gnb_info.rb[-1].mcs.efficiency <= mcs.efficiency:
+                        # the mcs of new RB is too bad
+                        ue.gnb_info.rb.pop()
+                        # the coordination of next RB
+                        if bu := space.next_rb(bu_i, bu_j, ue.numerology_in_use):
+                            bu_i: int = bu[0]
+                            bu_j: int = bu[1]
+                            continue
+                        else:
+                            # running out of space
+                            return False
+
+                    self.adjust_mcs(ue)
+                    if ue.gnb_info.rb[-1].mcs.efficiency > mcs.efficiency:
+                        return self.effected_ue()
+
+                    # the coordination of next RB
+                    if bu := space.next_rb(bu_i, bu_j, ue.numerology_in_use):
+                        bu_i: int = bu[0]
+                        bu_j: int = bu[1]
+                    else:
+                        # running out of space
+                        return False
+
+    def effected_ue(self) -> bool:
+        while True:
+            is_all_adjusted: bool = True
+            for ue in self.gue_allocated + self.due_allocated + self.eue_allocated:
+                if ue.is_to_recalculate_mcs:
+                    is_all_adjusted: bool = False
+                    self.channel_model.sinr_ue(ue)
+                    if not self.adjust_mcs(ue, is_hungarian=True):
+                        # the ue moving to the space lower down a original UEs' MCS
+                        return False
+            if is_all_adjusted:
+                # the space is suitable for this ue
+                return True
+
+    @staticmethod
+    def _calc_num_bu(ue_list: List[UserEquipment]) -> int:
+        # for weight
+        num_of_bu: int = 0
+        for ue in ue_list:
+            if hasattr(ue, 'gnb_info'):
+                num_of_bu += len(ue.gnb_info.rb) * 16
+            if hasattr(ue, 'enb_info'):
+                num_of_bu += len(ue.enb_info.rb) * 8
+        return num_of_bu
 
     @staticmethod
     def matching(graph) -> List[Tuple[Tuple[str, str], float]]:
@@ -172,6 +264,8 @@ class Phase3:
                 1. Do not input too many edges. Ignore the edge <= 0.
             """
             output: List[Tuple[Tuple[str, str], float]] = algorithm.find_matching(graph)
+            if not output:  # return False
+                raise ValueError
         return output
 
     def calc_system_throughput(self) -> float:
@@ -201,3 +295,59 @@ class Phase3:
             return lowest_mcs.value * len(rb_list)
         else:
             return 0.0
+
+
+class RestoreNodebUE:
+    def __init__(self, phase3: Phase3):
+        self.phase3: Phase3 = phase3
+        self._copy_gnb: GNodeB = copy.deepcopy(phase3.gnb)
+        self._copy_enb: ENodeB = copy.deepcopy(phase3.enb)
+        self._copy_g_allo: List[UserEquipment, ...] = copy.deepcopy(phase3.gue_allocated)
+        self._copy_g_unallo: List[UserEquipment, ...] = copy.deepcopy(phase3.gue_unallocated)
+        self._copy_d_allo: List[UserEquipment, ...] = copy.deepcopy(phase3.due_allocated)
+        self._copy_d_unallo: List[UserEquipment, ...] = copy.deepcopy(phase3.due_unallocated)
+        self._copy_e_allo: List[UserEquipment, ...] = copy.deepcopy(phase3.eue_allocated)
+        self._copy_e_unallo: List[UserEquipment, ...] = copy.deepcopy(phase3.eue_unallocated)
+
+    def restore(self):
+        self.phase3.gnb = self._copy_gnb
+        self.phase3.enb = self._copy_enb
+        self.phase3.gue_allocated = self._copy_g_allo
+        self.phase3.gue_unallocated = self._copy_g_unallo
+        self.phase3.due_allocated = self._copy_d_allo
+        self.phase3.due_unallocated = self._copy_d_unallo
+        self.phase3.eue_allocated = self._copy_e_allo
+        self.phase3.eue_unallocated = self._copy_e_unallo
+
+
+if __name__ == '__main__':
+    eNB: ENodeB = ENodeB(coordinate=Coordinate(0.0, 0.0), radius=0.5)
+    gNB: GNodeB = GNodeB(coordinate=Coordinate(0.4, 0.0), radius=0.1)
+    cochannel_index: Dict = cochannel(eNB, gNB)
+    layer_e: Layer = eNB.frame.layer[0]
+    layer_0: Layer = gNB.frame.layer[0]
+    layer_1: Layer = gNB.frame.layer[1]
+    layer_2: Layer = gNB.frame.layer[2]
+
+    # GUE, N2
+    gue_1: UserEquipment = GUserEquipment(40, [Numerology.N1, Numerology.N2], Coordinate(0.43, 0.0))
+    gue_1.register_nb(eNB, gNB)
+    gue_1.set_numerology(Numerology.N2)
+    layer_0.allocate_resource_block(0, 0, gue_1)
+    layer_0.allocate_resource_block(0, 4, gue_1)
+
+    # GUE, N2
+    gue_2: UserEquipment = GUserEquipment(40, [Numerology.N1, Numerology.N2], Coordinate(0.5, 0.0))
+    gue_2.register_nb(eNB, gNB)
+    gue_2.set_numerology(Numerology.N2)
+    layer_0.allocate_resource_block(35, 0, gue_2)
+    layer_0.allocate_resource_block(35, 4, gue_2)
+
+    cm = ChannelModel(cochannel_index)
+    p3 = Phase3(cm, gNB, eNB, ((gue_1, gue_2), (), ()), ((), (), ()))
+    cm.sinr_ue(gue_1)
+    p3.adjust_mcs(gue_1)
+    cm.sinr_ue(gue_2)
+    p3.adjust_mcs(gue_2)
+    empty_space = empty_space(layer_2)
+    p3.calc_weight(G_MCS.CQI1_QPSK, [gue_1, gue_2], empty_space, ())

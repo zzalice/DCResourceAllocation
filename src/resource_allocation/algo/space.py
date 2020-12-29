@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import dataclasses
 from copy import deepcopy
-from typing import List, Tuple
+from typing import List, Tuple, Union
 from uuid import UUID, uuid4
 
 from src.resource_allocation.ds.frame import Layer
@@ -12,7 +12,7 @@ from src.resource_allocation.ds.util_enum import Numerology
 class Space:
     def __init__(self, layer: Layer, starting_i: int, starting_j: int, ending_i: int, ending_j: int):
         self.uuid: UUID = uuid4()
-        self.layer: Layer = layer
+        self.layer_idx: int = layer.layer_index
         self.absolute_position: Tuple[int, int, int, int] = (starting_i, starting_j, ending_i, ending_j)
         self.numerology: List[Tuple[Numerology, int]] = self.possible_numerology()
 
@@ -20,10 +20,8 @@ class Space:
         available_numerology: List[Tuple[Numerology, int]] = []
         #                    Tuple[the type of numerology that fits this space, the number of RBs can be placed in here]
         for numerology in Numerology:
-            numerology_freq: int = numerology.value[0]
-            numerology_time: int = numerology.value[1]
-            num_rb_freq: int = self.height // numerology_freq
-            num_rb_time: int = self.width // numerology_time
+            num_rb_freq: int = self.height // numerology.freq
+            num_rb_time: int = self.width // numerology.time
             num_rb: int = num_rb_freq * num_rb_time
             if num_rb:
                 available_numerology.append((numerology, num_rb))
@@ -31,11 +29,26 @@ class Space:
 
     @property
     def width(self) -> int:
-        return self.absolute_position[3] - self.absolute_position[1]
+        return self.absolute_position[3] - self.absolute_position[1] + 1
 
     @property
     def height(self) -> int:
-        return self.absolute_position[2] - self.absolute_position[0]
+        return self.absolute_position[2] - self.absolute_position[0] + 1
+
+    def next_rb(self, bu_i: int, bu_j: int, numerology: Numerology) -> Union[Tuple[int, int], bool]:
+        # the coordination of next RB
+        if bu_j + numerology.time < self.absolute_position[3]:
+            # The width of the space can contain another RB.
+            bu_j += numerology.time
+            return bu_i, bu_j
+        elif bu_i + numerology.freq < self.absolute_position[2]:
+            # new row
+            bu_i += numerology.freq
+            bu_j = self.absolute_position[1]
+            return bu_i, bu_j
+        else:
+            # running out of space
+            return False
 
 
 @dataclasses.dataclass(order=True, unsafe_hash=True)

@@ -55,10 +55,7 @@ class Layer:
         self._cache_is_valid: bool = False  # valid bit (for _available_block)
         self._bu_status: Tuple[Tuple[bool, ...], ...] = tuple()
 
-    def allocate_resource_block(self, offset_i: int, offset_j: int, ue: UserEquipment):
-        if not ue.is_allocated:
-            ue.is_allocated = True
-
+    def allocate_resource_block(self, offset_i: int, offset_j: int, ue: UserEquipment) -> bool:
         tmp_numerology: Numerology = ue.numerology_in_use
         if self.nodeb.nb_type == NodeBType.E and ue.ue_type == UEType.D:
             ue.numerology_in_use = LTEPhysicalResourceBlock.E  # TODO: refactor or redesign
@@ -69,16 +66,22 @@ class Layer:
         for i in range(ue.numerology_in_use.freq):
             for j in range(ue.numerology_in_use.time):
                 bu: BaseUnit = self.bu[offset_i + i][offset_j + j]
-                # UE shouldn't overlap with itself
                 for overlapped_rb in bu.overlapped_rb:
-                    assert overlapped_rb.ue is not ue, "The new RB will overlap with the UE itself."
+                    if overlapped_rb.ue is ue:  # The new RB will overlap with the UE itself
+                        return False
+                    else:
+                        overlapped_rb.ue.is_to_recalculate_mcs = True   # mark the effected UEs to recalculate
 
                 bu.set_up_bu(i, j, resource_block)
         (ue.gnb_info if self.nodeb.nb_type == NodeBType.G else ue.enb_info).rb.append(resource_block)
 
+        if not ue.is_allocated:
+            ue.is_allocated = True
+
         self._cache_is_valid: bool = False  # set cache as invalid (for _available_block)
 
         ue.numerology_in_use = tmp_numerology  # restore
+        return True
 
     def allocate_zone(self, zone: Zone) -> bool:
         is_allocatable: bool = self.available_bandwidth >= zone.zone_freq
