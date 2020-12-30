@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import dataclasses
 from copy import deepcopy
-from typing import List, Tuple, Union
+from typing import List, Optional, Tuple
 from uuid import UUID, uuid4
 
 from src.resource_allocation.ds.frame import Layer
@@ -21,38 +21,7 @@ class Space:
         self.ending_j: int = ending_j
         self._numerology: List[Tuple[Numerology, int]] = self.possible_numerology()
 
-    def possible_numerology(self) -> List[Tuple[Numerology, int]]:
-        available_numerology: List[Tuple[Numerology, int]] = []
-        #                    Tuple[the type of numerology that fits this space, the number of RBs can be placed in here]
-        for numerology in Numerology:
-            num_rb_freq: int = self.height // numerology.freq
-            num_rb_time: int = self.width // numerology.time
-            num_rb: int = num_rb_freq * num_rb_time
-            if num_rb:
-                available_numerology.append((numerology, num_rb))
-        return available_numerology
-
-    @property
-    def numerology(self) -> List[Numerology]:
-        numerology: List[Numerology] = []
-        for n in self._numerology:
-            numerology.append(n[0])
-        return numerology
-
-    def num_of_rb(self, numerology: Numerology) -> int:
-        for n in self._numerology:
-            if numerology is n[0]:
-                return n[1]
-
-    @property
-    def width(self) -> int:
-        return self.ending_j - self.starting_j + 1
-
-    @property
-    def height(self) -> int:
-        return self.ending_i - self.starting_i + 1
-
-    def next_rb(self, bu_i: int, bu_j: int, numerology: Numerology) -> Union[Tuple[int, int], bool]:
+    def next_rb(self, bu_i: int, bu_j: int, numerology: Numerology) -> Optional[Tuple[int, int]]:
         if self.nb.nb_type == NodeBType.E:
             numerology = LTEPhysicalResourceBlock.E  # TODO: refactor or redesign
 
@@ -71,7 +40,38 @@ class Space:
             return bu_i, bu_j
         else:
             # running out of space
-            return False
+            return None
+
+    def possible_numerology(self) -> List[Tuple[Numerology, int]]:
+        available_numerology: List[Tuple[Numerology, int]] = []
+        #                    Tuple[the type of numerology that fits this space, the number of RBs can be placed in here]
+        for numerology in Numerology:
+            num_rb_freq: int = self.height // numerology.freq
+            num_rb_time: int = self.width // numerology.time
+            num_rb: int = num_rb_freq * num_rb_time
+            if num_rb:
+                available_numerology.append((numerology, num_rb))
+        return available_numerology
+
+    def num_of_rb(self, numerology: Numerology) -> int:
+        for n in self._numerology:
+            if numerology is n[0]:
+                return n[1]
+
+    @property
+    def numerology(self) -> List[Numerology]:
+        numerology: List[Numerology] = []
+        for n in self._numerology:
+            numerology.append(n[0])
+        return numerology
+
+    @property
+    def width(self) -> int:
+        return self.ending_j - self.starting_j + 1
+
+    @property
+    def height(self) -> int:
+        return self.ending_i - self.starting_i + 1
 
 
 @dataclasses.dataclass(order=True, unsafe_hash=True)
