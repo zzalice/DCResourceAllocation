@@ -46,7 +46,7 @@ if __name__ == '__main__':
     e_ue_list_allocated, e_ue_list_unallocated = divid_ue(e_ue_list)
     d_ue_list_unallocated = divid_ue(d_ue_list)[1]
 
-    if visualize_the_algo is True:
+    if visualize_the_algo:
         with open(visualization_file_path + ".P", "wb") as file:
             pickle.dump(["Phase2",
                          g_nb.frame, e_nb.frame, 0,
@@ -61,7 +61,7 @@ if __name__ == '__main__':
     phase3.increase_resource_efficiency()
     system_throughput: float = phase3.calc_system_throughput()
 
-    if visualize_the_algo is True:
+    if visualize_the_algo:
         with open(visualization_file_path + ".P", "ab+") as file:
             pickle.dump(["Phase3",
                          g_nb.frame, e_nb.frame, system_throughput,

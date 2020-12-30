@@ -6,15 +6,20 @@ from typing import List, Tuple, Union
 from uuid import UUID, uuid4
 
 from src.resource_allocation.ds.frame import Layer
-from src.resource_allocation.ds.util_enum import Numerology
+from src.resource_allocation.ds.nodeb import NodeB
+from src.resource_allocation.ds.util_enum import LTEPhysicalResourceBlock, NodeBType, Numerology
 
 
 class Space:
     def __init__(self, layer: Layer, starting_i: int, starting_j: int, ending_i: int, ending_j: int):
         self.uuid: UUID = uuid4()
-        self.layer_idx: int = layer.layer_index
-        self.absolute_position: Tuple[int, int, int, int] = (starting_i, starting_j, ending_i, ending_j)
-        self.numerology: List[Tuple[Numerology, int]] = self.possible_numerology()
+        self.nb: NodeB = layer.nodeb
+        self.layer: Layer = layer
+        self.starting_i: int = starting_i
+        self.starting_j: int = starting_j
+        self.ending_i: int = ending_i
+        self.ending_j: int = ending_j
+        self._numerology: List[Tuple[Numerology, int]] = self.possible_numerology()
 
     def possible_numerology(self) -> List[Tuple[Numerology, int]]:
         available_numerology: List[Tuple[Numerology, int]] = []
@@ -28,23 +33,41 @@ class Space:
         return available_numerology
 
     @property
+    def numerology(self) -> List[Numerology]:
+        numerology: List[Numerology] = []
+        for n in self._numerology:
+            numerology.append(n[0])
+        return numerology
+
+    def num_of_rb(self, numerology: Numerology) -> int:
+        for n in self._numerology:
+            if numerology is n[0]:
+                return n[1]
+
+    @property
     def width(self) -> int:
-        return self.absolute_position[3] - self.absolute_position[1] + 1
+        return self.ending_j - self.starting_j + 1
 
     @property
     def height(self) -> int:
-        return self.absolute_position[2] - self.absolute_position[0] + 1
+        return self.ending_i - self.starting_i + 1
 
     def next_rb(self, bu_i: int, bu_j: int, numerology: Numerology) -> Union[Tuple[int, int], bool]:
+        if self.nb.nb_type == NodeBType.E:
+            numerology = LTEPhysicalResourceBlock.E  # TODO: refactor or redesign
+
+        end_i: int = bu_i + numerology.freq - 1
+        end_j: int = bu_j + numerology.time - 1
+
         # the coordination of next RB
-        if bu_j + numerology.time < self.absolute_position[3]:
+        if end_j + numerology.time <= self.ending_j:
             # The width of the space can contain another RB.
             bu_j += numerology.time
             return bu_i, bu_j
-        elif bu_i + numerology.freq < self.absolute_position[2]:
+        elif end_i + numerology.freq < self.ending_i:
             # new row
             bu_i += numerology.freq
-            bu_j = self.absolute_position[1]
+            bu_j = self.starting_j
             return bu_i, bu_j
         else:
             # running out of space

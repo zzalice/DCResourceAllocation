@@ -55,7 +55,7 @@ class Layer:
         self._cache_is_valid: bool = False  # valid bit (for _available_block)
         self._bu_status: Tuple[Tuple[bool, ...], ...] = tuple()
 
-    def allocate_resource_block(self, offset_i: int, offset_j: int, ue: UserEquipment) -> bool:
+    def allocate_resource_block(self, offset_i: int, offset_j: int, ue: UserEquipment) -> Optional[ResourceBlock]:
         tmp_numerology: Numerology = ue.numerology_in_use
         if self.nodeb.nb_type == NodeBType.E and ue.ue_type == UEType.D:
             ue.numerology_in_use = LTEPhysicalResourceBlock.E  # TODO: refactor or redesign
@@ -68,7 +68,7 @@ class Layer:
                 bu: BaseUnit = self.bu[offset_i + i][offset_j + j]
                 for overlapped_rb in bu.overlapped_rb:
                     if overlapped_rb.ue is ue:  # The new RB will overlap with the UE itself
-                        return False
+                        return None
                     else:
                         overlapped_rb.ue.is_to_recalculate_mcs = True   # mark the effected UEs to recalculate
 
@@ -81,7 +81,7 @@ class Layer:
         self._cache_is_valid: bool = False  # set cache as invalid (for _available_block)
 
         ue.numerology_in_use = tmp_numerology  # restore
-        return True
+        return resource_block
 
     def allocate_zone(self, zone: Zone) -> bool:
         is_allocatable: bool = self.available_bandwidth >= zone.zone_freq
@@ -167,7 +167,7 @@ class BaseUnit:
 
     @property
     def is_used(self) -> bool:
-        return self.within_rb is not None  # TODO: refactor as variable might improve the efficiency of code
+        return self.within_rb is not None
 
     @property
     def is_at_upper_left(self) -> bool:

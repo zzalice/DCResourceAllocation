@@ -1,5 +1,6 @@
 Input:
 * Be aware that the input time and frequency of the frame is in the form of the number of BUs.
+* The index i is for frequency domain and j is for time domain.
 * Better set the time domain of the eframe and gframe with the same time length.
 * The request data rate of each UE is in bit per frame,
   e.g. if frame = 1ms and the request data rate is 3Mbps.
