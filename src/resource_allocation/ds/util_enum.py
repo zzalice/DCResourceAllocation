@@ -65,12 +65,12 @@ class Numerology(_Numerology):
         return tuple(sorted(candidate_set, key=lambda x: x.mu))
 
 
-class LTEPhysicalResourceBlock(_Numerology):
+class LTEResourceBlock(_Numerology):
     E = (1, 8)  # F: 1, T: 8
 
     @staticmethod
     def gen_candidate_set() -> CandidateSet:
-        return tuple((LTEPhysicalResourceBlock.E,))
+        return tuple((LTEResourceBlock.E,))
 
 
 class _MCS(Enum):

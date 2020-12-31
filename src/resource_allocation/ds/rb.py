@@ -48,8 +48,6 @@ class ResourceBlock:
 
                 bu.clear_up_bu()
 
-
-
     @property
     def sinr(self) -> float:
         return self._sinr

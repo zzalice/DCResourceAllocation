@@ -7,7 +7,7 @@ from uuid import UUID, uuid4
 
 from src.resource_allocation.ds.frame import Layer
 from src.resource_allocation.ds.nodeb import NodeB
-from src.resource_allocation.ds.util_enum import LTEPhysicalResourceBlock, NodeBType, Numerology
+from src.resource_allocation.ds.util_enum import LTEResourceBlock, NodeBType, Numerology
 
 
 class Space:
@@ -23,7 +23,7 @@ class Space:
 
     def next_rb(self, bu_i: int, bu_j: int, numerology: Numerology) -> Optional[Tuple[int, int]]:
         if self.nb.nb_type == NodeBType.E:
-            numerology = LTEPhysicalResourceBlock.E  # TODO: refactor or redesign
+            numerology = LTEResourceBlock.E  # TODO: refactor or redesign
 
         end_i: int = bu_i + numerology.freq - 1
         end_j: int = bu_j + numerology.time - 1

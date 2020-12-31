@@ -102,7 +102,7 @@ class Phase3:
                 else:
                     worst_enb_rb: Optional[ResourceBlock] = None
                     worst_enb_rb_eff: float = 0.0
-                worst_rb: ResourceBlock = worst_gnb_rb if worst_gnb_rb_eff > worst_enb_rb_eff else worst_enb_rb
+                worst_rb: ResourceBlock = worst_gnb_rb if worst_gnb_rb_eff < worst_enb_rb_eff else worst_enb_rb
                 if isinstance(worst_rb.mcs, G_MCS):
                     tmp_ue_throughput: float = self.throughput_ue(ue.gnb_info.rb[:-1]) + self.throughput_ue(
                         ue.enb_info.rb)
