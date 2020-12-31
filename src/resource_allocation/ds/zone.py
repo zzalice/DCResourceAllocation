@@ -5,7 +5,7 @@ from typing import List, Tuple, TYPE_CHECKING, Union
 
 from .eutran import ENodeB
 from .ngran import GNodeB
-from .util_enum import E_MCS, G_MCS, LTEPhysicalResourceBlock, NodeBType, UEType
+from .util_enum import E_MCS, G_MCS, LTEResourceBlock, NodeBType, UEType
 
 if TYPE_CHECKING:
     from .ue import UserEquipment
@@ -22,7 +22,7 @@ class Zone:
                 assert ue.ue_type == UEType.D or ue.ue_type == UEType.E  # TODO: refactor or redesign
 
         self.ue_list: Tuple[UserEquipment] = ue_list
-        self._numerology = LTEPhysicalResourceBlock.E if nodeb.nb_type == NodeBType.E else ue_list[0].numerology_in_use
+        self._numerology = LTEResourceBlock.E if nodeb.nb_type == NodeBType.E else ue_list[0].numerology_in_use
         # TODO: refactor or redesign
 
         # calculate the total number of BU in time domain if RBs are lined in a row

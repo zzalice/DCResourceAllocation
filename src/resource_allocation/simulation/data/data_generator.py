@@ -7,7 +7,7 @@ from typing import Dict, Tuple
 from src.resource_allocation.ds.cochannel import cochannel
 from src.resource_allocation.ds.eutran import ENodeB, EUserEquipment
 from src.resource_allocation.ds.ngran import DUserEquipment, GNodeB, GUserEquipment
-from src.resource_allocation.ds.util_enum import LTEPhysicalResourceBlock, Numerology, UEType
+from src.resource_allocation.ds.util_enum import LTEResourceBlock, Numerology, UEType
 from src.resource_allocation.ds.util_type import CandidateSet, Coordinate
 
 
@@ -38,7 +38,7 @@ if __name__ == '__main__':
         EUE_COUNT,
         tuple(random.randrange(100_000 // sec_to_frame, 3_000_000 // sec_to_frame + 1, 10_000 // sec_to_frame) for _ in
               range(EUE_COUNT)),
-        LTEPhysicalResourceBlock.gen_candidate_set() * EUE_COUNT,  # dummy (unused)
+        LTEResourceBlock.gen_candidate_set() * EUE_COUNT,  # dummy (unused)
         tuple(Coordinate.random_gen_coordinate(UEType.E, e_nb, g_nb) for _ in range(EUE_COUNT))
     )
 

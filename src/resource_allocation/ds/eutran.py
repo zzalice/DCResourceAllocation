@@ -1,6 +1,6 @@
 from .nodeb import NodeB
 from .ue import UserEquipment
-from .util_enum import LTEPhysicalResourceBlock, NodeBType, UEType
+from .util_enum import LTEResourceBlock, NodeBType, UEType
 from .util_type import CandidateSet, Coordinate
 
 
@@ -18,5 +18,5 @@ class EUserEquipment(UserEquipment):
         self.ue_type: UEType = UEType.E
         del self.gnb_info
 
-        self.candidate_set: CandidateSet = (LTEPhysicalResourceBlock.E,)
-        self.numerology_in_use: LTEPhysicalResourceBlock = LTEPhysicalResourceBlock.E
+        self.candidate_set: CandidateSet = (LTEResourceBlock.E,)
+        self.numerology_in_use: LTEResourceBlock = LTEResourceBlock.E

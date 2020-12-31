@@ -217,7 +217,7 @@ class ChannelModel:
 if __name__ == '__main__':
     from src.resource_allocation.ds.eutran import EUserEquipment
     from src.resource_allocation.ds.ngran import DUserEquipment, GUserEquipment
-    from src.resource_allocation.ds.util_enum import LTEPhysicalResourceBlock, Numerology
+    from src.resource_allocation.ds.util_enum import LTEResourceBlock, Numerology
 
     eNB: ENodeB = ENodeB(radius=0.5, coordinate=Coordinate(0.0, 0.0))
     gNB: GNodeB = GNodeB(radius=0.1, coordinate=Coordinate(0.4, 0.0))

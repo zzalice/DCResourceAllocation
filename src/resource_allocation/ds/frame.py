@@ -3,7 +3,7 @@ from __future__ import annotations
 from typing import List, Optional, Tuple, TYPE_CHECKING, Union
 
 from .rb import ResourceBlock
-from .util_enum import E_MCS, G_MCS, LTEPhysicalResourceBlock, NodeBType, Numerology, UEType
+from .util_enum import E_MCS, G_MCS, LTEResourceBlock, NodeBType, Numerology, UEType
 
 if TYPE_CHECKING:
     from .eutran import ENodeB
@@ -58,9 +58,11 @@ class Layer:
     def allocate_resource_block(self, offset_i: int, offset_j: int, ue: UserEquipment) -> Optional[ResourceBlock]:
         tmp_numerology: Numerology = ue.numerology_in_use
         if self.nodeb.nb_type == NodeBType.E and ue.ue_type == UEType.D:
-            ue.numerology_in_use = LTEPhysicalResourceBlock.E  # TODO: refactor or redesign
+            ue.numerology_in_use = LTEResourceBlock.E  # TODO: refactor or redesign
 
         assert offset_i + ue.numerology_in_use.freq <= self.FREQ and offset_j + ue.numerology_in_use.time <= self.TIME, "The RB is not in the legal domain of the frame."
+        if self.nodeb.nb_type == NodeBType.E:
+            assert offset_j % LTEResourceBlock.E.time == 0, "The RB in LTE frame should be aligned by slot."
 
         resource_block: ResourceBlock = ResourceBlock(self, offset_i, offset_j, ue)
         for i in range(ue.numerology_in_use.freq):

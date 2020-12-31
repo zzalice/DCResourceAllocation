@@ -1,19 +1,15 @@
 import copy
-import pickle
 from typing import Dict, List, Optional, Tuple, Union
 
 from hungarian_algorithm import algorithm
 
 from src.channel_model.sinr import ChannelModel
 from src.resource_allocation.algo.space import empty_space, Space
-from src.resource_allocation.ds.cochannel import cochannel
 from src.resource_allocation.ds.eutran import ENodeB
-from src.resource_allocation.ds.frame import Layer
-from src.resource_allocation.ds.ngran import GNodeB, GUserEquipment
+from src.resource_allocation.ds.ngran import GNodeB
 from src.resource_allocation.ds.rb import ResourceBlock
 from src.resource_allocation.ds.ue import UserEquipment
-from src.resource_allocation.ds.util_enum import E_MCS, G_MCS, NodeBType, Numerology, UEType
-from src.resource_allocation.ds.util_type import Coordinate
+from src.resource_allocation.ds.util_enum import E_MCS, G_MCS, NodeBType, UEType
 
 
 class Phase3:
@@ -95,14 +91,14 @@ class Phase3:
                     worst_gnb_rb_eff: float = worst_gnb_rb.mcs.efficiency
                 else:
                     worst_gnb_rb: Optional[ResourceBlock] = None
-                    worst_gnb_rb_eff: float = 0.0
+                    worst_gnb_rb_eff: float = float("inf")
                 if ue.enb_info.rb:
                     worst_enb_rb: ResourceBlock = ue.enb_info.rb[-1]
                     worst_enb_rb_eff: float = worst_enb_rb.mcs.efficiency
                 else:
                     worst_enb_rb: Optional[ResourceBlock] = None
-                    worst_enb_rb_eff: float = 0.0
-                worst_rb: ResourceBlock = worst_gnb_rb if worst_gnb_rb_eff > worst_enb_rb_eff else worst_enb_rb
+                    worst_enb_rb_eff: float = float("inf")
+                worst_rb: ResourceBlock = worst_gnb_rb if worst_gnb_rb_eff < worst_enb_rb_eff else worst_enb_rb
                 if isinstance(worst_rb.mcs, G_MCS):
                     tmp_ue_throughput: float = self.throughput_ue(ue.gnb_info.rb[:-1]) + self.throughput_ue(
                         ue.enb_info.rb)
@@ -185,7 +181,7 @@ class Phase3:
                     is_to_try: bool = True
 
                 if is_to_try:
-                    is_usable: bool = self.ue_to_space(ue, space, mcs)
+                    is_usable: bool = self.allocated_ue_to_space(ue, space, mcs)
                     if is_usable:
                         num_of_bu_new: int = self.calc_num_bu(
                             self.gue_allocated + self.due_allocated + self.eue_allocated)
@@ -194,7 +190,7 @@ class Phase3:
                 restore_nb_ue.restore()
         return weight
 
-    def ue_to_space(self, ue: UserEquipment, space: Space, mcs: Union[E_MCS, G_MCS]) -> bool:
+    def allocated_ue_to_space(self, ue: UserEquipment, space: Space, mcs: Union[E_MCS, G_MCS]) -> bool:
         # the space can place at least one RB of the size(numerology/LTE) the UE is using
         bu_i: int = space.starting_i
         bu_j: int = space.starting_j
@@ -249,6 +245,9 @@ class Phase3:
             if is_all_adjusted:
                 # the space is suitable for this ue
                 return True
+
+    def new_ue_to_space(self):
+        pass
 
     @staticmethod
     def matching(graph) -> List[Tuple[Tuple[str, str], float]]:
@@ -338,68 +337,3 @@ class RestoreNodebUE:
         self.phase3.due_unallocated = self._copy_d_unallo
         self.phase3.eue_allocated = self._copy_e_allo
         self.phase3.eue_unallocated = self._copy_e_unallo
-
-
-if __name__ == '__main__':
-    visualize_the_algo = True
-    visualization_file_path = "../../../utils/frame_visualizer/vis_test_calc_weight"
-
-    eNB: ENodeB = ENodeB(coordinate=Coordinate(0.0, 0.0), radius=0.5)
-    gNB: GNodeB = GNodeB(coordinate=Coordinate(0.4, 0.0), radius=0.1)
-    cochannel_index: Dict = cochannel(eNB, gNB)
-    layer_e: Layer = eNB.frame.layer[0]
-    layer_0: Layer = gNB.frame.layer[0]
-    layer_1: Layer = gNB.frame.layer[1]
-    layer_2: Layer = gNB.frame.layer[2]
-
-    # GUE, N2
-    gue_1: UserEquipment = GUserEquipment(820, [Numerology.N1, Numerology.N2], Coordinate(0.45, 0.0))
-    gue_1.register_nb(eNB, gNB)
-    gue_1.set_numerology(Numerology.N2)
-    for i in range(0, 50, gue_1.numerology_in_use.freq):
-        for j in range(0, gNB.frame.frame_time, gue_1.numerology_in_use.time):
-            layer_0.allocate_resource_block(i, j, gue_1)
-
-    # GUE, N2
-    gue_2: UserEquipment = GUserEquipment(300, [Numerology.N1, Numerology.N2], Coordinate(0.5, 0.0))
-    gue_2.register_nb(eNB, gNB)
-    gue_2.set_numerology(Numerology.N2)
-    for i in range(70, 120, gue_2.numerology_in_use.freq):
-        for j in range(0, gNB.frame.frame_time, gue_2.numerology_in_use.time):
-            layer_0.allocate_resource_block(i, j, gue_2)
-
-    g_ue_list_allocated = (gue_1, gue_2)
-    g_ue_list_unallocated = ()
-    d_ue_list_allocated = ()
-    d_ue_list_unallocated = ()
-    e_ue_list_allocated = ()
-    e_ue_list_unallocated = ()
-
-    if visualize_the_algo:
-        with open(visualization_file_path + ".P", "wb") as file:
-            pickle.dump(["Phase3",
-                         gNB.frame, eNB.frame, 0,
-                         {"allocated": g_ue_list_allocated, "unallocated": g_ue_list_unallocated},
-                         {"allocated": d_ue_list_allocated, "unallocated": d_ue_list_unallocated},
-                         {"allocated": e_ue_list_allocated, "unallocated": e_ue_list_unallocated}],
-                        file)
-
-    cm = ChannelModel(cochannel_index)
-    p3 = Phase3(cm, gNB, eNB, (g_ue_list_allocated, d_ue_list_allocated, e_ue_list_allocated),
-                (g_ue_list_unallocated, d_ue_list_unallocated, e_ue_list_unallocated))
-    p3.increase_resource_efficiency()
-    # cm.sinr_ue(gue_1)
-    # p3.adjust_mcs(gue_1)
-    # cm.sinr_ue(gue_2)
-    # p3.adjust_mcs(gue_2)
-    # empty_space = empty_space(layer_2)
-    # p3.calc_weight(G_MCS.CQI1_QPSK, [gue_1, gue_2], empty_space, ())
-
-    if visualize_the_algo:
-        with open(visualization_file_path + ".P", "ab+") as file:
-            pickle.dump(["Phase3-space-efficiency",
-                         gNB.frame, eNB.frame, 0,
-                         {"allocated": g_ue_list_allocated, "unallocated": g_ue_list_unallocated},
-                         {"allocated": d_ue_list_allocated, "unallocated": d_ue_list_unallocated},
-                         {"allocated": e_ue_list_allocated, "unallocated": e_ue_list_unallocated}],
-                        file)
