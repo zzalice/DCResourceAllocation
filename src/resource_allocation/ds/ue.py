@@ -25,8 +25,8 @@ class UserEquipment:
         self.numerology_in_use: Optional[Numerology] = None
         self.enb_info: ENBInfo = ENBInfo()
         self.gnb_info: GNBInfo = GNBInfo()
-        self.is_allocated: bool = False
-        self.is_to_recalculate_mcs: bool = True
+        self._is_allocated: bool = False
+        self._is_to_recalculate_mcs: bool = False
         self.throughput: float = 0.0
 
     def set_numerology(self, numerology: Numerology):
@@ -43,9 +43,25 @@ class UserEquipment:
             self.gnb_info.nb = g_nb
             assert self.coordinate.distance_gnb <= g_nb.radius
 
+    @property
+    def is_allocated(self) -> bool:
+        return self._is_allocated
+
+    @is_allocated.setter
+    def is_allocated(self, value: bool):
+        self._is_allocated: bool = value
+        self.is_to_recalculate_mcs: bool = value
+
+    @property
+    def is_to_recalculate_mcs(self) -> bool:
+        return self._is_to_recalculate_mcs
+
+    @is_to_recalculate_mcs.setter
+    def is_to_recalculate_mcs(self, value: bool):
+        self._is_to_recalculate_mcs: bool = value
+
     def remove(self):
         self.is_allocated: bool = False
-        self.is_to_recalculate_mcs: bool = True
         self.throughput: float = 0.0
 
         # empty the allocated RBs & MCS

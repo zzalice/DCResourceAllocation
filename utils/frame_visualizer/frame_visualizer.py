@@ -16,7 +16,7 @@ class FrameRenderer:
             'table, th, td {\nborder: 1px solid black;\nfont-family: monospace;\nvertical-align: center;}',
             'th {background-color: lightgray;}',
             'td {min-width: 32px;}',
-            '.LTEPhysicalResourceBlock_E {background-color: #73A7FE;}',
+            '.LTEResourceBlock_E {background-color: #73A7FE;}',
             '.Numerology_N0 {background-color: #73A7FE;}',
             '.Numerology_N1 {background-color: #B1DE8C;}',
             '.Numerology_N2 {background-color: #F5EF97;}',
@@ -207,7 +207,8 @@ class FrameRenderer:
 
 if __name__ == '__main__':
     # file_to_visualize = "vis_20201223"
-    file_to_visualize = "vis_test_calc_weight"
+    # file_to_visualize = "vis_test_calc_weight"
+    file_to_visualize = "vis_test_phase3"
 
     frame_renderer = FrameRenderer()
     s, gf, ef, t, gue, due, eue = frame_renderer.open_file(file_to_visualize + ".P")
