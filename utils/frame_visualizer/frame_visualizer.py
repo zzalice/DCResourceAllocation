@@ -81,26 +81,22 @@ class FrameRenderer:
             self.body.append('\n</div>\n</div>')
         self.body.append('\n</div>')
 
-    def gen_ue_list(self, ue_list: Dict[str, Tuple[GUserEquipment, ...]]):
-        if ue_list['allocated']:
+    def gen_ue_list(self, ue_list: Tuple[GUserEquipment, ...], ue_status: str):
+        if ue_list:
             self.body.append(
-                f'\n<div><span class="allocated">Allocated {ue_list["allocated"][0].ue_type.name}UE:</span>')
-            self.gen_ue(ue_list['allocated'])
-        if ue_list['unallocated']:
-            self.body.append(
-                f'\n<div><span class="unallocated">Unallocated {ue_list["unallocated"][0].ue_type.name}UE:</span>')
-            self.gen_ue(ue_list['unallocated'])
+                f'\n<div><span class="{ue_status}">{ue_status} {ue_list[0].ue_type.name}UE: {len(ue_list)}</span>')
+            self.gen_ue(ue_list)
 
     def gen_layer(self, layer: Layer):
         base_unit = layer.bu
         height, width = len(base_unit), len(base_unit[0])
 
-        table_header = '<th></th>' + ''.join([f'<th>j:{i + 1}</th>' for i in range(width)])
+        table_header = '<th></th>' + ''.join([f'<th>j:{i}</th>' for i in range(width)])
 
         self.body.append('<table>')
         self.body.append(f'\n<tr>{table_header}</tr>')
         for i in range(height):
-            tr = f'<tr><th>i:{i + 1}</th>\n'
+            tr = f'<tr><th>i:{i}</th>\n'
             for j in range(width):
                 rb = base_unit[i][j].within_rb
                 ue = rb.ue.uuid.hex[:4] if rb is not None else ''
@@ -159,9 +155,12 @@ class FrameRenderer:
             self.body.append(
                 f'<div>system throughput: {(system_throughput[_s] / 1000_000) * (1000 / g_frame[_s].frame_time)} Mbps</div>')
 
-            self.gen_ue_list(g_ue_list[_s])
-            self.gen_ue_list(d_ue_list[_s])
-            self.gen_ue_list(e_ue_list[_s])
+            self.gen_ue_list(g_ue_list[_s]['allocated'], "allocated")
+            self.gen_ue_list(d_ue_list[_s]['allocated'], "allocated")
+            self.gen_ue_list(e_ue_list[_s]['allocated'], "allocated")
+            self.gen_ue_list(g_ue_list[_s]['unallocated'], "unallocated")
+            self.gen_ue_list(d_ue_list[_s]['unallocated'], "unallocated")
+            self.gen_ue_list(e_ue_list[_s]['unallocated'], "unallocated")
             self.body.append(div_end)
         self.body.append(div_end)
         return tab_title_id
@@ -206,7 +205,7 @@ class FrameRenderer:
 
 
 if __name__ == '__main__':
-    # file_to_visualize = "vis_20201223"
+    # file_to_visualize = "vis_20210102"
     # file_to_visualize = "vis_test_calc_weight"
     file_to_visualize = "vis_test_phase3"
 

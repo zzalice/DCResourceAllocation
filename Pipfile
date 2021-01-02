@@ -8,6 +8,7 @@ python_version = "3.8"
 
 [packages]
 termcolor = "*"
+mock = "*"
 
 [dev-packages]
 pytest = "*"

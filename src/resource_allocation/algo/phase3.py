@@ -69,7 +69,7 @@ class Phase3:
             if is_all_adjusted:
                 break
 
-    def adjust_mcs(self, ue: UserEquipment, is_hungarian: bool = False):
+    def adjust_mcs(self, ue: UserEquipment, is_hungarian: bool = False) -> bool:
         # TODO: 反向操作，先看SINR最好的RB需要幾個RB > 更新MCS > 再算一次需要幾個RB > 刪掉多餘SINR較差的RB (RB照freq time排序)
         if hasattr(ue, 'gnb_info'):
             ue.gnb_info.rb.sort(key=lambda x: x.sinr, reverse=True)
@@ -134,7 +134,7 @@ class Phase3:
                     else:
                         ue.enb_info.mcs = None
                 ue.is_to_recalculate_mcs = False
-                break
+                return True
             elif is_hungarian:
                 # the temporarily moved UE has negative effected to this UE
                 return False
@@ -150,7 +150,7 @@ class Phase3:
                 elif ue.ue_type == UEType.E:
                     self.eue_allocated.remove(ue)
                     self.eue_unallocated.append(ue)
-                break
+                return True
             else:
                 raise ValueError
 
@@ -208,8 +208,10 @@ class Phase3:
                     return False
 
             self.channel_model.sinr_rb(rb)
-            if rb.mcs.efficiency < (ue.gnb_info if isinstance(rb.mcs, G_MCS) else ue.enb_info).mcs.efficiency:
-                # the mcs of new RB is lower than the mcs the UE is currently using
+            if (ue.gnb_info if isinstance(rb.mcs, G_MCS) else ue.enb_info).mcs and (
+                    rb.mcs.efficiency < (ue.gnb_info if isinstance(rb.mcs, G_MCS) else ue.enb_info).mcs.efficiency):
+                # if ('ue' is allocated to the type of BS the 'rb' is allocated)
+                #    and (the mcs of new RB is lower than the mcs the UE is currently using)
                 rb.remove()
                 # the coordination of next RB
                 if bu := space.next_rb(bu_i, bu_j, ue.numerology_in_use):

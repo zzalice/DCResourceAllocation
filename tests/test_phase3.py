@@ -2,41 +2,74 @@ import pickle
 
 import pytest
 
+from src.channel_model.sinr import ChannelModel
+from src.resource_allocation.algo.phase3 import Phase3, RestoreNodebUE
+from src.resource_allocation.algo.space import Space
+from src.resource_allocation.ds.eutran import ENodeB, EUserEquipment
+from src.resource_allocation.ds.ngran import DUserEquipment, GNodeB, GUserEquipment
+from src.resource_allocation.ds.util_enum import E_MCS, G_MCS, LTEResourceBlock, Numerology, SINRtoMCS
+from src.resource_allocation.ds.util_type import Coordinate
+from src.resource_allocation.ds.zone import Zone
+
 visualize_the_algo = True
 
 
-@pytest.fixture
+@pytest.fixture(scope="module")
 def enb():
-    from src.resource_allocation.ds.util_type import Coordinate
-    from src.resource_allocation.ds.eutran import ENodeB
     return ENodeB(coordinate=Coordinate(0.0, 0.0), radius=0.5)
 
 
-@pytest.fixture()
+@pytest.fixture(scope="module")
 def gnb():
-    from src.resource_allocation.ds.ngran import GNodeB
-    from src.resource_allocation.ds.util_type import Coordinate
     return GNodeB(coordinate=Coordinate(0.4, 0.0), radius=0.1)
 
 
-@pytest.fixture()
+@pytest.fixture(scope="module")
 def layer_g_0(gnb):
     return gnb.frame.layer[0]
 
 
-@pytest.fixture()
+@pytest.fixture(scope="module")
+def layer_g_1(gnb):
+    return gnb.frame.layer[1]
+
+
+@pytest.fixture(scope="module")
+def layer_g_2(gnb):
+    return gnb.frame.layer[2]
+
+
+@pytest.fixture(scope="module")
 def layer_e(enb):
     return enb.frame.layer[0]
 
 
-@pytest.fixture()
-def gue(gnb, enb, layer_g_0):
-    from src.resource_allocation.ds.ngran import GUserEquipment
-    from src.resource_allocation.ds.util_enum import Numerology
-    from src.resource_allocation.ds.util_type import Coordinate
-    from src.resource_allocation.ds.zone import Zone
+@pytest.fixture(scope="module")
+def channel_model(gnb, enb):
+    """先讓系統外的干擾=0，也就是沒有random基地台的干擾"""
+    cochannel_bw = 25
+    cm = ChannelModel({"g_freq": gnb.frame.frame_freq,
+                       "e_freq": enb.frame.frame_freq,
+                       "co_bandwidth": cochannel_bw})
+    channel_bs = []
+    for i in range(enb.frame.frame_freq + gnb.frame.frame_freq - cochannel_bw):
+        channel_bs.append([])
+    cm.channel_bs = tuple(channel_bs)
+    return cm
 
-    gue = GUserEquipment(820, [Numerology.N1, Numerology.N2], Coordinate(0.45, 0.0))
+
+@pytest.fixture(scope="module")
+def phase3(channel_model, gnb, enb, gue, due_gnb, eue, due_enb, due_cross_bs, gue_out_one, gue_out_two,
+           gue_moderate_1st, gue_moderate_2nd, gue_excellent):
+    return Phase3(channel_model, gnb, enb,
+                  ((gue, gue_out_one, gue_out_two, gue_moderate_1st, gue_moderate_2nd, gue_excellent),
+                   (due_gnb, due_enb, due_cross_bs), (eue,)),
+                  ((), (), ()))
+
+
+@pytest.fixture(scope="module")
+def gue(gnb, enb, layer_g_0):
+    gue = GUserEquipment(820, [Numerology.N1, Numerology.N2], Coordinate(0.45, 0.0))  # CQI 15
     gue.register_nb(enb, gnb)
     gue.set_numerology(Numerology.N2)
     zone: Zone = Zone((gue,), gnb)
@@ -45,12 +78,8 @@ def gue(gnb, enb, layer_g_0):
     return gue
 
 
-@pytest.fixture()
+@pytest.fixture(scope="module")
 def due_gnb(enb, gnb, layer_g_0):
-    pass
-    from src.resource_allocation.ds.ngran import DUserEquipment
-    from src.resource_allocation.ds.util_enum import Numerology
-    from src.resource_allocation.ds.util_type import Coordinate
     due = DUserEquipment(264, [Numerology.N1, Numerology.N2], Coordinate(0.5, 0.0))
     due.register_nb(enb, gnb)
     due.set_numerology(Numerology.N2)
@@ -64,11 +93,8 @@ def due_gnb(enb, gnb, layer_g_0):
     return due
 
 
-@pytest.fixture()
+@pytest.fixture(scope="module")
 def eue(gnb, enb, layer_e):
-    from src.resource_allocation.ds.eutran import EUserEquipment
-    from src.resource_allocation.ds.util_enum import LTEResourceBlock
-    from src.resource_allocation.ds.util_type import Coordinate
     eue = EUserEquipment(395, [LTEResourceBlock.E], Coordinate(0.45, 0.0))
     eue.register_nb(enb, gnb)
     e_sinr = 6.4
@@ -81,12 +107,8 @@ def eue(gnb, enb, layer_e):
     return eue
 
 
-@pytest.fixture()
+@pytest.fixture(scope="module")
 def due_enb(gnb, enb, layer_e):
-    from src.resource_allocation.ds.ngran import DUserEquipment
-    from src.resource_allocation.ds.util_enum import Numerology
-    from src.resource_allocation.ds.util_type import Coordinate
-    from src.resource_allocation.ds.util_enum import LTEResourceBlock
     due = DUserEquipment(395, [Numerology.N2], Coordinate(0.45, 0.0))
     due.register_nb(enb, gnb)
     e_sinr = 10
@@ -100,12 +122,9 @@ def due_enb(gnb, enb, layer_e):
     return due
 
 
-@pytest.fixture()
+@pytest.fixture(scope="module")
 def due_cross_bs(gnb, enb, layer_g_0, layer_e):
-    from src.resource_allocation.ds.ngran import DUserEquipment
-    from src.resource_allocation.ds.util_type import Coordinate
-    from src.resource_allocation.ds.util_enum import Numerology
-    from src.resource_allocation.ds.util_enum import LTEResourceBlock
+    """這個UE跨基地台，adjust_mcs仍然能依據mcs efficiency移除較差的RB"""
     due = DUserEquipment(656, [Numerology.N1, Numerology.N2], Coordinate(0.48, 0.0))
     due.register_nb(enb, gnb)
     due.set_numerology(Numerology.N2)
@@ -124,11 +143,9 @@ def due_cross_bs(gnb, enb, layer_g_0, layer_e):
     return due
 
 
-@pytest.fixture()
+@pytest.fixture(scope="module")
 def gue_out_one(gnb, enb, layer_g_0):
-    from src.resource_allocation.ds.ngran import GUserEquipment
-    from src.resource_allocation.ds.util_enum import Numerology
-    from src.resource_allocation.ds.util_type import Coordinate
+    """倒數第二的RB沒有out of range，所“暫時移除最差的RB”這個方法仍然能讓這個UE不被淘汰"""
     gue = GUserEquipment(22, [Numerology.N1], Coordinate(0.5, 0.0))
     gue.register_nb(enb, gnb)
     gue.set_numerology(Numerology.N1)
@@ -142,11 +159,9 @@ def gue_out_one(gnb, enb, layer_g_0):
     return gue
 
 
-@pytest.fixture()
+@pytest.fixture(scope="module")
 def gue_out_two(gnb, enb, layer_g_0):
-    from src.resource_allocation.ds.ngran import GUserEquipment
-    from src.resource_allocation.ds.util_enum import Numerology
-    from src.resource_allocation.ds.util_type import Coordinate
+    """倒數兩個RB CQI都=0，out of range，即使有一個最好的RB能滿足QoS，用“暫時移除最差的RB”這個方法仍然會將這個UE剔除"""
     gue = GUserEquipment(22, [Numerology.N1], Coordinate(0.5, 0.0))
     gue.register_nb(enb, gnb)
     gue.set_numerology(Numerology.N1)
@@ -160,25 +175,43 @@ def gue_out_two(gnb, enb, layer_g_0):
     return gue
 
 
-@pytest.fixture()
-def due_is_hung(gnb, enb):
-    pass
+@pytest.fixture(scope="module")
+def gue_moderate_1st(enb, gnb, layer_g_0):
+    gue = GUserEquipment(352, [Numerology.N2], Coordinate(0.5, 0.0))
+    gue.register_nb(enb, gnb)
+    gue.set_numerology(Numerology.N2)
+    for i in range(84, 100, gue.numerology_in_use.freq):
+        for j in range(0, gnb.frame.frame_time, gue.numerology_in_use.time):
+            rb = layer_g_0.allocate_resource_block(i, j, gue)
+            rb.sinr = -1  # CQI 1
+    assert len(gue.gnb_info.rb) == 16
+    return gue
 
 
-@pytest.fixture()
-def channel_model(gnb, enb):
-    from src.channel_model.sinr import ChannelModel
-    return ChannelModel({"g_freq": gnb.frame.frame_freq,
-                         "e_freq": enb.frame.frame_freq,
-                         "co_bandwidth": 25})
+@pytest.fixture(scope="module")
+def gue_moderate_2nd(enb, gnb, layer_g_1):
+    gue = GUserEquipment(352, [Numerology.N2], Coordinate(0.5, 0.0))
+    gue.register_nb(enb, gnb)
+    gue.set_numerology(Numerology.N2)
+    for i in range(84, 100, gue.numerology_in_use.freq):
+        for j in range(0, gnb.frame.frame_time, gue.numerology_in_use.time):
+            rb = layer_g_1.allocate_resource_block(i, j, gue)
+            rb.sinr = -1  # CQI 1
+    assert len(gue.gnb_info.rb) == 16
+    return gue
 
 
-@pytest.fixture()
-def phase3(channel_model, gnb, enb, gue, due_gnb, eue, due_enb, due_cross_bs, gue_out_one, gue_out_two, due_is_hung):
-    from src.resource_allocation.algo.phase3 import Phase3
-    return Phase3(channel_model, gnb, enb,
-                  ((gue, gue_out_one, gue_out_two), (due_gnb, due_enb, due_cross_bs, due_is_hung), (eue,)),
-                  ((), (), ()))
+@pytest.fixture(scope="module")
+def gue_excellent(enb, gnb, layer_g_0):
+    gue = GUserEquipment(2956, [Numerology.N2], Coordinate(0.5, 0.0))
+    gue.register_nb(enb, gnb)
+    gue.set_numerology(Numerology.N2)
+    for i in range(100, 103, gue.numerology_in_use.freq):
+        for j in range(0, gnb.frame.frame_time, gue.numerology_in_use.time):
+            rb = layer_g_0.allocate_resource_block(i, j, gue)
+            rb.sinr = 29  # CQI 14
+    assert len(gue.gnb_info.rb) == 4
+    return gue
 
 
 def sorted_rb(rb_list):
@@ -201,28 +234,24 @@ def throughput_range(ue):
     assert ue.throughput >= ue.request_data_rate
 
 
-def test_adjust_mcs(phase3, gnb, enb, gue, due_gnb, eue, due_enb, due_cross_bs, gue_out_one, gue_out_two, due_is_hung):
+def test_adjust_mcs(phase3, gnb, enb, gue, due_gnb, eue, due_enb, due_cross_bs, gue_out_one, gue_out_two):
     if visualize_the_algo:
         with open("../utils/frame_visualizer/vis_test_phase3" + ".P", "wb") as file:
             pickle.dump(["test_adjust_mcs",
                          gnb.frame, enb.frame, 0,
-                         {"allocated": (gue, gue_out_one, gue_out_two), "unallocated": ()},
-                         {"allocated": (due_gnb, due_enb, due_cross_bs, due_is_hung), "unallocated": ()},
-                         {"allocated": (eue,), "unallocated": ()}],
+                         {"allocated": phase3.gue_allocated, "unallocated": phase3.gue_unallocated},
+                         {"allocated": phase3.due_allocated, "unallocated": phase3.due_unallocated},
+                         {"allocated": phase3.eue_allocated, "unallocated": phase3.eue_unallocated}],
                         file)
 
-    from src.resource_allocation.ds.util_enum import SINRtoMCS
-    from src.resource_allocation.ds.util_enum import G_MCS
-    from src.resource_allocation.ds.util_enum import E_MCS
-
-    # gue
+    # [test]gue
     phase3.channel_model.sinr_ue(gue)
     phase3.adjust_mcs(gue)
     sorted_rb(gue.gnb_info.rb)
     assert SINRtoMCS.sinr_to_mcs(gue.gnb_info.rb[-1].sinr, gue.gnb_info.nb_type) == gue.gnb_info.mcs
     throughput_range(gue)
 
-    # due cross BSs
+    # [test]due cross BSs
     phase3.adjust_mcs(due_cross_bs)
     sorted_rb(due_cross_bs.gnb_info.rb)
     sorted_rb(due_cross_bs.enb_info.rb)
@@ -234,7 +263,7 @@ def test_adjust_mcs(phase3, gnb, enb, gue, due_gnb, eue, due_enb, due_cross_bs, 
     assert due_cross_bs.gnb_info.mcs == G_MCS.CQI6_QPSK
     assert due_cross_bs.enb_info.mcs == E_MCS.CQI5_QPSK
 
-    # due_gnb
+    # [test]due_gnb
     phase3.adjust_mcs(due_gnb)
     sorted_rb(due_gnb.gnb_info.rb)
     assert SINRtoMCS.sinr_to_mcs(due_gnb.gnb_info.rb[-1].sinr, gnb.nb_type) == due_gnb.gnb_info.mcs
@@ -244,7 +273,7 @@ def test_adjust_mcs(phase3, gnb, enb, gue, due_gnb, eue, due_enb, due_cross_bs, 
     assert due_gnb.gnb_info.mcs == G_MCS.CQI7_16QAM
     assert due_gnb.enb_info.mcs is None
 
-    # eue
+    # [test]eue
     phase3.adjust_mcs(eue)
     sorted_rb(eue.enb_info.rb)
     assert SINRtoMCS.sinr_to_mcs(eue.enb_info.rb[-1].sinr, enb.nb_type) == eue.enb_info.mcs
@@ -252,7 +281,7 @@ def test_adjust_mcs(phase3, gnb, enb, gue, due_gnb, eue, due_enb, due_cross_bs, 
     assert len(eue.enb_info.rb) == 4
     assert eue.enb_info.mcs == E_MCS.CQI6_QPSK
 
-    # due_enb
+    # [test]due_enb
     phase3.adjust_mcs(due_enb)
     sorted_rb(due_enb.enb_info.rb)
     assert SINRtoMCS.sinr_to_mcs(due_enb.enb_info.rb[-1].sinr, enb.nb_type) == due_enb.enb_info.mcs
@@ -262,7 +291,7 @@ def test_adjust_mcs(phase3, gnb, enb, gue, due_gnb, eue, due_enb, due_cross_bs, 
     assert due_enb.enb_info.mcs == E_MCS.CQI6_QPSK
     assert due_enb.gnb_info.mcs is None
 
-    # gue_out_one
+    # [test]gue_out_one
     assert gue_out_one.is_allocated is True
     assert gue_out_one.is_to_recalculate_mcs is True
     phase3.adjust_mcs(gue_out_one)
@@ -272,7 +301,7 @@ def test_adjust_mcs(phase3, gnb, enb, gue, due_gnb, eue, due_enb, due_cross_bs, 
     assert gue_out_one.gnb_info.mcs == G_MCS.CQI1_QPSK
     assert gue_out_one.throughput == G_MCS.CQI1_QPSK.value
 
-    # gue_out_two
+    # [test]gue_out_two
     assert gue_out_two.is_allocated is True
     assert gue_out_two.is_to_recalculate_mcs is True
     phase3.adjust_mcs(gue_out_two)
@@ -282,7 +311,18 @@ def test_adjust_mcs(phase3, gnb, enb, gue, due_gnb, eue, due_enb, due_cross_bs, 
     assert gue_out_two.gnb_info.mcs is None
     assert gue_out_two.throughput == 0.0
 
-    # hung
+    # [test]ue overlapped, effected UEs
+
+    # [test]hung
+
+    if visualize_the_algo:
+        with open("../utils/frame_visualizer/vis_test_phase3" + ".P", "ab+") as file:
+            pickle.dump(["test_adjust_mcs_finish",
+                         gnb.frame, enb.frame, 0,
+                         {"allocated": phase3.gue_allocated, "unallocated": phase3.gue_unallocated},
+                         {"allocated": phase3.due_allocated, "unallocated": phase3.due_unallocated},
+                         {"allocated": phase3.eue_allocated, "unallocated": phase3.eue_unallocated}],
+                        file)
 
 
 def test_calc_weight(phase3):
@@ -295,19 +335,72 @@ def test_calc_weight(phase3):
     # test calc_num_bu
 
 
-def test_allocated_ue_to_space():
-    pass
-    # UE overlapped with itself
-    # running out of space
-    # the mcs of new RB is lower than the mcs the UE is currently using
-    # the ue moving to the space lower down a original UEs' MCS
-    # the space is suitable for this ue     # return True
+def test_allocated_ue_to_space(phase3, gnb, enb, layer_g_0, layer_g_1, layer_g_2, gue_moderate_1st, gue_moderate_2nd,
+                               due_gnb, gue, gue_excellent):
+    with open("../utils/frame_visualizer/vis_test_phase3" + ".P", "ab+") as file:
+        pickle.dump(["test_allocated_ue_to_space",
+                     gnb.frame, enb.frame, 0,
+                     {"allocated": phase3.gue_allocated, "unallocated": phase3.gue_unallocated},
+                     {"allocated": phase3.due_allocated, "unallocated": phase3.due_unallocated},
+                     {"allocated": phase3.eue_allocated, "unallocated": phase3.eue_unallocated}],
+                    file)
+
+    phase3.adjust_mcs(gue_moderate_1st)
+    assert len(gue_moderate_1st.gnb_info.rb) == 16
+    phase3.adjust_mcs(gue_moderate_2nd)
+    assert len(gue_moderate_2nd.gnb_info.rb) == 16
+    phase3.adjust_mcs(gue_excellent)
+    assert len(gue_excellent.gnb_info.rb) == 4
+
+    restore_nb_ue = RestoreNodebUE(phase3)
+
+    """ [test] UE overlapped with itself & next RB & running out of space
+        兩個跟自己重疊的RB """
+    space_lap_itself = Space(layer_g_1, 40, 0, 43, 7)
+    assert phase3.allocated_ue_to_space(due_gnb, space_lap_itself, due_gnb.gnb_info.mcs) is False  # 該call space.next_nb
+    # # 測試space.next_rb是否被呼叫，Option 1
+    # from unittest.mock import MagicMock
+    # space_lap_itself.next_rb = MagicMock()
+    # assert space_lap_itself.next_rb.called
+    # # 測試space.next_rb是否被呼叫，Option 2
+    # from mock import patch
+    # with patch.object(space_lap_itself, 'next_rb') as mock:
+    #     assert phase3.allocated_ue_to_space(due_gnb, space_lap_itself, due_gnb.gnb_info.mcs) is False
+    #     mock.assert_called_once_with()
+    # restore_nb_ue.restore()   # TODO: restore
+
+    """ [test] the mcs of new RB is lower than the mcs the UE is currently using & next RB & running out of space
+        沒有跟自己重疊的空間，但是有跟別人重疊且SINR會很差的RB，自己的CQI=15 """
+    space_bad_mcs = Space(layer_g_1, 48, 0, 53, 7)
+    assert phase3.allocated_ue_to_space(gue, space_bad_mcs, gue.gnb_info.mcs) is False  # 該call space.next_nb
+    # restore_nb_ue.restore()   # TODO: restore
+
+    """ [test] the gUE moving to the space lower down two original UEs' MCS in gNB
+        沒有跟自己重疊的空間，但是有跟別人重疊且別人的rx很小。自己的SINR=100(超級好)，重疊的人的原本CQI=5(保證重疊後一定會變差) 
+        目前是失敗的，因為gue_moderate_1st, gue_moderate_2nd的SINR高達34，CQI 15
+        且restore讓object的reference被蓋掉了"""    # TODO: restore
+    # space_not_bad_for_me = Space(layer_g_2, 84, 0, 100, 15)
+    # assert phase3.allocated_ue_to_space(gue_excellent, space_not_bad_for_me, gue_excellent.gnb_info.mcs) is False
+    # # 應呼叫phase3.effected_ue並讓gue_moderate_1st跟2nd傳入adjust_mcs
+    # restore_nb_ue.restore()   # TODO: restore
+
+    """ [test] the space is suitable for this ue     # return True
+        原本有跟人重疊(SINR小)，新空間沒跟人重疊(SINR大) """
+    space_clean = Space(layer_g_0, 104, 0, 130, 15)
+    assert phase3.allocated_ue_to_space(gue_moderate_1st, space_clean, gue_moderate_1st.gnb_info.mcs) is True
+    # restore_nb_ue.restore()   # TODO: restore
+
+    """ [test]co-channel"""
+
+    with open("../utils/frame_visualizer/vis_test_phase3" + ".P", "ab+") as file:
+        pickle.dump(["test_allocated_ue_to_space_finish",
+                     gnb.frame, enb.frame, 0,
+                     {"allocated": phase3.gue_allocated, "unallocated": phase3.gue_unallocated},
+                     {"allocated": phase3.due_allocated, "unallocated": phase3.due_unallocated},
+                     {"allocated": phase3.eue_allocated, "unallocated": phase3.eue_unallocated}],
+                    file)
 
 
 def test_matching():
     pass
     # one UE
-
-
-def test_throughput_ue(phase3, gue):
-    assert phase3.throughput_ue([]) == 0.0

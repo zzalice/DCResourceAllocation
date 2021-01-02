@@ -65,7 +65,7 @@ if __name__ == '__main__':
         with open(visualization_file_path + ".P", "ab+") as file:
             pickle.dump(["Phase3",
                          g_nb.frame, e_nb.frame, system_throughput,
-                         {"allocated": g_ue_list_allocated, "unallocated": g_ue_list_unallocated},
-                         {"allocated": d_ue_list_allocated, "unallocated": d_ue_list_unallocated},
-                         {"allocated": e_ue_list_allocated, "unallocated": e_ue_list_unallocated}],
+                         {"allocated": phase3.gue_allocated, "unallocated": phase3.gue_unallocated},
+                         {"allocated": phase3.due_allocated, "unallocated": phase3.due_unallocated},
+                         {"allocated": phase3.eue_allocated, "unallocated": phase3.eue_unallocated}],
                         file)
