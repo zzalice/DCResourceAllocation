@@ -22,6 +22,11 @@ class Space:
         self._numerology: List[Tuple[Numerology, int]] = self.possible_numerology()
 
     def next_rb(self, bu_i: int, bu_j: int, numerology: Numerology) -> Optional[Tuple[int, int]]:
+        """
+        Warning: LTE RBs are well aligned.
+        If the RBs are properly placed one after another.
+        It will naturally be aligned every 0.5 ms.
+        """
         if self.nb.nb_type == NodeBType.E:
             numerology = LTEResourceBlock.E  # TODO: refactor or redesign
 

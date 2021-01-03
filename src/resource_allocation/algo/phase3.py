@@ -49,8 +49,8 @@ class Phase3:
             gnb_empty_space: List[Space] = []
             for layer in self.gnb.frame.layer:
                 gnb_empty_space.extend(empty_space(layer))
-            gnb_empty_space: Tuple[Space] = tuple(gnb_empty_space)
-            enb_empty_space: Tuple[Space] = empty_space(self.enb.frame.layer[0])
+            gnb_empty_space: Tuple[Space, ...] = tuple(gnb_empty_space)
+            enb_empty_space: Tuple[Space, ...] = empty_space(self.enb.frame.layer[0])
 
             # calculate the weight of ue to space
             graph: Dict[str, Dict[str, float]] = self.calc_weight(mcs, ue_list, gnb_empty_space, enb_empty_space)
@@ -173,11 +173,6 @@ class Phase3:
                         else:
                             continue
                 elif space.nb.nb_type == NodeBType.E and (ue.ue_type == UEType.E or ue.ue_type == UEType.D):
-                    """
-                    Warning: LTE RBs are well aligned. 
-                    If the RBs are properly placed one after another. 
-                    It will naturally be aligned every 0.5 ms.
-                    """
                     is_to_try: bool = True
 
                 if is_to_try:
@@ -223,7 +218,11 @@ class Phase3:
                     return False
 
             self.adjust_mcs(ue)
-            if (ue.gnb_info if isinstance(mcs, G_MCS) else ue.enb_info).rb[-1].mcs.efficiency > mcs.efficiency:
+            if (isinstance(mcs, G_MCS) and ue.gnb_info.rb and ue.gnb_info.rb[-1].mcs.efficiency > mcs.efficiency) or (
+                    isinstance(mcs, E_MCS) and ue.enb_info.rb and ue.enb_info.rb[-1].mcs.efficiency > mcs.efficiency) \
+                    or (isinstance(mcs, G_MCS) and not ue.gnb_info.rb) \
+                    or (isinstance(mcs, E_MCS) and not ue.enb_info.rb):
+                # The bad RBs, using the mcs, are all replaced by the new RBs in the empty space
                 return self.effected_ue()
 
             # the coordination of next RB

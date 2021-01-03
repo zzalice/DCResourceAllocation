@@ -153,6 +153,7 @@ class BaseUnit:
     def clear_up_bu(self):
         assert self.is_used
         self.relative_i = self.relative_j = self.within_rb = None
+        self.sinr: float = float('-inf')
 
     @property
     def overlapped_rb(self) -> List[ResourceBlock]:
