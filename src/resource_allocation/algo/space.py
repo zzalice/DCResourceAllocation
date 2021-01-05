@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import dataclasses
 from copy import deepcopy
-from typing import List, Optional, Tuple
+from typing import List, Optional, Tuple, Union
 from uuid import UUID, uuid4
 
 from src.resource_allocation.ds.frame import Layer
@@ -17,56 +17,62 @@ class Space:
         self.starting_j: int = starting_j
         self.ending_i: int = ending_i
         self.ending_j: int = ending_j
-        self._numerology: List[Tuple[Numerology, int]] = self.possible_numerology()
+        self._rb: Tuple[Tuple[Union[Numerology, LTEResourceBlock], int]] = self.possible_rb_type()
 
-    def next_rb(self, bu_i: int, bu_j: int, numerology: Numerology) -> Optional[Tuple[int, int]]:
+    def next_rb(self, bu_i: int, bu_j: int, rb_type: Union[Numerology, LTEResourceBlock]) -> Optional[Tuple[int, int]]:
         """
         Warning: LTE RBs are well aligned.
         If the RBs are properly placed one after another.
         It will naturally be aligned every 0.5 ms.
         """
         if self.layer.nodeb.nb_type == NodeBType.E:
-            numerology = LTEResourceBlock.E  # TODO: refactor or redesign
+            rb_type = LTEResourceBlock.E  # TODO: refactor or redesign
 
-        end_i: int = bu_i + numerology.freq - 1
-        end_j: int = bu_j + numerology.time - 1
+        end_i: int = bu_i + rb_type.freq - 1
+        end_j: int = bu_j + rb_type.time - 1
 
         # the coordination of next RB
-        if end_j + numerology.time <= self.ending_j:
+        if end_j + rb_type.time <= self.ending_j:
             # The width of the space can contain another RB.
-            bu_j += numerology.time
+            bu_j += rb_type.time
             return bu_i, bu_j
-        elif end_i + numerology.freq < self.ending_i:
+        elif end_i + rb_type.freq < self.ending_i:
             # new row
-            bu_i += numerology.freq
+            bu_i += rb_type.freq
             bu_j = self.starting_j
             return bu_i, bu_j
         else:
             # running out of space
             return None
 
-    def possible_numerology(self) -> List[Tuple[Numerology, int]]:
-        available_numerology: List[Tuple[Numerology, int]] = []
-        #                    Tuple[the type of numerology that fits this space, the number of RBs can be placed in here]
-        for numerology in Numerology:
-            num_rb_freq: int = self.height // numerology.freq
-            num_rb_time: int = self.width // numerology.time
+    def possible_rb_type(self) -> Tuple[Tuple[Union[Numerology, LTEResourceBlock], int]]:
+        available_rb_type: List[Tuple[Union[Numerology, LTEResourceBlock], int]] = []
+        #                       Tuple[the type of RB that fits this space, the number of RBs can be placed in here]
+        if self.layer.nodeb.nb_type == NodeBType.G:
+            rb_types: List[Numerology] = [numerology for numerology in Numerology]
+        else:
+            rb_types: List[LTEResourceBlock] = [LTEResourceBlock.E]
+
+        for rb_type in rb_types:
+            num_rb_freq: int = self.height // rb_type.freq
+            num_rb_time: int = self.width // rb_type.time
             num_rb: int = num_rb_freq * num_rb_time
             if num_rb:
-                available_numerology.append((numerology, num_rb))
-        return available_numerology
+                available_rb_type.append((rb_type, num_rb))
 
-    def num_of_rb(self, numerology: Numerology) -> int:
-        for n in self._numerology:
-            if numerology is n[0]:
-                return n[1]
+        return tuple(available_rb_type)
+
+    def num_of_rb(self, rb_type: Union[Numerology, LTEResourceBlock]) -> int:
+        for rb in self._rb:
+            if rb_type is rb[0]:
+                return rb[1]
 
     @property
-    def numerology(self) -> List[Numerology]:
-        numerology: List[Numerology] = []
-        for n in self._numerology:
-            numerology.append(n[0])
-        return numerology
+    def rb_type(self) -> List[Numerology]:
+        rb_type: List[Numerology] = []
+        for rb in self._rb:
+            rb_type.append(rb[0])
+        return rb_type
 
     @property
     def width(self) -> int:

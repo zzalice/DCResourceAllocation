@@ -169,7 +169,7 @@ class Phase3:
             for space in gnb_spaces + enb_spaces:
                 is_to_try: bool = False
                 if space.layer.nodeb.nb_type == NodeBType.G and (ue.ue_type == UEType.G or ue.ue_type == UEType.D):
-                    for numerology in space.numerology:
+                    for numerology in space.rb_type:
                         if ue.numerology_in_use is numerology:
                             # the size of the space is large enough for at least one RB of the numerology in use
                             is_to_try: bool = True
@@ -255,7 +255,12 @@ class Phase3:
         pass
 
     @staticmethod
-    def matching(graph) -> List[Tuple[Tuple[str, str], float]]:
+    def matching(graph: Dict[str, Dict[str, float]]) -> List[Tuple[Tuple[str, str], float]]:
+        # TODO: graph用list傳入。把UE是空跟0的剔除、把UE跟space依照weight由大到小排序
+        # for ue in graph.keys():
+        #     graph[ue]: Dict[str, float] = OrderedDict(sorted(graph[ue].items(), key=lambda x: x[1], reverse=True))
+        # graph: Dict[str, Dict[str, float]] = OrderedDict(sorted(graph.items(), key=lambda x: x[1][0][1], reverse=True))
+
         if len(graph) <= 1:
             # greedy
             max_weight: float = -1
