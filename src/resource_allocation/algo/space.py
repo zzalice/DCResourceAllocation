@@ -6,15 +6,13 @@ from typing import List, Optional, Tuple
 from uuid import UUID, uuid4
 
 from src.resource_allocation.ds.frame import Layer
-from src.resource_allocation.ds.nodeb import NodeB
 from src.resource_allocation.ds.util_enum import LTEResourceBlock, NodeBType, Numerology
 
 
 class Space:
     def __init__(self, layer: Layer, starting_i: int, starting_j: int, ending_i: int, ending_j: int):
         self.uuid: UUID = uuid4()
-        self.nb: NodeB = layer.nodeb
-        self.layer: Layer = layer
+        self.layer: Layer = layer   # TODO: restore有更新到這裡嗎
         self.starting_i: int = starting_i
         self.starting_j: int = starting_j
         self.ending_i: int = ending_i
@@ -27,7 +25,7 @@ class Space:
         If the RBs are properly placed one after another.
         It will naturally be aligned every 0.5 ms.
         """
-        if self.nb.nb_type == NodeBType.E:
+        if self.layer.nodeb.nb_type == NodeBType.E:
             numerology = LTEResourceBlock.E  # TODO: refactor or redesign
 
         end_i: int = bu_i + numerology.freq - 1

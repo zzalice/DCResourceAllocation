@@ -1,4 +1,4 @@
-import copy
+import pickle
 from typing import Dict, List, Optional, Tuple, Union
 
 from hungarian_algorithm import algorithm
@@ -16,6 +16,7 @@ class Phase3:
     def __init__(self, channel_model: ChannelModel, gnb: GNodeB, enb: ENodeB,
                  ue_list_allocated: Tuple[Tuple[UserEquipment, ...], ...],
                  ue_list_unallocated: Tuple[Tuple[UserEquipment, ...], ...]):
+        self.file_path: str = "store.P"
         self.channel_model: ChannelModel = channel_model
         self.gnb: GNodeB = gnb
         self.enb: ENodeB = enb
@@ -32,7 +33,7 @@ class Phase3:
         self.adjust_mcs_allocated_ues()
 
         for mcs in self.mcs_ordered:
-            # find the UEs using this mcs
+            # Find the UEs using this mcs
             ue_list: List[UserEquipment] = []
             if isinstance(mcs, E_MCS):
                 for ue in self.due_allocated + self.eue_allocated:
@@ -45,18 +46,21 @@ class Phase3:
             if not ue_list:
                 continue
 
-            # find empty spaces
+            # Find empty spaces
             gnb_empty_space: List[Space] = []
             for layer in self.gnb.frame.layer:
                 gnb_empty_space.extend(empty_space(layer))
             gnb_empty_space: Tuple[Space, ...] = tuple(gnb_empty_space)
             enb_empty_space: Tuple[Space, ...] = empty_space(self.enb.frame.layer[0])
 
-            # calculate the weight of ue to space
+            # Calculate the weight of ue to space
             graph: Dict[str, Dict[str, float]] = self.calc_weight(mcs, ue_list, gnb_empty_space, enb_empty_space)
 
-            # bipartite matching
+            # Bipartite matching
             match: List[Tuple[Tuple[str, str], float]] = self.matching(graph)
+
+            # Implement the matching result from the highest weight.
+            # If a movement lowers down the MCS of any allocated UE, dispose it and move on to the next match.
 
     def adjust_mcs_allocated_ues(self):
         while True:
@@ -154,17 +158,17 @@ class Phase3:
             else:
                 raise ValueError
 
-    def calc_weight(self, mcs: Union[E_MCS, G_MCS], ue_list: List[UserEquipment], gnb_spaces: Tuple[Space],
-                    enb_spaces: Tuple[Space]) -> Dict[str, Dict[str, float]]:
-        restore_nb_ue: RestoreNodebUE = RestoreNodebUE(self)
+    def calc_weight(self, mcs: Union[E_MCS, G_MCS], ue_list: List[UserEquipment], gnb_spaces: Tuple[Space, ...],
+                    enb_spaces: Tuple[Space, ...]) -> Dict[str, Dict[str, float]]:
+        self.store()
 
         weight: Dict[str, Dict[str, float]] = {}
         num_of_bu_origin: int = self.calc_num_bu(self.gue_allocated + self.due_allocated + self.eue_allocated)
-        for ue in ue_list:
+        for ue in ue_list:  # TODO: restore後ue_list是否也改變了
             weight[str(ue.uuid)] = {}
             for space in gnb_spaces + enb_spaces:
                 is_to_try: bool = False
-                if space.nb.nb_type == NodeBType.G and (ue.ue_type == UEType.G or ue.ue_type == UEType.D):
+                if space.layer.nodeb.nb_type == NodeBType.G and (ue.ue_type == UEType.G or ue.ue_type == UEType.D):
                     for numerology in space.numerology:
                         if ue.numerology_in_use is numerology:
                             # the size of the space is large enough for at least one RB of the numerology in use
@@ -172,7 +176,7 @@ class Phase3:
                             break
                         else:
                             continue
-                elif space.nb.nb_type == NodeBType.E and (ue.ue_type == UEType.E or ue.ue_type == UEType.D):
+                elif space.layer.nodeb.nb_type == NodeBType.E and (ue.ue_type == UEType.E or ue.ue_type == UEType.D):
                     is_to_try: bool = True
 
                 if is_to_try:
@@ -182,7 +186,7 @@ class Phase3:
                             self.gue_allocated + self.due_allocated + self.eue_allocated)
                         weight[str(ue.uuid)][str(space.uuid)] = num_of_bu_origin - num_of_bu_new
                         assert weight[str(ue.uuid)][str(space.uuid)] >= 0, "There are UE getting lower mcs than before."
-                restore_nb_ue.restore()
+                    self.restore(space)
         return weight
 
     def allocated_ue_to_space(self, ue: UserEquipment, space: Space, mcs: Union[E_MCS, G_MCS]) -> bool:
@@ -316,25 +320,21 @@ class Phase3:
         else:
             return 0.0
 
+    def store(self):
+        with open(self.file_path, "wb") as file:
+            pickle.dump([self.gnb, self.enb,
+                         self.gue_allocated, self.gue_unallocated,
+                         self.due_allocated, self.due_unallocated,
+                         self.eue_allocated, self.eue_unallocated],
+                        file)
 
-class RestoreNodebUE:
-    def __init__(self, phase3: Phase3):
-        self.phase3: Phase3 = phase3
-        self._copy_gnb: GNodeB = copy.deepcopy(phase3.gnb)
-        self._copy_enb: ENodeB = copy.deepcopy(phase3.enb)
-        self._copy_g_allo: List[UserEquipment, ...] = copy.deepcopy(phase3.gue_allocated)
-        self._copy_g_unallo: List[UserEquipment, ...] = copy.deepcopy(phase3.gue_unallocated)
-        self._copy_d_allo: List[UserEquipment, ...] = copy.deepcopy(phase3.due_allocated)
-        self._copy_d_unallo: List[UserEquipment, ...] = copy.deepcopy(phase3.due_unallocated)
-        self._copy_e_allo: List[UserEquipment, ...] = copy.deepcopy(phase3.eue_allocated)
-        self._copy_e_unallo: List[UserEquipment, ...] = copy.deepcopy(phase3.eue_unallocated)
+    def restore(self, space: Optional[Space] = None):
+        """不能用deep copy，例如：nb.frame.layer.bu沒有複製到"""
+        with open(self.file_path, "rb") as file_of_nb_and_ue:
+            self.gnb, self.enb, self.gue_allocated, self.gue_unallocated, self.due_allocated, self.due_unallocated, self.eue_allocated, self.eue_unallocated = pickle.load(
+                file_of_nb_and_ue)
 
-    def restore(self):
-        self.phase3.gnb = self._copy_gnb
-        self.phase3.enb = self._copy_enb
-        self.phase3.gue_allocated = self._copy_g_allo
-        self.phase3.gue_unallocated = self._copy_g_unallo
-        self.phase3.due_allocated = self._copy_d_allo
-        self.phase3.due_unallocated = self._copy_d_unallo
-        self.phase3.eue_allocated = self._copy_e_allo
-        self.phase3.eue_unallocated = self._copy_e_unallo
+        if space:
+            space_layer_index: int = space.layer.layer_index
+            space_nb_type: NodeBType = space.layer.nodeb.nb_type
+            space.layer = (self.gnb if space_nb_type == NodeBType.G else self.enb).frame.layer[space_layer_index]
