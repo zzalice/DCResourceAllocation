@@ -1,4 +1,4 @@
-from typing import List, Optional, Union
+from typing import List, Optional, Tuple, Union
 
 from src.channel_model.sinr import ChannelModel
 from src.resource_allocation.algo.space import Space
@@ -9,25 +9,25 @@ from src.resource_allocation.ds.util_enum import LTEResourceBlock, NodeBType, Nu
 
 
 class AllocateUE:
-    def __init__(self, ue: UserEquipment, spaces: List[Space], channel_model: ChannelModel):
+    def __init__(self, ue: UserEquipment, spaces: Tuple[Space, ...], channel_model: ChannelModel):
         assert ue.is_allocated is False
         self.ue: UserEquipment = ue
         assert len(set([s.layer.nodeb.nb_type for s in spaces])) == 1
-        self.spaces: List[Space] = spaces
+        self.spaces: List[Space] = list(spaces)
         self.channel_model: ChannelModel = channel_model
 
-    def allocate(self) -> bool:
+    def new_ue(self) -> bool:
         tmp_numerology: Numerology = self.ue.numerology_in_use
         if self.spaces[0].layer.nodeb.nb_type == NodeBType.E and self.ue.ue_type == UEType.D:
             self.ue.numerology_in_use = LTEResourceBlock.E  # TODO: refactor or redesign
 
-        is_succeed: bool = self.new_ue()
+        is_succeed: bool = self._allocate()
 
         self.ue.numerology_in_use = tmp_numerology  # restore
 
         return is_succeed
 
-    def new_ue(self) -> bool:
+    def _allocate(self) -> bool:
         """
         The self.ue must be an unallocated UE.
         In this method, self.ue will be allocated to one BS only.

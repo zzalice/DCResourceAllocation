@@ -69,11 +69,11 @@ if __name__ == '__main__':
     for ue in (e_ue_list + g_ue_list + d_ue_list):
         ue.register_nb(e_nb, g_nb)
 
-    # tmp: use first (smallest) numerology in candidate set
+    # tmp: use last (lowest latency) numerology in candidate set
     for g_ue in g_ue_list:
-        g_ue.numerology_in_use = g_ue.candidate_set[0]
+        g_ue.numerology_in_use = g_ue.candidate_set[-1]
     for d_ue in d_ue_list:
-        d_ue.numerology_in_use = d_ue.candidate_set[0]
+        d_ue.numerology_in_use = d_ue.candidate_set[-1]
 
     with open(Path(__file__).stem + ".P", "wb") as file_of_frame_and_ue:
         pickle.dump([g_nb, e_nb, cochannel_index, g_ue_list, d_ue_list, e_ue_list], file_of_frame_and_ue)
