@@ -49,6 +49,10 @@ def test_next_rb(space_g_0_0_15_15, space_e_0_0_2_15):
 
     assert space_e_0_0_2_15.next_rb(0, 0, LTEResourceBlock.E) == (0, 8)
     assert space_e_0_0_2_15.next_rb(0, 8, LTEResourceBlock.E) == (1, 0)
+    assert space_e_0_0_2_15.next_rb(2, 8, LTEResourceBlock.E) is None
+
+    assert space_g_0_0_15_15.next_rb(14, 14, Numerology.N2) is None
+    assert space_g_0_0_15_15.next_rb(15, 15, Numerology.N2) is None
 
 
 def test_possible_numerology(space_g_0_0_3_14, space_e_0_0_2_15):

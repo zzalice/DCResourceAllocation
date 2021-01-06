@@ -11,8 +11,10 @@ from src.resource_allocation.ds.util_enum import LTEResourceBlock, NodeBType, Nu
 
 class Space:
     def __init__(self, layer: Layer, starting_i: int, starting_j: int, ending_i: int, ending_j: int):
+        assert ending_i >= starting_i and ending_j >= starting_j
+
         self.uuid: UUID = uuid4()
-        self.layer: Layer = layer   # TODO: restore有更新到這裡嗎
+        self.layer: Layer = layer  # TODO: restore有更新到這裡嗎
         self.starting_i: int = starting_i
         self.starting_j: int = starting_j
         self.ending_i: int = ending_i
@@ -28,22 +30,16 @@ class Space:
         if self.layer.nodeb.nb_type == NodeBType.E:
             rb_type = LTEResourceBlock.E  # TODO: refactor or redesign
 
-        end_i: int = bu_i + rb_type.freq - 1
-        end_j: int = bu_j + rb_type.time - 1
+        bu_j += rb_type.time
 
-        # the coordination of next RB
-        if end_j + rb_type.time <= self.ending_j:
-            # The width of the space can contain another RB.
-            bu_j += rb_type.time
-            return bu_i, bu_j
-        elif end_i + rb_type.freq < self.ending_i:
-            # new row
+        if bu_j + rb_type.time - 1 > self.ending_j:
+            # next row
             bu_i += rb_type.freq
-            bu_j = self.starting_j
-            return bu_i, bu_j
-        else:
-            # running out of space
-            return None
+            bu_j: int = self.starting_j
+            if bu_i + rb_type.freq - 1 > self.ending_i:
+                return None     # running out of space
+
+        return bu_i, bu_j
 
     def possible_rb_type(self) -> Tuple[Tuple[Union[Numerology, LTEResourceBlock], int]]:
         available_rb_type: List[Tuple[Union[Numerology, LTEResourceBlock], int]] = []
