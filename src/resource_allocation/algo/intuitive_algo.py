@@ -1,23 +1,27 @@
-from typing import Dict, List, Optional, Tuple, Union
+from typing import Dict, List, Tuple, Union
 
 from src.channel_model.sinr import ChannelModel
 from src.resource_allocation.algo.new_ue_allocation import AllocateUE
-from src.resource_allocation.algo.space import empty_space, Space
+from src.resource_allocation.algo.space import empty_space
 from src.resource_allocation.ds.eutran import ENodeB, EUserEquipment
 from src.resource_allocation.ds.ngran import DUserEquipment, GNodeB, GUserEquipment
 from src.resource_allocation.ds.ue import UserEquipment
+from src.resource_allocation.ds.undo import Undo
 from src.resource_allocation.ds.util_enum import NodeBType, UEType
 
 
-class Intuitive:
-    def __init__(self, gnb: GNodeB, enb: ENodeB, cochannel_index: Dict, gue: Tuple[GUserEquipment], due: Tuple[DUserEquipment], eue: Tuple[EUserEquipment]):
+class Intuitive(Undo):
+    def __init__(self, gnb: GNodeB, enb: ENodeB, cochannel_index: Dict, gue: Tuple[GUserEquipment],
+                 due: Tuple[DUserEquipment], eue: Tuple[EUserEquipment]):
+        super().__init__()
         self.gnb: GNodeB = gnb
         self.enb: ENodeB = enb
         self.gue_unallocated: List[GUserEquipment] = list(gue)
         self.due_unallocated: List[DUserEquipment] = list(due)
         self.eue_unallocated: List[EUserEquipment] = list(eue)
 
-        self.ue_gnb_to_allocate: List[Union[GUserEquipment, DUserEquipment]] = self.gue_unallocated + self.due_unallocated
+        self.ue_gnb_to_allocate: List[
+            Union[GUserEquipment, DUserEquipment]] = self.gue_unallocated + self.due_unallocated
         self.ue_enb_to_allocate: List[Union[EUserEquipment, DUserEquipment]] = self.eue_unallocated
         self.ue_gnb_allocated: List[Union[GUserEquipment, DUserEquipment]] = []
         self.ue_enb_allocated: List[Union[EUserEquipment, DUserEquipment]] = []
@@ -46,19 +50,29 @@ class Intuitive:
             nb: ENodeB = self.enb
 
         while ue_nb_to_allocate:
-            ue: UserEquipment = ue_nb_to_allocate.pop()     # the unallocated ue with best SINR
+            _undo_stack: List[callable] = []
+
+            ue: UserEquipment = ue_nb_to_allocate.pop()  # the unallocated ue with best SINR
 
             # allocate ue
             is_complete: bool = False
             for layer in nb.frame.layer:
-                is_complete: bool = AllocateUE(ue, empty_space(layer), self.channel_model).new_ue()
+                allocate_ue: AllocateUE = AllocateUE(ue, empty_space(layer), self.channel_model)
+                is_complete: bool = allocate_ue.new_ue()
+                _undo_stack.append(lambda: allocate_ue.undo())
+                self.purge_stack.add(allocate_ue)
 
                 # TODO: adjust the mcs of effected UEs.
                 # TODO: If lowers down any MCS. undo the new allocated UE.
+                # is_complete: bool = False
 
+                self.undo_a_func(_undo_stack)
                 if is_complete:
                     ue_nb_allocated.append(ue)
+                    self.purge()
                     break
+                else:
+                    self.undo()
 
             if is_complete is False:
                 if ue.ue_type == UEType.G:

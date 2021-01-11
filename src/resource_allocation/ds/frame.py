@@ -3,6 +3,7 @@ from __future__ import annotations
 from typing import List, Optional, Tuple, TYPE_CHECKING, Union
 
 from .rb import ResourceBlock
+from .undo import Undo
 from .util_enum import E_MCS, G_MCS, LTEResourceBlock, NodeBType, Numerology, UEType
 
 if TYPE_CHECKING:
@@ -41,9 +42,10 @@ class Frame:
         self._cochannel_offset = value
 
 
-class Layer:
+class Layer(Undo):
     def __init__(self, layer_index: int, freq: int, time: int, nodeb: NodeB):
         # i.e., BU[frequency(i|HEIGHT)][time(j|WIDTH)]
+        super().__init__()
         self.layer_index: int = layer_index
         self.FREQ: int = freq
         self.TIME: int = time

@@ -5,11 +5,13 @@ from src.resource_allocation.algo.space import Space
 from src.resource_allocation.ds.nodeb import ENBInfo, GNBInfo
 from src.resource_allocation.ds.rb import ResourceBlock
 from src.resource_allocation.ds.ue import UserEquipment
+from src.resource_allocation.ds.undo import Undo
 from src.resource_allocation.ds.util_enum import LTEResourceBlock, NodeBType, Numerology, UEType
 
 
-class AllocateUE:
+class AllocateUE(Undo):
     def __init__(self, ue: UserEquipment, spaces: Tuple[Space, ...], channel_model: ChannelModel):
+        super().__init__()
         assert ue.is_allocated is False
         self.ue: UserEquipment = ue
         assert len(set([s.layer.nodeb.nb_type for s in spaces])) == 1
@@ -33,6 +35,8 @@ class AllocateUE:
         In this method, self.ue will be allocated to one BS only.
         :return: If the allocation has succeed.
         """
+        _undo_stack: List[callable] = []
+
         bu_i: int = -1
         bu_j: int = -1
         nb_info: Optional[GNBInfo, ENBInfo] = None
@@ -53,15 +57,21 @@ class AllocateUE:
                         continue
                 else:
                     # run out of spaces before achieving QoS
+                    self.undo_a_func(_undo_stack)
                     return False
 
             rb: Optional[ResourceBlock] = space.layer.allocate_resource_block(bu_i, bu_j, self.ue)
+            _undo_stack.append(lambda: space.layer.undo)
+            self.purge_stack.add(space.layer)
             if rb is None:
                 # overlapped with itself
                 raise AssertionError
 
             self.channel_model.sinr_rb(rb)
             nb_info.rb.sort(key=lambda x: x.sinr, reverse=True)
+            _undo_stack.append(lambda: self.channel_model.undo())
+            self.purge_stack.add(self.channel_model)
+            _undo_stack.append(lambda: nb_info.rb.sort(key=lambda x: x.sinr, reverse=True))
 
             tmp_throughput: float = nb_info.rb[-1].mcs.value * len(nb_info.rb)
 
@@ -69,6 +79,10 @@ class AllocateUE:
                 self.ue.throughput = tmp_throughput
                 self.ue.is_allocated = True
                 self.ue.is_to_recalculate_mcs = False
+
+                _undo_stack.append(lambda: setattr(self.ue, 'throughput', 0.0))
+                _undo_stack.append(lambda: setattr(self.ue, 'is_allocated', False))
+                self.undo_a_func(_undo_stack)
                 return True
 
             if bu := space.next_rb(bu_i, bu_j, self.ue.numerology_in_use):
@@ -77,6 +91,3 @@ class AllocateUE:
             else:
                 # running out of space in this "space"
                 is_to_next_space: bool = True
-
-    def undo(self):
-        pass

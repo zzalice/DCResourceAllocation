@@ -10,12 +10,14 @@ from src.resource_allocation.ds.ngran import GNodeB
 from src.resource_allocation.ds.nodeb import NodeB
 from src.resource_allocation.ds.rb import ResourceBlock
 from src.resource_allocation.ds.ue import UserEquipment
+from src.resource_allocation.ds.undo import Undo
 from src.resource_allocation.ds.util_enum import NodeBType
 from src.resource_allocation.ds.util_type import Coordinate
 
 
-class ChannelModel:
+class ChannelModel(Undo):
     def __init__(self, cochannel_index: Dict):
+        super().__init__()
         self.cochannel_index: Dict = cochannel_index
         self.channel_bs: Tuple[List[Coordinate], ...] = self.gen_channel_interference()
 
