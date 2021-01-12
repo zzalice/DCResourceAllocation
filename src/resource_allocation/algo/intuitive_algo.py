@@ -59,8 +59,7 @@ class Intuitive(Undo):
             for layer in nb.frame.layer:
                 allocate_ue: AllocateUE = AllocateUE(ue, empty_space(layer), self.channel_model)
                 is_complete: bool = allocate_ue.new_ue()
-                _undo_stack.append(lambda: allocate_ue.undo())
-                self.purge_stack.add(allocate_ue)
+                _undo_stack.append([lambda: allocate_ue.undo(), allocate_ue])
 
                 # TODO: adjust the mcs of effected UEs.
                 # TODO: If lowers down any MCS. undo the new allocated UE.
@@ -69,7 +68,7 @@ class Intuitive(Undo):
                 self.undo_a_func(_undo_stack)
                 if is_complete:
                     ue_nb_allocated.append(ue)
-                    self.purge()
+                    self.purge_undo()
                     break
                 else:
                     self.undo()

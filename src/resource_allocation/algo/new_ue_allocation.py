@@ -61,17 +61,15 @@ class AllocateUE(Undo):
                     return False
 
             rb: Optional[ResourceBlock] = space.layer.allocate_resource_block(bu_i, bu_j, self.ue)
-            _undo_stack.append(lambda: space.layer.undo)
-            self.purge_stack.add(space.layer)
+            _undo_stack.append([lambda: space.layer.undo, space.layer])
             if rb is None:
                 # overlapped with itself
                 raise AssertionError
 
             self.channel_model.sinr_rb(rb)
             nb_info.rb.sort(key=lambda x: x.sinr, reverse=True)
-            _undo_stack.append(lambda: self.channel_model.undo())
-            self.purge_stack.add(self.channel_model)
-            _undo_stack.append(lambda: nb_info.rb.sort(key=lambda x: x.sinr, reverse=True))
+            _undo_stack.append([lambda: self.channel_model.undo(), self.channel_model])
+            _undo_stack.append([lambda: nb_info.rb.sort(key=lambda x: x.sinr, reverse=True)])
 
             tmp_throughput: float = nb_info.rb[-1].mcs.value * len(nb_info.rb)
 
@@ -80,8 +78,8 @@ class AllocateUE(Undo):
                 self.ue.is_allocated = True
                 self.ue.is_to_recalculate_mcs = False
 
-                _undo_stack.append(lambda: setattr(self.ue, 'throughput', 0.0))
-                _undo_stack.append(lambda: setattr(self.ue, 'is_allocated', False))
+                _undo_stack.append([lambda: setattr(self.ue, 'throughput', 0.0)])
+                _undo_stack.append([lambda: setattr(self.ue, 'is_allocated', False)])
                 self.undo_a_func(_undo_stack)
                 return True
 
