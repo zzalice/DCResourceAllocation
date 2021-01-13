@@ -35,8 +35,6 @@ class AllocateUE(Undo):
         In this method, self.ue will be allocated to one BS only.
         :return: If the allocation has succeed.
         """
-        _undo_stack: List[callable] = []
-
         bu_i: int = -1
         bu_j: int = -1
         nb_info: Optional[GNBInfo, ENBInfo] = None
@@ -57,30 +55,28 @@ class AllocateUE(Undo):
                         continue
                 else:
                     # run out of spaces before achieving QoS
-                    self.undo_a_func(_undo_stack)
                     return False
 
             rb: Optional[ResourceBlock] = space.layer.allocate_resource_block(bu_i, bu_j, self.ue)
-            _undo_stack.append([lambda: space.layer.undo, space.layer])
+            self.append_undo([lambda: space.layer.undo(), space.layer])
             if rb is None:
                 # overlapped with itself
                 raise AssertionError
 
             self.channel_model.sinr_rb(rb)
             nb_info.rb.sort(key=lambda x: x.sinr, reverse=True)
-            _undo_stack.append([lambda: self.channel_model.undo(), self.channel_model])
-            _undo_stack.append([lambda: nb_info.rb.sort(key=lambda x: x.sinr, reverse=True)])
+            self.append_undo([lambda: self.channel_model.undo(), self.channel_model])
+            self.append_undo([lambda: nb_info.rb.sort(key=lambda x: x.sinr, reverse=True)])
 
             tmp_throughput: float = nb_info.rb[-1].mcs.value * len(nb_info.rb)
 
             if tmp_throughput >= self.ue.request_data_rate:
                 self.ue.throughput = tmp_throughput
-                self.ue.is_allocated = True
+                nb_info.mcs = nb_info.rb[-1].mcs
                 self.ue.is_to_recalculate_mcs = False
 
-                _undo_stack.append([lambda: setattr(self.ue, 'throughput', 0.0)])
-                _undo_stack.append([lambda: setattr(self.ue, 'is_allocated', False)])
-                self.undo_a_func(_undo_stack)
+                self.append_undo([lambda: setattr(self.ue, 'throughput', 0.0)])
+                self.append_undo([lambda: setattr(nb_info, 'mcs', None)])
                 return True
 
             if bu := space.next_rb(bu_i, bu_j, self.ue.numerology_in_use):

@@ -7,15 +7,17 @@ class Undo:
         self._undo_stack: List[Callable] = []
         self._purge_stack: Set[Undo] = set()
 
-    def undo_a_func(self, func_local_undo_stack: List[List[Union[Callable, object]]]) -> Callable:
-        for undo in func_local_undo_stack:
-            if len(undo) == 2:
-                self._purge_stack.add(undo[1])
+    def append_undo(self, local_undo_stack: List[Union[Callable, object]]) -> Callable:
+        if len(local_undo_stack) == 2:
+            assert isinstance(local_undo_stack[1], Undo)
+            # Though adding purge to set won't save the actual state,
+            # the newer _undo_stack will over write the old one.
+            # The aim of purge does change.
+            self._purge_stack.add(local_undo_stack[1])
 
         def undo_func():
             undo_func.__dict__['has_called'] = True
-            while func_local_undo_stack:
-                (func_local_undo_stack.pop()[0])()
+            (local_undo_stack[0])()
             # remove self (i.e., lambda: undo_func()) from the global undo stack
             self._undo_stack.remove(undo_func.__dict__['undo_lambda'])
 
@@ -34,6 +36,7 @@ class Undo:
             return True
 
     def purge_undo(self):
+        # To free the memory when the UE allocation is to be implemented.
         self._undo_stack.clear()
         while self._purge_stack:
             obj: Undo = self._purge_stack.pop()

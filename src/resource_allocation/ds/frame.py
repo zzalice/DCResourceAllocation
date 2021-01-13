@@ -9,7 +9,7 @@ from .util_enum import E_MCS, G_MCS, LTEResourceBlock, NodeBType, Numerology, UE
 if TYPE_CHECKING:
     from .eutran import ENodeB
     from .ngran import GNodeB
-    from .nodeb import NodeB
+    from .nodeb import ENBInfo, GNBInfo, NodeB
     from .ue import UserEquipment
     from .zone import Zone
 
@@ -58,13 +58,18 @@ class Layer(Undo):
         self._bu_status: Tuple[Tuple[bool, ...], ...] = tuple()
 
     def allocate_resource_block(self, offset_i: int, offset_j: int, ue: UserEquipment) -> Optional[ResourceBlock]:
+        # RB type
         tmp_numerology: Numerology = ue.numerology_in_use
         if self.nodeb.nb_type == NodeBType.E and ue.ue_type == UEType.D:
             ue.numerology_in_use = LTEResourceBlock.E  # TODO: refactor or redesign
 
+        # assert
         assert offset_i + ue.numerology_in_use.freq <= self.FREQ and offset_j + ue.numerology_in_use.time <= self.TIME, "The RB is not in the legal domain of the frame."
         if self.nodeb.nb_type == NodeBType.E:
             assert offset_j % LTEResourceBlock.E.time == 0, "The RB in LTE frame should be aligned by slot."
+
+        # main
+        nb_info: Union[GNBInfo, ENBInfo] = ue.gnb_info if self.nodeb.nb_type == NodeBType.G else ue.enb_info
 
         resource_block: ResourceBlock = ResourceBlock(self, offset_i, offset_j, ue)
         for i in range(ue.numerology_in_use.freq):
@@ -74,17 +79,23 @@ class Layer(Undo):
                     if overlapped_rb.ue is ue:  # The new RB will overlap with the UE itself
                         return None
                     else:
-                        overlapped_rb.ue.is_to_recalculate_mcs = True   # mark the effected UEs to recalculate
+                        origin_bool: bool = overlapped_rb.ue.is_to_recalculate_mcs
+                        overlapped_rb.ue.is_to_recalculate_mcs = True  # mark the effected UEs to recalculate
+                        self.append_undo([lambda: setattr(overlapped_rb.ue, 'is_to_recalculate_mcs', origin_bool)])
 
                 bu.set_up_bu(i, j, resource_block)
-        (ue.gnb_info if self.nodeb.nb_type == NodeBType.G else ue.enb_info).rb.append(resource_block)
+                self.append_undo([lambda b=bu: b.clear_up_bu()])  # note the dummy parameter with a default value
+        nb_info.rb.append(resource_block)
+        self.append_undo([lambda: nb_info.rb.remove(resource_block)])
 
         if not ue.is_allocated:
             ue.is_allocated = True
+            self.append_undo([lambda: setattr(ue, 'is_allocated', False)])
 
         self._cache_is_valid: bool = False  # set cache as invalid (for _available_block)
 
-        ue.numerology_in_use = tmp_numerology  # restore
+        # restore RB type
+        ue.numerology_in_use = tmp_numerology
         return resource_block
 
     def allocate_zone(self, zone: Zone) -> bool:

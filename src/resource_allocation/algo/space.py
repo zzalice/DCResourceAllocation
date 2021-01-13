@@ -127,7 +127,7 @@ def merge(spaces: List[SimpleSpace]) -> List[SimpleSpace]:
     merged_spaces: List[SimpleSpace] = []
     while spaces:
         space: SimpleSpace = spaces.pop(0)  # space to be merged
-        other_spaces: List[SimpleSpace] = deepcopy(spaces)
+        other_spaces: List[SimpleSpace] = deepcopy(spaces)      # TODO: deepcopy is inefficient
         while other_spaces:
             other_space: SimpleSpace = other_spaces.pop(0)
             if (other_space.i_start == space.i_end + 1) and (other_space.j_start == space.j_start) and (
