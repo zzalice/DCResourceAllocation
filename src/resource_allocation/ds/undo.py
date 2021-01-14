@@ -1,4 +1,4 @@
-"""reference: shorturl.at/rDLS0"""
+# reference: shorturl.at/rDLS0
 from typing import Callable, List, Set, Union
 
 
@@ -26,6 +26,8 @@ class Undo:
         return undo_func.undo_lambda
 
     def undo(self) -> bool:
+        self._purge_stack.clear()
+
         if len(self._undo_stack) == 0:
             return False  # nothing to undo
         else:

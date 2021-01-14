@@ -1,5 +1,5 @@
 import pickle
-from typing import Dict, List, Optional, Tuple, Union
+from typing import Dict, List, Optional, Tuple, TYPE_CHECKING, Union
 
 from hungarian_algorithm import algorithm
 
@@ -11,6 +11,10 @@ from src.resource_allocation.ds.rb import ResourceBlock
 from src.resource_allocation.ds.ue import UserEquipment
 from src.resource_allocation.ds.util_enum import E_MCS, G_MCS, NodeBType, UEType
 
+if TYPE_CHECKING:
+    from src.resource_allocation.ds.eutran import EUserEquipment
+    from src.resource_allocation.ds.ngran import GUserEquipment, DUserEquipment
+
 
 class Phase3:
     def __init__(self, channel_model: ChannelModel, gnb: GNodeB, enb: ENodeB,
@@ -20,12 +24,12 @@ class Phase3:
         self.channel_model: ChannelModel = channel_model
         self.gnb: GNodeB = gnb
         self.enb: ENodeB = enb
-        self.gue_allocated: List[UserEquipment, ...] = list(ue_list_allocated[0])
-        self.gue_unallocated: List[UserEquipment, ...] = list(ue_list_unallocated[0])
-        self.due_allocated: List[UserEquipment, ...] = list(ue_list_allocated[1])
-        self.due_unallocated: List[UserEquipment, ...] = list(ue_list_unallocated[1])
-        self.eue_allocated: List[UserEquipment, ...] = list(ue_list_allocated[2])
-        self.eue_unallocated: List[UserEquipment, ...] = list(ue_list_unallocated[2])
+        self.gue_allocated: List[GUserEquipment] = list(ue_list_allocated[0])   # TODO: type checking
+        self.gue_unallocated: List[GUserEquipment] = list(ue_list_unallocated[0])
+        self.due_allocated: List[DUserEquipment] = list(ue_list_allocated[1])
+        self.due_unallocated: List[DUserEquipment] = list(ue_list_unallocated[1])
+        self.eue_allocated: List[EUserEquipment] = list(ue_list_allocated[2])
+        self.eue_unallocated: List[EUserEquipment] = list(ue_list_unallocated[2])
 
         self.mcs_ordered: Tuple[Union[E_MCS, G_MCS], ...] = self.order_mcs()
 
@@ -296,12 +300,6 @@ class Phase3:
             if hasattr(ue, 'enb_info'):
                 num_of_bu += len(ue.enb_info.rb) * 8
         return num_of_bu
-
-    def calc_system_throughput(self) -> float:
-        system_throughput: float = 0.0
-        for ue in self.gue_allocated + self.due_allocated + self.eue_allocated:
-            system_throughput += ue.throughput
-        return system_throughput
 
     @staticmethod
     def order_mcs() -> Tuple[Union[E_MCS, G_MCS], ...]:

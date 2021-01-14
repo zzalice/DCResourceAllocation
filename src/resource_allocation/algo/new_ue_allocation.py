@@ -6,7 +6,7 @@ from src.resource_allocation.ds.nodeb import ENBInfo, GNBInfo
 from src.resource_allocation.ds.rb import ResourceBlock
 from src.resource_allocation.ds.ue import UserEquipment
 from src.resource_allocation.ds.undo import Undo
-from src.resource_allocation.ds.util_enum import LTEResourceBlock, NodeBType, Numerology, UEType
+from src.resource_allocation.ds.util_enum import E_MCS, G_MCS, LTEResourceBlock, NodeBType, Numerology, UEType
 
 
 class AllocateUE(Undo):
@@ -64,9 +64,12 @@ class AllocateUE(Undo):
                 raise AssertionError
 
             self.channel_model.sinr_rb(rb)
+            self.append_undo([lambda: self.channel_model.undo(), self.channel_model])  # TODO: 需要嗎？還是RB會被remove，也不會影響到overlap UE
+            if rb.mcs is (G_MCS if nb_info.nb_type == NodeBType.G else E_MCS).CQI0:
+                # SINR out of range
+                return False    # TODO: [refactor] 可以只刪掉這個rb，繼續試下一個位子(非is_to_next_space=True)
             nb_info.rb.sort(key=lambda x: x.sinr, reverse=True)
-            self.append_undo([lambda: self.channel_model.undo(), self.channel_model])
-            self.append_undo([lambda: nb_info.rb.sort(key=lambda x: x.sinr, reverse=True)])
+            self.append_undo([lambda: nb_info.rb.sort(key=lambda x: x.sinr, reverse=True)])  # TODO: 需要嗎？還是RB會被remove，也不會影響到overlap UE
 
             tmp_throughput: float = nb_info.rb[-1].mcs.value * len(nb_info.rb)
 

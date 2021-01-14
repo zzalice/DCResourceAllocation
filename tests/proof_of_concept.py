@@ -3,7 +3,7 @@ from datetime import datetime
 from typing import Tuple
 
 from src.channel_model.sinr import ChannelModel
-from src.resource_allocation.algo.assistance import divid_ue
+from src.resource_allocation.algo.assistance import calc_system_throughput, divid_ue
 from src.resource_allocation.algo.phase1 import Phase1
 from src.resource_allocation.algo.phase2 import Phase2
 from src.resource_allocation.algo.phase3 import Phase3
@@ -59,7 +59,8 @@ if __name__ == '__main__':
     ue_list_unallocated: Tuple[Tuple[UserEquipment, ...], ...] = (g_ue_list_unallocated, d_ue_list_unallocated, e_ue_list_unallocated)
     phase3: Phase3 = Phase3(ChannelModel(cochannel_index), g_nb, e_nb, ue_list_allocated, ue_list_unallocated)
     phase3.increase_resource_efficiency()
-    system_throughput: float = phase3.calc_system_throughput()
+    system_throughput: float = calc_system_throughput(
+        phase3.gue_allocated + phase3.due_allocated + phase3.eue_allocated)
 
     if visualize_the_algo:
         with open(visualization_file_path + ".P", "ab+") as file:

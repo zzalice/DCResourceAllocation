@@ -14,7 +14,7 @@ class Space:
         assert ending_i >= starting_i and ending_j >= starting_j
 
         self.uuid: UUID = uuid4()
-        self.layer: Layer = layer  # TODO: restore有更新到這裡嗎
+        self.layer: Layer = layer
         self.starting_i: int = starting_i
         self.starting_j: int = starting_j
         self.ending_i: int = ending_i
@@ -96,7 +96,7 @@ class SimpleSpace:
 
 
 def empty_space(layer: Layer) -> Tuple[Space, ...]:
-    """https://hackmd.io/HaKC3jR5Q4KOcumGo8RvKQ?view"""
+    # ref: https://hackmd.io/HaKC3jR5Q4KOcumGo8RvKQ?view
     spaces: List[SimpleSpace] = scan(layer.bu_status)
     spaces: List[SimpleSpace] = merge(spaces)
 

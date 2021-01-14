@@ -13,3 +13,10 @@ def divid_ue(ue_list: Tuple[UserEquipment, ...]) -> Tuple[
         else:
             unallocated_ue.append(ue)
     return tuple(allocated_ue), tuple(unallocated_ue)
+
+
+def calc_system_throughput(ue_allocated: List[UserEquipment]) -> float:
+    system_throughput: float = 0.0
+    for ue in ue_allocated:
+        system_throughput += ue.throughput
+    return system_throughput

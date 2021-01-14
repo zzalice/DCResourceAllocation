@@ -2,7 +2,7 @@ from typing import Dict, List, Tuple, Union
 
 from src.channel_model.sinr import ChannelModel
 from src.resource_allocation.algo.new_ue_allocation import AllocateUE
-from src.resource_allocation.algo.space import empty_space
+from src.resource_allocation.algo.space import empty_space, Space
 from src.resource_allocation.ds.eutran import ENodeB, EUserEquipment
 from src.resource_allocation.ds.ngran import DUserEquipment, GNodeB, GUserEquipment
 from src.resource_allocation.ds.ue import UserEquipment
@@ -16,15 +16,15 @@ class Intuitive(Undo):
         super().__init__()
         self.gnb: GNodeB = gnb
         self.enb: ENodeB = enb
-        self.gue_unallocated: List[GUserEquipment] = list(gue)
-        self.due_unallocated: List[DUserEquipment] = list(due)
-        self.eue_unallocated: List[EUserEquipment] = list(eue)
+        self.gues: List[GUserEquipment] = list(gue)
+        self.dues: List[DUserEquipment] = list(due)
+        self.eues: List[EUserEquipment] = list(eue)
 
-        self.ue_gnb_to_allocate: List[
-            Union[GUserEquipment, DUserEquipment]] = self.gue_unallocated + self.due_unallocated
-        self.ue_enb_to_allocate: List[Union[EUserEquipment, DUserEquipment]] = self.eue_unallocated
-        self.ue_gnb_allocated: List[Union[GUserEquipment, DUserEquipment]] = []
-        self.ue_enb_allocated: List[Union[EUserEquipment, DUserEquipment]] = []
+        self.ue_gnb_to_allocate: List[Union[GUserEquipment, DUserEquipment]] = self.gues + self.dues
+        self.ue_enb_to_allocate: List[Union[EUserEquipment, DUserEquipment]] = self.eues
+        self.gue_allocated: List[GUserEquipment] = []
+        self.due_allocated: List[DUserEquipment] = []
+        self.eue_allocated: List[EUserEquipment] = []
         self.gue_fail: List[GUserEquipment] = []
         self.due_fail: List[DUserEquipment] = []
         self.eue_fail: List[EUserEquipment] = []
@@ -40,13 +40,11 @@ class Intuitive(Undo):
     def resource_allocation(self, nb_type: NodeBType):
         if nb_type == NodeBType.G:
             self.ue_gnb_to_allocate.sort(key=lambda x: x.coordinate.distance_gnb, reverse=True)
-            ue_nb_to_allocate: List[UserEquipment] = self.ue_gnb_to_allocate
-            ue_nb_allocated: List[UserEquipment] = self.ue_gnb_allocated
+            ue_nb_to_allocate: List[Union[GUserEquipment, DUserEquipment]] = self.ue_gnb_to_allocate
             nb: GNodeB = self.gnb
         else:
             self.ue_enb_to_allocate.sort(key=lambda x: x.coordinate.distance_enb, reverse=True)
-            ue_nb_to_allocate: List[UserEquipment] = self.ue_enb_to_allocate
-            ue_nb_allocated: List[UserEquipment] = self.ue_enb_allocated
+            ue_nb_to_allocate: List[Union[EUserEquipment, DUserEquipment]] = self.ue_enb_to_allocate
             nb: ENodeB = self.enb
 
         while ue_nb_to_allocate:
@@ -55,7 +53,11 @@ class Intuitive(Undo):
             # allocate ue
             is_complete: bool = False
             for layer in nb.frame.layer:
-                allocate_ue: AllocateUE = AllocateUE(ue, empty_space(layer), self.channel_model)
+                spaces: Tuple[Space] = empty_space(layer)
+                if len(spaces) == 0:    # TODO: 需不需要在整個frame都沒空間後，就break while ue
+                    # run out of space in this layer
+                    continue
+                allocate_ue: AllocateUE = AllocateUE(ue, spaces, self.channel_model)
                 is_complete: bool = allocate_ue.new_ue()
                 self.append_undo([lambda: allocate_ue.undo(), allocate_ue])
 
@@ -64,16 +66,16 @@ class Intuitive(Undo):
                 # is_complete: bool = False
 
                 if is_complete:
-                    ue_nb_allocated.append(ue)
                     self.purge_undo()
                     break
                 else:
                     self.undo()
 
-            if is_complete is False:
-                if ue.ue_type == UEType.G:
-                    self.gue_fail.append(ue)
-                elif ue.ue_type == UEType.D:
-                    self.due_fail.append(ue)
-                elif ue.ue_type == UEType.E:
-                    self.eue_fail.append(ue)
+            if ue.ue_type == UEType.G:
+                (self.gue_allocated if is_complete else self.gue_fail).append(ue)
+            elif ue.ue_type == UEType.D:
+                (self.due_allocated if is_complete else self.due_fail).append(ue)
+            elif ue.ue_type == UEType.E:
+                (self.eue_allocated if is_complete else self.eue_fail).append(ue)
+            else:
+                raise AssertionError
