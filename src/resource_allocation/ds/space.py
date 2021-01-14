@@ -96,7 +96,7 @@ class SimpleSpace:
 
 def empty_space(layer: Layer) -> Tuple[Space, ...]:
     # ref: https://hackmd.io/HaKC3jR5Q4KOcumGo8RvKQ?view
-    spaces: List[SimpleSpace] = scan(layer.bu_status)
+    spaces: List[SimpleSpace] = scan(layer)
     spaces: List[SimpleSpace] = merge(spaces)
 
     empty_spaces: List[Space] = []
@@ -105,18 +105,19 @@ def empty_space(layer: Layer) -> Tuple[Space, ...]:
     return tuple(empty_spaces)
 
 
-def scan(bu_status: Tuple[Tuple[bool, ...], ...]) -> List[SimpleSpace]:
+def scan(layer: Layer) -> List[SimpleSpace]:
+    bu_status = layer.bu_status
     spaces: List[SimpleSpace] = []
-    for i in range(len(bu_status)):
+    for i in range(layer.FREQ):
         tmp_space: SimpleSpace = SimpleSpace(i, -1, i, -1)
-        for j in range(len(bu_status[0])):
+        for j in range(layer.TIME):
             if not bu_status[i][j]:  # is empty
                 tmp_space.j_end = j
                 if tmp_space.j_start == -1:
                     tmp_space.j_start = j
-                if j == len(bu_status[0]) - 1:
+                if j == layer.TIME - 1:
                     spaces.append(tmp_space)
-            elif tmp_space.j_start != -1:  # meet a allocated RB
+            elif tmp_space.j_start != -1:  # meet an allocated RB
                 spaces.append(tmp_space)
                 tmp_space: SimpleSpace = SimpleSpace(i, -1, i, -1)
     return spaces
@@ -133,6 +134,9 @@ def merge(spaces: List[SimpleSpace]) -> List[SimpleSpace]:
                     another_space.width == space.width):  # merge continuous and same width space
                 space.i_end = another_space.i_end  # merge
                 spaces.remove(another_space)  # remove the merged space
+            elif another_space.i_start > space.i_end + 1:
+                # not possible to merge into a rectangle
+                break
             else:
                 i += 1
         merged_spaces.append(space)
