@@ -1,7 +1,6 @@
 from __future__ import annotations
 
-import dataclasses
-from typing import List, Optional, Tuple, Union
+from typing import Dict, List, Optional, Tuple, Union
 from uuid import UUID, uuid4
 
 from src.resource_allocation.ds.frame import Layer
@@ -78,63 +77,47 @@ class Space:
         return self.ending_i - self.starting_i + 1
 
 
-@dataclasses.dataclass(order=True, unsafe_hash=True)
-class SimpleSpace:
-    i_start: int
-    j_start: int
-    i_end: int
-    j_end: int
-
-    @property
-    def width(self) -> int:
-        return self.j_end - self.j_start
-
-    @property
-    def height(self) -> int:
-        return self.i_end - self.i_start
-
-
 def empty_space(layer: Layer) -> Tuple[Space, ...]:
     # ref: https://hackmd.io/HaKC3jR5Q4KOcumGo8RvKQ?view
-    spaces: List[SimpleSpace] = scan(layer)
-    spaces: List[SimpleSpace] = merge(spaces)
+    spaces: List[Dict] = scan(layer)
+    spaces: List[Dict] = merge(spaces)
 
     empty_spaces: List[Space] = []
     for space in spaces:
-        empty_spaces.append(Space(layer, space.i_start, space.j_start, space.i_end, space.j_end))
+        empty_spaces.append(Space(layer, space['i_start'], space['j_start'], space['i_end'], space['j_end']))
     return tuple(empty_spaces)
 
 
-def scan(layer: Layer) -> List[SimpleSpace]:
+def scan(layer: Layer) -> List[Dict]:
     bu_status = layer.bu_status
-    spaces: List[SimpleSpace] = []
+    spaces: List[Dict] = []
     for i in range(layer.FREQ):
-        tmp_space: SimpleSpace = SimpleSpace(i, -1, i, -1)
+        tmp_space: Dict = {'i_start': i, 'j_start': -1, 'i_end': i, 'j_end': -1}
         for j in range(layer.TIME):
             if not bu_status[i][j]:  # is empty
-                tmp_space.j_end = j
-                if tmp_space.j_start == -1:
-                    tmp_space.j_start = j
+                tmp_space['j_end'] = j
+                if tmp_space['j_start'] == -1:
+                    tmp_space['j_start'] = j
                 if j == layer.TIME - 1:
                     spaces.append(tmp_space)
-            elif tmp_space.j_start != -1:  # meet an allocated RB
+            elif tmp_space['j_start'] != -1:  # meet an allocated RB
                 spaces.append(tmp_space)
-                tmp_space: SimpleSpace = SimpleSpace(i, -1, i, -1)
+                tmp_space: Dict = {'i_start': i, 'j_start': -1, 'i_end': i, 'j_end': -1}
     return spaces
 
 
-def merge(spaces: List[SimpleSpace]) -> List[SimpleSpace]:
-    merged_spaces: List[SimpleSpace] = []
+def merge(spaces: List[Dict]) -> List[Dict]:
+    merged_spaces: List[Dict] = []
     while spaces:
-        space: SimpleSpace = spaces.pop(0)  # space to be merged
+        space: Dict = spaces.pop(0)  # space to be merged
         i: int = 0
         while i < len(spaces):
-            another_space: SimpleSpace = spaces[i]
-            if (another_space.i_start == space.i_end + 1) and (another_space.j_start == space.j_start) and (
-                    another_space.width == space.width):  # merge continuous and same width space
-                space.i_end = another_space.i_end  # merge
+            another_space: Dict = spaces[i]
+            if (another_space['i_start'] == space['i_end'] + 1) and (another_space['j_start'] == space['j_start']) and (
+                    another_space['j_end'] == space['j_end']):  # merge continuous and same width space
+                space['i_end'] = another_space['i_end']  # merge
                 spaces.remove(another_space)  # remove the merged space
-            elif another_space.i_start > space.i_end + 1:
+            elif another_space['i_start'] > space['i_end'] + 1:
                 # not possible to merge into a rectangle
                 break
             else:
