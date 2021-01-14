@@ -1,7 +1,6 @@
 from __future__ import annotations
 
 import dataclasses
-from copy import deepcopy
 from typing import List, Optional, Tuple, Union
 from uuid import UUID, uuid4
 
@@ -127,13 +126,15 @@ def merge(spaces: List[SimpleSpace]) -> List[SimpleSpace]:
     merged_spaces: List[SimpleSpace] = []
     while spaces:
         space: SimpleSpace = spaces.pop(0)  # space to be merged
-        other_spaces: List[SimpleSpace] = deepcopy(spaces)      # TODO: deepcopy is inefficient
-        while other_spaces:
-            other_space: SimpleSpace = other_spaces.pop(0)
-            if (other_space.i_start == space.i_end + 1) and (other_space.j_start == space.j_start) and (
-                    other_space.width == space.width):  # merge continuous and same width space
-                space.i_end = other_space.i_end  # merge
-                spaces.remove(other_space)  # remove the merged space
+        i: int = 0
+        while i < len(spaces):
+            another_space: SimpleSpace = spaces[i]
+            if (another_space.i_start == space.i_end + 1) and (another_space.j_start == space.j_start) and (
+                    another_space.width == space.width):  # merge continuous and same width space
+                space.i_end = another_space.i_end  # merge
+                spaces.remove(another_space)  # remove the merged space
+            else:
+                i += 1
         merged_spaces.append(space)
 
     return merged_spaces

@@ -1,7 +1,7 @@
 from typing import List, Optional, Tuple, Union
 
 from src.channel_model.sinr import ChannelModel
-from src.resource_allocation.algo.space import Space
+from src.resource_allocation.ds.space import Space
 from src.resource_allocation.ds.nodeb import ENBInfo, GNBInfo
 from src.resource_allocation.ds.rb import ResourceBlock
 from src.resource_allocation.ds.ue import UserEquipment

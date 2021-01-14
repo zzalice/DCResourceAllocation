@@ -5,7 +5,7 @@ import pytest
 
 from src.channel_model.sinr import ChannelModel
 from src.resource_allocation.algo.phase3 import Phase3
-from src.resource_allocation.algo.space import Space
+from src.resource_allocation.ds.space import Space
 from src.resource_allocation.ds.eutran import ENodeB, EUserEquipment
 from src.resource_allocation.ds.ngran import DUserEquipment, GNodeB, GUserEquipment
 from src.resource_allocation.ds.util_enum import E_MCS, G_MCS, LTEResourceBlock, Numerology, SINRtoMCS

@@ -1,10 +1,10 @@
 import pickle
-from typing import Dict, List, Optional, Tuple, TYPE_CHECKING, Union
+from typing import Dict, List, Optional, Tuple, Union
 
 from hungarian_algorithm import algorithm
 
 from src.channel_model.sinr import ChannelModel
-from src.resource_allocation.algo.space import empty_space, Space
+from src.resource_allocation.ds.space import empty_space, Space
 from src.resource_allocation.ds.eutran import ENodeB
 from src.resource_allocation.ds.ngran import GNodeB
 from src.resource_allocation.ds.rb import ResourceBlock
