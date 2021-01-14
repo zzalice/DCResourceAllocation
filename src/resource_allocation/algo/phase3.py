@@ -11,10 +11,6 @@ from src.resource_allocation.ds.rb import ResourceBlock
 from src.resource_allocation.ds.ue import UserEquipment
 from src.resource_allocation.ds.util_enum import E_MCS, G_MCS, NodeBType, UEType
 
-if TYPE_CHECKING:
-    from src.resource_allocation.ds.eutran import EUserEquipment
-    from src.resource_allocation.ds.ngran import GUserEquipment, DUserEquipment
-
 
 class Phase3:
     def __init__(self, channel_model: ChannelModel, gnb: GNodeB, enb: ENodeB,
@@ -24,12 +20,12 @@ class Phase3:
         self.channel_model: ChannelModel = channel_model
         self.gnb: GNodeB = gnb
         self.enb: ENodeB = enb
-        self.gue_allocated: List[GUserEquipment] = list(ue_list_allocated[0])   # TODO: type checking
-        self.gue_unallocated: List[GUserEquipment] = list(ue_list_unallocated[0])
-        self.due_allocated: List[DUserEquipment] = list(ue_list_allocated[1])
-        self.due_unallocated: List[DUserEquipment] = list(ue_list_unallocated[1])
-        self.eue_allocated: List[EUserEquipment] = list(ue_list_allocated[2])
-        self.eue_unallocated: List[EUserEquipment] = list(ue_list_unallocated[2])
+        self.gue_allocated: List[UserEquipment] = list(ue_list_allocated[0])
+        self.gue_unallocated: List[UserEquipment] = list(ue_list_unallocated[0])
+        self.due_allocated: List[UserEquipment] = list(ue_list_allocated[1])
+        self.due_unallocated: List[UserEquipment] = list(ue_list_unallocated[1])
+        self.eue_allocated: List[UserEquipment] = list(ue_list_allocated[2])
+        self.eue_unallocated: List[UserEquipment] = list(ue_list_unallocated[2])
 
         self.mcs_ordered: Tuple[Union[E_MCS, G_MCS], ...] = self.order_mcs()
 
@@ -58,10 +54,10 @@ class Phase3:
             enb_empty_space: Tuple[Space, ...] = empty_space(self.enb.frame.layer[0])
 
             # Calculate the weight of ue to space
-            graph: Dict[str, Dict[str, float]] = self.calc_weight(mcs, ue_list, gnb_empty_space, enb_empty_space)
+            # graph: Dict[str, Dict[str, float]] = self.calc_weight(mcs, ue_list, gnb_empty_space, enb_empty_space)
 
             # Bipartite matching
-            match: List[Tuple[Tuple[str, str], float]] = self.matching(graph)
+            # match: List[Tuple[Tuple[str, str], float]] = self.matching(graph)
 
             # Implement the matching result from the highest weight.
             # If a movement lowers down the MCS of any allocated UE, dispose it and move on to the next match.
@@ -80,7 +76,7 @@ class Phase3:
     def adjust_mcs(self, ue: UserEquipment, is_hungarian: bool = False) -> bool:
         # TODO: 反向操作，先看SINR最好的RB需要幾個RB > 更新MCS > 再算一次需要幾個RB > 刪掉多餘SINR較差的RB (RB照freq time排序)
         if hasattr(ue, 'gnb_info'):
-            ue.gnb_info.rb.sort(key=lambda x: x.sinr, reverse=True)
+            ue.gnb_info.rb.sort(key=lambda x: x.sinr, reverse=True)  # TODO: sort by MCS，才不會讓空間很零碎
         if hasattr(ue, 'enb_info'):
             ue.enb_info.rb.sort(key=lambda x: x.sinr, reverse=True)
 

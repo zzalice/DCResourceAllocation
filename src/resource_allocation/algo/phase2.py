@@ -56,6 +56,9 @@ class Phase2:
                 for layer, bin_ in enumerate(zone_group.bin):
                     for zone in bin_.zone:
                         self.nodeb.frame.layer[layer].allocate_zone(zone)
+
+        for layer in self.nodeb.frame.layer:
+            layer.purge_undo()
         return tuple(zone_unallocated)
 
     def allocate_zone_to_layer(self, zone_set: Tuple[Zone, ...]):
@@ -64,3 +67,6 @@ class Phase2:
             for layer in self.nodeb.frame.layer:
                 if layer.allocate_zone(zone):
                     break
+
+        for layer in self.nodeb.frame.layer:
+            layer.purge_undo()
