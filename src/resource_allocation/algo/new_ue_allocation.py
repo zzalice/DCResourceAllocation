@@ -56,20 +56,28 @@ class AllocateUE(Undo):
                 else:
                     # run out of spaces before achieving QoS
                     return False
+            else:
+                if bu := space.next_rb(bu_i, bu_j, self.ue.numerology_in_use):
+                    bu_i: int = bu[0]
+                    bu_j: int = bu[1]
+                else:
+                    # running out of space in this "space"
+                    is_to_next_space: bool = True
+                    continue
 
             rb: Optional[ResourceBlock] = space.layer.allocate_resource_block(bu_i, bu_j, self.ue)
-            self.append_undo([lambda: space.layer.undo(), space.layer])
             if rb is None:
                 # overlapped with itself
-                raise AssertionError
+                continue
+            self.append_undo([lambda l=space.layer: l.undo(), lambda l=space.layer: l.purge_undo()])
 
             self.channel_model.sinr_rb(rb)
-            self.append_undo([lambda: self.channel_model.undo(), self.channel_model])  # TODO: 需要嗎？還是RB會被remove，也不會影響到overlap UE
+            # self.append_undo([lambda c_m=self.channel_model: c_m.undo(), lambda c_m=self.channel_model: c_m.purge_undo()])  # RB will be removed after all
             if rb.mcs is (G_MCS if nb_info.nb_type == NodeBType.G else E_MCS).CQI0:
                 # SINR out of range
                 return False    # TODO: [refactor] 可以只刪掉這個rb，繼續試下一個位子(非is_to_next_space=True)
             nb_info.rb.sort(key=lambda x: x.sinr, reverse=True)
-            self.append_undo([lambda: nb_info.rb.sort(key=lambda x: x.sinr, reverse=True)])  # TODO: 需要嗎？還是RB會被remove，也不會影響到overlap UE
+            # self.append_undo([lambda: nb_info.rb.sort(key=lambda x: x.sinr, reverse=True)])  # the RB will be removed
 
             tmp_throughput: float = nb_info.rb[-1].mcs.value * len(nb_info.rb)
 
@@ -81,10 +89,3 @@ class AllocateUE(Undo):
                 self.append_undo([lambda: setattr(self.ue, 'throughput', 0.0)])
                 self.append_undo([lambda: setattr(nb_info, 'mcs', None)])
                 return True
-
-            if bu := space.next_rb(bu_i, bu_j, self.ue.numerology_in_use):
-                bu_i: int = bu[0]
-                bu_j: int = bu[1]
-            else:
-                # running out of space in this "space"
-                is_to_next_space: bool = True

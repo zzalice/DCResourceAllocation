@@ -35,7 +35,7 @@ class Space:
             bu_i += rb_type.freq
             bu_j: int = self.starting_j
             if bu_i + rb_type.freq - 1 > self.ending_i:
-                return None     # running out of space
+                return None  # running out of space
 
         return bu_i, bu_j
 

@@ -2,9 +2,9 @@ import pytest
 
 from src.channel_model.sinr import ChannelModel
 from src.resource_allocation.algo.new_ue_allocation import AllocateUE
-from src.resource_allocation.ds.space import Space
 from src.resource_allocation.ds.eutran import ENodeB
 from src.resource_allocation.ds.ngran import DUserEquipment, GNodeB, GUserEquipment
+from src.resource_allocation.ds.space import Space
 from src.resource_allocation.ds.util_enum import LTEResourceBlock, Numerology
 from src.resource_allocation.ds.util_type import Coordinate
 
@@ -153,6 +153,13 @@ def test_new_ue(channel_model, space_g0_0_0_3_15, space_g0_4_0_5_15, space_g0_6_
     """ [test] 多個空間可以滿足QoS """
     # assert AllocateUE(due, (space_g0_0_0_3_15, space_g0_4_0_5_15), channel_model).allocate() is True
     assert AllocateUE(due_2, (space_g0_6_0_7_15, space_g0_8_0_11_15), channel_model).new_ue() is True
+
+
+def test_small_step_undo():
+    """"""
+    """ [test] 跟自己重疊時會刪掉剛新增的RB，並繼續嘗試下一個RB/空間 """
+    """ [test] 遇到CQI=0的RB時，刪除這個RB，並繼續嘗試下一個RB/空間 """
+    # 要先解掉那個TODO
 
 
 def test_new_ue_numerology_restore(channel_model, space_e_3_0_4_15, space_e_5_0_5_15, due_enb, due_enb_2):

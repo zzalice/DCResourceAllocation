@@ -47,35 +47,50 @@ class Intuitive(Undo):
             ue_nb_to_allocate: List[Union[EUserEquipment, DUserEquipment]] = self.ue_enb_to_allocate
             nb: ENodeB = self.enb
 
+        spaces: Tuple[Space] = self.update_empty_space(nb)
+
         while ue_nb_to_allocate:
-            ue: UserEquipment = ue_nb_to_allocate.pop()  # the unallocated ue with best SINR
-
-            # allocate ue
-            is_complete: bool = False
-            for layer in nb.frame.layer:
-                spaces: Tuple[Space] = empty_space(layer)
-                if len(spaces) == 0:    # TODO: 需不需要在整個frame都沒空間後，就break while ue
-                    # run out of space in this layer
-                    continue
+            ue: UserEquipment = ue_nb_to_allocate.pop()
+            is_allocated: bool = False
+            if len(spaces) > 0:
+                # allocate ue
                 allocate_ue: AllocateUE = AllocateUE(ue, spaces, self.channel_model)
-                is_complete: bool = allocate_ue.new_ue()
-                self.append_undo([lambda: allocate_ue.undo(), allocate_ue])
+                is_allocated: bool = allocate_ue.new_ue()
+                self.append_undo([lambda a_u=allocate_ue: a_u.undo(), lambda a_u=allocate_ue: a_u.purge_undo()])
 
-                # TODO: adjust the mcs of effected UEs.
-                # TODO: If lowers down any MCS. undo the new allocated UE.
-                # is_complete: bool = False
+                # TODO: adjust the mcs of effected UEs. If lowers down any MCS. undo the new allocated UE.
+                # is_allocated: bool = False
 
-                if is_complete:
+                if is_allocated:
+                    spaces: Tuple[Space] = self.update_empty_space(nb)
                     self.purge_undo()
-                    break
                 else:
                     self.undo()
+                # self.assert_is_empty(spaces, ue, is_allocated)
 
             if ue.ue_type == UEType.G:
-                (self.gue_allocated if is_complete else self.gue_fail).append(ue)
+                (self.gue_allocated if is_allocated else self.gue_fail).append(ue)
             elif ue.ue_type == UEType.D:
-                (self.due_allocated if is_complete else self.due_fail).append(ue)
+                (self.due_allocated if is_allocated else self.due_fail).append(ue)
             elif ue.ue_type == UEType.E:
-                (self.eue_allocated if is_complete else self.eue_fail).append(ue)
+                (self.eue_allocated if is_allocated else self.eue_fail).append(ue)
             else:
                 raise AssertionError
+
+    @staticmethod
+    def update_empty_space(nb: Union[GNodeB, ENodeB]) -> Tuple[Space]:
+        tmp_spaces: List[Space] = []
+        for layer in nb.frame.layer:
+            tmp_spaces.extend(empty_space(layer))
+        return tuple(tmp_spaces)
+
+    # @staticmethod
+    # def assert_is_empty(spaces, this_ue, is_allocated):
+    #     for space in spaces:
+    #         for i in range(space.starting_i, space.ending_i + 1):
+    #             for j in range(space.starting_j, space.ending_j + 1):
+    #                 if space.layer.bu_status[i][j]:
+    #                     assert space.layer.bu[i][j].within_rb.ue is this_ue, "Which UE is this???"
+    #                     assert is_allocated is True, "undo() fail. Space not cleared"
+    #                     raise AssertionError
+

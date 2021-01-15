@@ -77,6 +77,7 @@ class Layer(Undo):
                 bu: BaseUnit = self.bu[offset_i + i][offset_j + j]
                 for overlapped_rb in bu.overlapped_rb:
                     if overlapped_rb.ue is ue:  # The new RB will overlap with the UE itself
+                        ue.numerology_in_use = tmp_numerology  # restore RB type
                         return None
                     else:
                         origin_bool: bool = overlapped_rb.ue.is_to_recalculate_mcs
@@ -139,6 +140,15 @@ class Layer(Undo):
             self._cache_is_valid: bool = True
         return self._bu_status
 
+    @property
+    def bu_status_cache_is_valid(self) -> bool:
+        return self._cache_is_valid
+
+    @bu_status_cache_is_valid.setter
+    def bu_status_cache_is_valid(self, value: bool):
+        assert value is False, "Only the property bu_status may update the bu status and set _cache_is_valid to True."
+        self._cache_is_valid: bool = value
+
 
 class BaseUnit:
     def __init__(self, absolute_i: int, absolute_j: int, layer: Layer):
@@ -157,7 +167,7 @@ class BaseUnit:
 
     def set_up_bu(self, relative_i: int, relative_j: int, resource_block: ResourceBlock):
         # relative position of this BU withing a RB
-        assert not self.is_used
+        assert not self.is_used, f'BU({self.absolute_i}, {self.absolute_j}) in {self.layer.nodeb.nb_type} layer {self.layer.layer_index} is used'
         assert relative_i >= 0 and relative_j >= 0
         self.relative_i: int = relative_i
         self.relative_j: int = relative_j
@@ -167,6 +177,8 @@ class BaseUnit:
         assert self.is_used
         self.relative_i = self.relative_j = self.within_rb = None
         self.sinr: float = float('-inf')
+
+        self.layer.bu_status_cache_is_valid = False
 
     @property
     def overlapped_rb(self) -> List[ResourceBlock]:

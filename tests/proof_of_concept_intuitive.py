@@ -15,7 +15,7 @@ if __name__ == '__main__':
     intuitive.algorithm()
     system_throughput: float = calc_system_throughput(intuitive.gue_allocated + intuitive.due_allocated + intuitive.eue_allocated)
 
-    with open("../utils/frame_visualizer/vis_intuitive" + datetime.today().strftime('%Y%m%d') + ".P", "wb") as file:
+    with open("../utils/frame_visualizer/vis_intuitive_" + datetime.today().strftime('%Y%m%d') + ".P", "wb") as file:
         pickle.dump(["intuitive",
                      g_nb.frame, e_nb.frame, system_throughput,
                      {"allocated": intuitive.gue_allocated, "unallocated": intuitive.gue_fail},
