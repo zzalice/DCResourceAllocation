@@ -49,6 +49,7 @@ class ChannelModel(Undo):
         :param bu: The BU to calculate its' SINR.
         :return: SINR in dB
         """
+        # TODO: recalculate the effected BU to improve the program efficiency.
         # print(f'rb({bu.relative_i},{bu.relative_j})')
         rb: ResourceBlock = bu.within_rb
         ue: UserEquipment = rb.ue

@@ -81,7 +81,20 @@ class Intuitive(Undo):
     def update_empty_space(nb: Union[GNodeB, ENodeB]) -> Tuple[Space]:
         tmp_spaces: List[Space] = []
         for layer in nb.frame.layer:
-            tmp_spaces.extend(empty_space(layer))
+            do_extend: bool = True
+            new_spaces: Tuple[Space] = empty_space(layer)
+
+            # skip the layer if there is a complete layer in tmp_space already
+            if len(new_spaces) == 1:
+                for space in tmp_spaces:
+                    if (new_spaces[0].starting_i == space.starting_i == 0) and (
+                            new_spaces[0].starting_j == space.starting_j == 0) and (
+                            new_spaces[0].ending_i == space.ending_i == nb.frame.frame_freq - 1) and (
+                            new_spaces[0].ending_j == space.ending_j == nb.frame.frame_time - 1):
+                        do_extend: bool = False
+                        break
+            if do_extend:
+                tmp_spaces.extend(new_spaces)
         return tuple(tmp_spaces)
 
     # @staticmethod
@@ -93,4 +106,3 @@ class Intuitive(Undo):
     #                     assert space.layer.bu[i][j].within_rb.ue is this_ue, "Which UE is this???"
     #                     assert is_allocated is True, "undo() fail. Space not cleared"
     #                     raise AssertionError
-

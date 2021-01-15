@@ -164,7 +164,7 @@ class Phase3:
 
         weight: Dict[str, Dict[str, float]] = {}
         num_of_bu_origin: int = self.calc_num_bu(self.gue_allocated + self.due_allocated + self.eue_allocated)
-        for ue in ue_list:  # TODO: restore後ue_list是否也改變了
+        for ue in ue_list:
             weight[str(ue.uuid)] = {}
             for space in gnb_spaces + enb_spaces:
                 is_to_try: bool = False
@@ -256,7 +256,7 @@ class Phase3:
 
     @staticmethod
     def matching(graph: Dict[str, Dict[str, float]]) -> List[Tuple[Tuple[str, str], float]]:
-        # TODO: graph用list傳入。把UE是空跟0的剔除、把UE跟space依照weight由大到小排序
+        # TODO: graph用list傳入。把UE跟space依照weight由大到小排序
         # for ue in graph.keys():
         #     graph[ue]: Dict[str, float] = OrderedDict(sorted(graph[ue].items(), key=lambda x: x[1], reverse=True))
         # graph: Dict[str, Dict[str, float]] = OrderedDict(sorted(graph.items(), key=lambda x: x[1][0][1], reverse=True))
