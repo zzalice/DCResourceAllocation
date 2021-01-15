@@ -34,9 +34,12 @@ if __name__ == '__main__':
 
     # sample code to generate random profiles (the last tuple `distance_range.e_random` ONLY exists in dUE)
     sec_to_frame: int = 1000 // (e_nb.frame.frame_time // 16)
+    qos_lower_bound_bps: int = 100_000  # QoS range: 100,000-3,000,000 bps
+    qos_higher_bound_bps: int = 3_000_000
+
     e_profiles: UEProfiles = UEProfiles(
         EUE_COUNT,
-        tuple(random.randrange(100_000 // sec_to_frame, 3_000_000 // sec_to_frame + 1, 10_000 // sec_to_frame) for _ in
+        tuple(random.randrange(qos_lower_bound_bps // sec_to_frame, qos_higher_bound_bps // sec_to_frame + 1, 10_000 // sec_to_frame) for _ in
               range(EUE_COUNT)),
         LTEResourceBlock.gen_candidate_set() * EUE_COUNT,  # dummy (unused)
         tuple(Coordinate.random_gen_coordinate(UEType.E, e_nb, g_nb) for _ in range(EUE_COUNT))
@@ -44,7 +47,7 @@ if __name__ == '__main__':
 
     g_profiles: UEProfiles = UEProfiles(
         GUE_COUNT,
-        tuple(random.randrange(100_000 // sec_to_frame, 3_000_000 // sec_to_frame + 1, 10_000 // sec_to_frame) for _ in
+        tuple(random.randrange(qos_lower_bound_bps // sec_to_frame, qos_higher_bound_bps // sec_to_frame + 1, 10_000 // sec_to_frame) for _ in
               range(GUE_COUNT)),
         tuple(Numerology.gen_candidate_set(random_pick=True) for _ in range(GUE_COUNT)),
         tuple(Coordinate.random_gen_coordinate(UEType.G, e_nb, g_nb) for _ in range(GUE_COUNT))
@@ -52,7 +55,7 @@ if __name__ == '__main__':
 
     d_profiles: UEProfiles = UEProfiles(
         DUE_COUNT,
-        tuple(random.randrange(100_000 // sec_to_frame, 3_000_000 // sec_to_frame + 1, 10_000 // sec_to_frame) for _ in
+        tuple(random.randrange(qos_lower_bound_bps // sec_to_frame, qos_higher_bound_bps // sec_to_frame + 1, 10_000 // sec_to_frame) for _ in
               range(DUE_COUNT)),
         tuple(Numerology.gen_candidate_set(random_pick=True) for _ in range(DUE_COUNT)),
         tuple(Coordinate.random_gen_coordinate(UEType.D, e_nb, g_nb) for _ in range(DUE_COUNT))

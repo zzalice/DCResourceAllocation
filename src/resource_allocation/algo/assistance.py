@@ -19,4 +19,4 @@ def calc_system_throughput(ue_allocated: List[UserEquipment]) -> float:
     system_throughput: float = 0.0
     for ue in ue_allocated:
         system_throughput += ue.throughput
-    return system_throughput
+    return system_throughput    # bit per frame

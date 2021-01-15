@@ -16,7 +16,7 @@ class FrameRenderer:
             'table, th, td {\nborder: 1px solid black;\nfont-family: monospace;\nvertical-align: center;}',
             'th {background-color: lightgray;}',
             'td {min-width: 32px;}',
-            '.LTEResourceBlock_E {background-color: #73A7FE;}',
+            '.LTEResourceBlock_E {background-color: #01d0cc;}',
             '.Numerology_N0 {background-color: #73A7FE;}',
             '.Numerology_N1 {background-color: #B1DE8C;}',
             '.Numerology_N2 {background-color: #F5EF97;}',
@@ -153,7 +153,7 @@ class FrameRenderer:
             self.body.append(f'<div id="{stage[_s]}_ue" class="tab-inner">')
 
             self.body.append(
-                f'<div>system throughput: {(system_throughput[_s] / 1000_000) * (1000 / g_frame[_s].frame_time)} Mbps</div>')
+                f'<div>system throughput: {(system_throughput[_s] / 1000_000) * (1000 // (g_frame[_s].frame_time // 16))} Mbps</div>')
 
             self.gen_ue_list(g_ue_list[_s]['allocated'], "allocated")
             self.gen_ue_list(d_ue_list[_s]['allocated'], "allocated")
@@ -205,10 +205,10 @@ class FrameRenderer:
 
 
 if __name__ == '__main__':
-    file_to_visualize = "vis_20210114"
+    # file_to_visualize = "vis_20210114"
     # file_to_visualize = "vis_test_calc_weight"
     # file_to_visualize = "vis_test_phase3"
-    # file_to_visualize = "vis_intuitive20210114"
+    file_to_visualize = "vis_intuitive20210115"
 
     frame_renderer = FrameRenderer()
     s, gf, ef, t, gue, due, eue = frame_renderer.open_file(file_to_visualize + ".P")
