@@ -35,17 +35,16 @@ class AdjustMCS(Undo):
                         [lambda c_m=self.channel_model: c_m.undo(), lambda c_m=self.channel_model: c_m.purge_undo()])
                     has_positive_effect: bool = self.adjust(ue, allow_lower_mcs)
                     if not has_positive_effect:
-                        # the mcs of the ue is lower down by another UE.
+                        # the mcs of the ue is lowered down by another UE.
                         return False
             if is_all_adjusted:
-                break
-        return True
+                return True
 
     def adjust(self, ue: Union[UserEquipment, GUserEquipment, DUserEquipment, EUserEquipment],
                allow_lower_mcs: bool = True) -> bool:
         # TODO: 反向操作，先看SINR最好的RB需要幾個RB > 更新MCS > 再算一次需要幾個RB > 刪掉多餘SINR較差的RB (RB照freq time排序)
         if hasattr(ue, 'gnb_info'):
-            ue.gnb_info.rb.sort(key=lambda x: x.sinr, reverse=True)  # TODO: sort by MCS，才不會讓空間很零碎
+            ue.gnb_info.rb.sort(key=lambda x: x.sinr, reverse=True)  # TODO: sort by MCS，又依照i,j排序，才不會讓空間很零碎。但是phase 3 calc_weight時可能會刪掉index大的RB
             self.append_undo([lambda: ue.gnb_info.rb.sort(key=lambda x: x.sinr, reverse=True)])
         if hasattr(ue, 'enb_info'):
             ue.enb_info.rb.sort(key=lambda x: x.sinr, reverse=True)

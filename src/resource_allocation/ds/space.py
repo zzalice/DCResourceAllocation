@@ -25,6 +25,7 @@ class Space:
         If the RBs are properly placed one after another.
         It will naturally be aligned every 0.5 ms.
         """
+        assert self.starting_i <= bu_i <= self.ending_i and self.starting_j <= bu_j <= self.ending_j
         if self.layer.nodeb.nb_type == NodeBType.E:
             rb_type = LTEResourceBlock.E  # TODO: refactor or redesign
 
@@ -75,6 +76,11 @@ class Space:
     @property
     def height(self) -> int:
         return self.ending_i - self.starting_i + 1
+
+    def assert_is_empty(self):
+        for i in range(self.starting_i, self.ending_i + 1):
+            for j in range(self.starting_j, self.ending_j + 1):
+                assert not self.layer.bu[i][j].is_used, "The space is not empty."
 
 
 def empty_space(layer: Layer) -> Tuple[Space, ...]:

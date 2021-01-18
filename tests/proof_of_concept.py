@@ -7,7 +7,8 @@ from src.resource_allocation.algo.assistance import calc_system_throughput, divi
 from src.resource_allocation.algo.phase1 import Phase1
 from src.resource_allocation.algo.phase2 import Phase2
 from src.resource_allocation.algo.phase3 import Phase3
-from src.resource_allocation.ds.ue import UserEquipment
+from src.resource_allocation.ds.eutran import EUserEquipment
+from src.resource_allocation.ds.ngran import DUserEquipment, GUserEquipment
 from src.resource_allocation.ds.zone import Zone, ZoneGroup
 
 if __name__ == '__main__':
@@ -42,7 +43,7 @@ if __name__ == '__main__':
     e_zone_wide, e_zone_narrow = e_phase1.categorize_zone(e_zone_fit, e_zone_merged)
 
     e_phase2: Phase2 = Phase2(e_nb)
-    e_phase2.allocate_zone_to_layer(e_zone_wide)    # TODO: CP value isn't implemented
+    e_phase2.allocate_zone_to_layer(e_zone_wide)  # TODO: CP value isn't implemented
     e_ue_list_allocated, e_ue_list_unallocated = divid_ue(e_ue_list)
     d_ue_list_unallocated = divid_ue(d_ue_list)[1]
 
@@ -55,17 +56,17 @@ if __name__ == '__main__':
                          {"allocated": e_ue_list_allocated, "unallocated": e_ue_list_unallocated}],
                         file)
 
-    ue_list_allocated: Tuple[Tuple[UserEquipment, ...], ...] = (g_ue_list_allocated, d_ue_list_allocated, e_ue_list_allocated)
-    ue_list_unallocated: Tuple[Tuple[UserEquipment, ...], ...] = (g_ue_list_unallocated, d_ue_list_unallocated, e_ue_list_unallocated)
+    ue_list_allocated: Tuple[Tuple[GUserEquipment, ...], Tuple[DUserEquipment, ...], Tuple[EUserEquipment, ...]] = (
+        g_ue_list_allocated, d_ue_list_allocated, e_ue_list_allocated)
+    ue_list_unallocated: Tuple[Tuple[GUserEquipment, ...], Tuple[DUserEquipment, ...], Tuple[EUserEquipment, ...]] = (
+        g_ue_list_unallocated, d_ue_list_unallocated, e_ue_list_unallocated)
     phase3: Phase3 = Phase3(ChannelModel(cochannel_index), g_nb, e_nb, ue_list_allocated, ue_list_unallocated)
     phase3.increase_resource_efficiency()
-    system_throughput: float = calc_system_throughput(
-        phase3.gue_allocated + phase3.due_allocated + phase3.eue_allocated)
 
     if visualize_the_algo:
         with open(visualization_file_path + ".P", "ab+") as file:
             pickle.dump(["Phase3",
-                         g_nb.frame, e_nb.frame, system_throughput,
+                         g_nb.frame, e_nb.frame, calc_system_throughput(phase3.gue_allocated + phase3.due_allocated + phase3.eue_allocated),
                          {"allocated": phase3.gue_allocated, "unallocated": phase3.gue_unallocated},
                          {"allocated": phase3.due_allocated, "unallocated": phase3.due_unallocated},
                          {"allocated": phase3.eue_allocated, "unallocated": phase3.eue_unallocated}],

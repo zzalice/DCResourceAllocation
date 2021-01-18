@@ -1,5 +1,5 @@
 # reference: shorturl.at/rDLS0
-from typing import Callable, List, Set, Union
+from typing import Callable, List, Union
 
 
 class Undo:

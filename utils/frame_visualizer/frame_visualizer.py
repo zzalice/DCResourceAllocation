@@ -70,12 +70,14 @@ class FrameRenderer:
             self.body.append(f'\n<div><b>User ID</b>: {ue.uuid.hex[:4]}\n<div>')
             self.body.append(f'\nnumerology: {ue.numerology_in_use}')
             self.body.append(f'\nQos: {ue.request_data_rate}')
-            if ue.ue_type == UEType.G or ue.ue_type == UEType.D:
-                self.body.append(f'\n<br>gnb_info: MCS: {ue.gnb_info.mcs.name if ue.gnb_info.mcs else "None"}')
+            if hasattr(ue, 'gnb_info'):
+                self.body.append(f'\n<br>gnb_info: distance(km): {"{:.3f}".format(ue.coordinate.distance_gnb)}')
+                self.body.append(f'\n<br>MCS: {ue.gnb_info.mcs.name if ue.gnb_info.mcs else "None"}')
                 self.body.append(f'\nthe number of RBs: {len(ue.gnb_info.rb)}')
                 self.gen_rb(ue.gnb_info.rb)
-            if ue.ue_type == UEType.E or ue.ue_type == UEType.D:
-                self.body.append(f'\n<br>enb_info: MCS: {ue.enb_info.mcs.name if ue.enb_info.mcs else "None"}')
+            if hasattr(ue, 'enb_info'):
+                self.body.append(f'\n<br>enb_info: distance(km): {"{:.3f}".format(ue.coordinate.distance_enb)}')
+                self.body.append(f'\n<br>MCS: {ue.enb_info.mcs.name if ue.enb_info.mcs else "None"}')
                 self.body.append(f'\nthe number of RBs: {len(ue.enb_info.rb)}')
                 self.gen_rb(ue.enb_info.rb)
             self.body.append('\n</div>\n</div>')
@@ -205,10 +207,10 @@ class FrameRenderer:
 
 
 if __name__ == '__main__':
-    # file_to_visualize = "vis_20210114"
+    file_to_visualize = "vis_20210118"
     # file_to_visualize = "vis_test_calc_weight"
     # file_to_visualize = "vis_test_phase3"
-    file_to_visualize = "vis_intuitive_20210118"
+    # file_to_visualize = "vis_intuitive_20210118"
 
     frame_renderer = FrameRenderer()
     s, gf, ef, t, gue, due, eue = frame_renderer.open_file(file_to_visualize + ".P")
