@@ -63,7 +63,10 @@ class Intuitive(Undo):
 
                 # the effected UEs
                 if is_allocated:
-                    has_positive_effect: bool = self.adjust_mcs.adjust_mcs_allocated_ues(allow_lower_mcs=False)   # TODO: undo adjust mcs. TODO: co-channel的部分，效果如何？
+                    has_positive_effect: bool = self.adjust_mcs.adjust_mcs_allocated_ues(
+                        allow_lower_mcs=False)  # TODO: undo adjust mcs. TODO: co-channel的部分，效果如何？
+                    self.append_undo(
+                        [lambda a_m=self.adjust_mcs: a_m.undo(), lambda a_m=self.adjust_mcs: a_m.purge_undo()])
                     if not has_positive_effect:
                         is_allocated: bool = False
 
@@ -103,12 +106,12 @@ class Intuitive(Undo):
                 tmp_spaces.extend(new_spaces)
         return tuple(tmp_spaces)
 
-    # @staticmethod
-    # def assert_is_empty(spaces, this_ue, is_allocated):
-    #     for space in spaces:
-    #         for i in range(space.starting_i, space.ending_i + 1):
-    #             for j in range(space.starting_j, space.ending_j + 1):
-    #                 if space.layer.bu_status[i][j]:
-    #                     assert space.layer.bu[i][j].within_rb.ue is this_ue, "Which UE is this???"
-    #                     assert is_allocated is True, "undo() fail. Space not cleared"
-    #                     raise AssertionError
+    @staticmethod
+    def assert_is_empty(spaces, this_ue, is_allocated):
+        for space in spaces:
+            for i in range(space.starting_i, space.ending_i + 1):
+                for j in range(space.starting_j, space.ending_j + 1):
+                    if space.layer.bu_status[i][j]:
+                        assert space.layer.bu[i][j].within_rb.ue is this_ue, "Which UE is this???"
+                        assert is_allocated is True, "undo() fail. Space not cleared"
+                        raise AssertionError

@@ -3,6 +3,7 @@ from typing import List, Optional, Union
 from src.channel_model.sinr import ChannelModel
 from src.resource_allocation.ds.eutran import EUserEquipment
 from src.resource_allocation.ds.ngran import DUserEquipment, GUserEquipment
+from src.resource_allocation.ds.nodeb import ENBInfo, GNBInfo
 from src.resource_allocation.ds.rb import ResourceBlock
 from src.resource_allocation.ds.ue import UserEquipment
 from src.resource_allocation.ds.undo import Undo
@@ -30,6 +31,8 @@ class AdjustMCS(Undo):
                 if ue.is_to_recalculate_mcs:
                     is_all_adjusted: bool = False
                     self.channel_model.sinr_ue(ue)
+                    self.append_undo(
+                        [lambda c_m=self.channel_model: c_m.undo(), lambda c_m=self.channel_model: c_m.purge_undo()])
                     has_positive_effect: bool = self.adjust(ue, allow_lower_mcs)
                     if not has_positive_effect:
                         # the mcs of the ue is lower down by another UE.
@@ -43,8 +46,10 @@ class AdjustMCS(Undo):
         # TODO: 反向操作，先看SINR最好的RB需要幾個RB > 更新MCS > 再算一次需要幾個RB > 刪掉多餘SINR較差的RB (RB照freq time排序)
         if hasattr(ue, 'gnb_info'):
             ue.gnb_info.rb.sort(key=lambda x: x.sinr, reverse=True)  # TODO: sort by MCS，才不會讓空間很零碎
+            self.append_undo([lambda: ue.gnb_info.rb.sort(key=lambda x: x.sinr, reverse=True)])
         if hasattr(ue, 'enb_info'):
             ue.enb_info.rb.sort(key=lambda x: x.sinr, reverse=True)
+            self.append_undo([lambda: ue.enb_info.rb.sort(key=lambda x: x.sinr, reverse=True)])
 
         while True:  # ue_throughput >= QoS
             # sum throughput
@@ -89,26 +94,31 @@ class AdjustMCS(Undo):
             if tmp_ue_throughput > ue.request_data_rate:
                 # Officially remove the RB
                 worst_rb.remove()
+                self.append_undo([lambda rb=worst_rb: rb.undo(), lambda rb=worst_rb:rb.purge_undo()])
                 continue
             elif ue_throughput >= ue.request_data_rate:
                 # Update the MCS and throughput of the UE
+                origin_throughput: float = ue.throughput
                 ue.throughput = ue_throughput
-                if hasattr(ue, 'gnb_info'):
-                    if ue.gnb_info.rb:
-                        ue.gnb_info.mcs = ue.gnb_info.rb[-1].mcs
-                    else:
-                        ue.gnb_info.mcs = None
-                if hasattr(ue, 'enb_info'):
-                    if ue.enb_info.rb:
-                        ue.enb_info.mcs = ue.enb_info.rb[-1].mcs
-                    else:
-                        ue.enb_info.mcs = None
-                ue.is_to_recalculate_mcs = False
+                self.append_undo([lambda u=ue: setattr(u, 'throughput', origin_throughput)])
+
+                # update MCS
+                for nb_info in ['gnb_info', 'enb_info']:
+                    if hasattr(ue, nb_info):
+                        ue_nb_info: Union[GNBInfo, ENBInfo] = getattr(ue, nb_info)
+                        origin_mcs: Optional[G_MCS, E_MCS] = ue_nb_info.mcs
+                        if ue_nb_info.rb:
+                            ue_nb_info.mcs = ue_nb_info.rb[-1].mcs
+                        else:
+                            ue_nb_info.mcs = None
+                        self.append_undo([lambda n_i=ue_nb_info: setattr(n_i, 'mcs', origin_mcs)])
+
+                ue.is_to_recalculate_mcs = False    # TODO: no need to undo?
                 return True
             elif not allow_lower_mcs:
                 # the temporarily moved UE has negative effected to this UE
                 return False
-            elif ue_throughput == 0.0:
+            elif ue_throughput == 0.0:  # TODO: undo
                 # if SINR is out of range, kick out this UE.
                 ue.remove()
                 if ue.ue_type == UEType.G:

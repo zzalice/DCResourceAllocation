@@ -84,7 +84,7 @@ class Layer(Undo):
                         overlapped_rb.ue.is_to_recalculate_mcs = True  # mark the effected UEs to recalculate
                         self.append_undo([lambda: setattr(overlapped_rb.ue, 'is_to_recalculate_mcs', origin_bool)])
 
-                bu.set_up_bu(i, j, resource_block)
+                bu.set_up_bu(resource_block)
                 self.append_undo([lambda b=bu: b.clear_up_bu()])  # note the dummy parameter with a default value
         nb_info.rb.append(resource_block)
         self.append_undo([lambda: nb_info.rb.remove(resource_block)])
@@ -92,8 +92,6 @@ class Layer(Undo):
         if not ue.is_allocated:
             ue.is_allocated = True
             self.append_undo([lambda: setattr(ue, 'is_allocated', False)])
-
-        self._cache_is_valid: bool = False  # set cache as invalid (for _available_block)
 
         # restore RB type
         ue.numerology_in_use = tmp_numerology
@@ -160,22 +158,19 @@ class BaseUnit:
         self._cochannel_absolute_i: Optional[int] = None
 
         # properties to be configured at runtime
-        self.relative_i: Optional[int] = None
-        self.relative_j: Optional[int] = None
         self.within_rb: Optional[ResourceBlock] = None
         self.sinr: float = float('-inf')
 
-    def set_up_bu(self, relative_i: int, relative_j: int, resource_block: ResourceBlock):
+    def set_up_bu(self, resource_block: ResourceBlock):
         # relative position of this BU withing a RB
         assert not self.is_used, f'BU({self.absolute_i}, {self.absolute_j}) in {self.layer.nodeb.nb_type} layer {self.layer.layer_index} is used'
-        assert relative_i >= 0 and relative_j >= 0
-        self.relative_i: int = relative_i
-        self.relative_j: int = relative_j
         self.within_rb: ResourceBlock = resource_block
+
+        self.layer.bu_status_cache_is_valid = False
 
     def clear_up_bu(self):
         assert self.is_used
-        self.relative_i = self.relative_j = self.within_rb = None
+        self.within_rb = None
         self.sinr: float = float('-inf')
 
         self.layer.bu_status_cache_is_valid = False
@@ -196,12 +191,6 @@ class BaseUnit:
     @property
     def is_used(self) -> bool:
         return self.within_rb is not None
-
-    @property
-    def is_at_upper_left(self) -> bool:
-        # return True if this BU is at the upper left corner of the RB it belongs to
-        assert self.is_used
-        return self.relative_i == 0 and self.relative_j == 0
 
     def set_cochannel(self, nodeb: Union[ENodeB, GNodeB], absolute_i: int):
         self._is_cochannel: bool = True

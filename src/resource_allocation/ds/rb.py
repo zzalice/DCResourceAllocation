@@ -2,6 +2,7 @@ from __future__ import annotations
 
 from typing import Optional, Tuple, TYPE_CHECKING, Union
 
+from .undo import Undo
 from .util_enum import E_MCS, G_MCS, NodeBType, Numerology, SINRtoMCS
 
 if TYPE_CHECKING:
@@ -9,8 +10,9 @@ if TYPE_CHECKING:
     from .ue import UserEquipment
 
 
-class ResourceBlock:
+class ResourceBlock(Undo):
     def __init__(self, layer: Layer, starting_i: int, starting_j: int, ue: UserEquipment):
+        super().__init__()
         self.layer: Layer = layer
         self.ue: UserEquipment = ue
         self._numerology = ue.numerology_in_use
@@ -34,8 +36,10 @@ class ResourceBlock:
         # Remove this RB in the UE RB list
         if self.layer.nodeb.nb_type == NodeBType.G:
             self.ue.gnb_info.rb.remove(self)
+            self.append_undo([lambda: self.ue.gnb_info.rb.append(self)])
         else:
             self.ue.enb_info.rb.remove(self)
+            self.append_undo([lambda: self.ue.enb_info.rb.append(self)])
 
         # Remove the RB in the layer
         for bu_i in range(self.i_start, self.i_end + 1):
@@ -44,9 +48,12 @@ class ResourceBlock:
 
                 # Mark the affected UEs
                 for rb in bu.overlapped_rb:
+                    origin_value: bool = rb.ue.is_to_recalculate_mcs
                     rb.ue.is_to_recalculate_mcs = True
+                    self.append_undo([lambda r=rb: setattr(r.ue, 'is_to_recalculate_mcs', origin_value)])
 
                 bu.clear_up_bu()
+                self.append_undo([lambda b=bu: b.set_up_bu(self)])
 
     @property
     def sinr(self) -> float:

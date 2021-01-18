@@ -40,7 +40,7 @@ class ChannelModel(Undo):
                 self.sinr_bu(rb.layer.bu[bu_i][bu_j])
                 if tmp_sinr_rb > rb.layer.bu[bu_i][bu_j].sinr:
                     tmp_sinr_rb: float = rb.layer.bu[bu_i][bu_j].sinr
-        rb.sinr = tmp_sinr_rb
+        rb.sinr = tmp_sinr_rb   # TODO: undo channelModel
         # print(f'RB SINR: {rb.sinr}')
 
     def sinr_bu(self, bu: BaseUnit):
