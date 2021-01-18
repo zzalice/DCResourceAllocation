@@ -1,5 +1,6 @@
 from typing import Dict, List, Tuple, Union
 
+from src.channel_model.adjust_mcs import AdjustMCS
 from src.channel_model.sinr import ChannelModel
 from src.resource_allocation.algo.new_ue_allocation import AllocateUE
 from src.resource_allocation.ds.space import empty_space, Space
@@ -30,6 +31,8 @@ class Intuitive(Undo):
         self.eue_fail: List[EUserEquipment] = []
 
         self.channel_model: ChannelModel = ChannelModel(cochannel_index)
+        self.adjust_mcs = AdjustMCS(self.channel_model, self.gue_allocated, self.gue_fail,
+                                    self.due_allocated, self.due_fail, self.eue_allocated, self.eue_fail)
 
     def algorithm(self):
         # Do gNB allocation first, then eNB.
@@ -53,13 +56,16 @@ class Intuitive(Undo):
             ue: UserEquipment = ue_nb_to_allocate.pop()
             is_allocated: bool = False
             if len(spaces) > 0:
-                # allocate ue
+                # allocate new ue
                 allocate_ue: AllocateUE = AllocateUE(ue, spaces, self.channel_model)
                 is_allocated: bool = allocate_ue.new_ue()
                 self.append_undo([lambda a_u=allocate_ue: a_u.undo(), lambda a_u=allocate_ue: a_u.purge_undo()])
 
-                # TODO: adjust the mcs of effected UEs. If lowers down any MCS. undo the new allocated UE.
-                # is_allocated: bool = False
+                # the effected UEs
+                if is_allocated:
+                    has_positive_effect: bool = self.adjust_mcs.adjust_mcs_allocated_ues(allow_lower_mcs=False)   # TODO: undo adjust mcs. TODO: co-channel的部分，效果如何？
+                    if not has_positive_effect:
+                        is_allocated: bool = False
 
                 if is_allocated:
                     spaces: Tuple[Space] = self.update_empty_space(nb)

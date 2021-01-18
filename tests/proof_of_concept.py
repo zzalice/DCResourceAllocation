@@ -42,7 +42,7 @@ if __name__ == '__main__':
     e_zone_wide, e_zone_narrow = e_phase1.categorize_zone(e_zone_fit, e_zone_merged)
 
     e_phase2: Phase2 = Phase2(e_nb)
-    e_phase2.allocate_zone_to_layer(e_zone_wide)
+    e_phase2.allocate_zone_to_layer(e_zone_wide)    # TODO: CP value isn't implemented
     e_ue_list_allocated, e_ue_list_unallocated = divid_ue(e_ue_list)
     d_ue_list_unallocated = divid_ue(d_ue_list)[1]
 
