@@ -113,13 +113,14 @@ class AdjustMCS(Undo):
                             ue_nb_info.mcs = None
                         self.append_undo([lambda n_i=ue_nb_info: setattr(n_i, 'mcs', origin_mcs)])
 
-                ue.is_to_recalculate_mcs = False    # TODO: no need to undo?
+                ue.is_to_recalculate_mcs = False
                 return True
             elif not allow_lower_mcs:
                 # the temporarily moved UE has negative effected to this UE
                 return False
-            elif ue_throughput == 0.0:  # TODO: undo
+            elif ue_throughput == 0.0:
                 # if SINR is out of range, kick out this UE.
+                # Happens only in the MCS adjust for the first time in my Algo, so doesn't have to undo.
                 ue.remove()
                 if ue.ue_type == UEType.G:
                     self.gue_allocated.remove(ue)

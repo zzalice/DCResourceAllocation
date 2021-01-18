@@ -40,7 +40,9 @@ class ChannelModel(Undo):
                 self.sinr_bu(rb.layer.bu[bu_i][bu_j])
                 if tmp_sinr_rb > rb.layer.bu[bu_i][bu_j].sinr:
                     tmp_sinr_rb: float = rb.layer.bu[bu_i][bu_j].sinr
-        rb.sinr = tmp_sinr_rb   # TODO: undo channelModel
+        origin_sinr: float = rb.sinr
+        rb.sinr = tmp_sinr_rb
+        self.append_undo([lambda: setattr(rb, 'sinr', origin_sinr)])
         # print(f'RB SINR: {rb.sinr}')
 
     def sinr_bu(self, bu: BaseUnit):
@@ -88,9 +90,11 @@ class ChannelModel(Undo):
                 # print(f'interference_ini: {10 * math.log10(interference_ini)}')
         interference_channel: float = self.channel_interference(bu)
 
+        origin_sinr: float = bu.sinr
         sinr = power_rx / (
             interference_noma + interference_ini + interference_cross + interference_channel + self.awgn_noise)  # ratio
         bu.sinr = 10 * math.log10(sinr)  # ratio to dB
+        self.append_undo([lambda: setattr(bu, 'sinr', origin_sinr)])
         # print(f'BU SINR: {bu.sinr}')
 
     def channel_interference(self, bu: BaseUnit) -> float:

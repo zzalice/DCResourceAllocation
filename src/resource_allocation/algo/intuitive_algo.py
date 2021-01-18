@@ -63,8 +63,7 @@ class Intuitive(Undo):
 
                 # the effected UEs
                 if is_allocated:
-                    has_positive_effect: bool = self.adjust_mcs.adjust_mcs_allocated_ues(
-                        allow_lower_mcs=False)  # TODO: undo adjust mcs. TODO: co-channel的部分，效果如何？
+                    has_positive_effect: bool = self.adjust_mcs.adjust_mcs_allocated_ues(allow_lower_mcs=False)
                     self.append_undo(
                         [lambda a_m=self.adjust_mcs: a_m.undo(), lambda a_m=self.adjust_mcs: a_m.purge_undo()])
                     if not has_positive_effect:
