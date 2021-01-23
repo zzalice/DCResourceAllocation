@@ -1,7 +1,11 @@
+from typing import Tuple
+
+from src.channel_model.adjust_mcs import AdjustMCS
 from src.channel_model.sinr import ChannelModel
 from src.resource_allocation.ds.eutran import ENodeB
 from src.resource_allocation.ds.ngran import GNodeB
 from src.resource_allocation.ds.undo import Undo
+from src.resource_allocation.ds.zone import Zone
 
 
 class Phase3(Undo):
@@ -10,7 +14,13 @@ class Phase3(Undo):
         self.channel_model: ChannelModel = channel_model
         self.gnb: GNodeB = gnb
         self.enb: ENodeB = enb
-        # self.adjust_mcs = AdjustMCS(self.channel_model)
+        self.adjust_mcs = AdjustMCS(self.channel_model)
+
+    def zone_adjust_mcs(self, zones: Tuple[Zone, ...]):
+        for zone in zones:
+            for ue in zone.ue_list:
+                self.channel_model.sinr_ue(ue)
+                self.adjust_mcs.greedy(ue)
 
     # def zone_group_adjust_mcs(self):
     #     for zone_group in self.zone_groups_gnb:

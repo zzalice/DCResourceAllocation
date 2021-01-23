@@ -17,13 +17,12 @@ class AdjustMCS(Undo):
 
     def greedy(self, ue: Union[UserEquipment, GUserEquipment, DUserEquipment, EUserEquipment],
                allow_lower_mcs: bool = True) -> bool:
-        # TODO: 反向操作，先看SINR最好的RB需要幾個RB > 更新MCS > 再算一次需要幾個RB > 刪掉多餘SINR較差的RB (RB照freq time排序)
         for nb_info in ['gnb_info', 'enb_info']:
             if hasattr(ue, nb_info):
                 ue_nb_info: Union[GNBInfo, ENBInfo] = getattr(ue, nb_info)
                 ue_nb_info.rb.sort(key=lambda x: x.j_start)  # sort by time
                 ue_nb_info.rb.sort(key=lambda x: x.i_start)  # sort by freq
-                ue_nb_info.rb.sort(key=lambda x: x.mcs.value, reverse=True)     # sort by mcs
+                ue_nb_info.rb.sort(key=lambda x: x.mcs.value, reverse=True)  # sort by mcs
 
         while True:  # ue_throughput >= QoS
             # sum throughput

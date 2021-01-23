@@ -43,7 +43,7 @@ if __name__ == '__main__':
     e_zone_wide, e_zone_narrow = e_phase1.categorize_zone(e_zone_fit, e_zone_merged)
 
     e_phase2: Phase2 = Phase2(e_nb)
-    e_phase2.allocate_zone_to_layer(e_zone_wide)  # TODO: CP value isn't implemented
+    e_zone_allocated: Tuple[Zone, ...] = e_phase2.allocate_zone_to_layer(e_zone_wide)  # TODO: CP value isn't implemented
     e_ue_list_allocated, e_ue_list_unallocated = divide_ue(e_ue_list)
     d_ue_list_allocated, d_ue_list_unallocated = divide_ue(d_ue_list)
 
@@ -59,9 +59,12 @@ if __name__ == '__main__':
     ue_list_unallocated: Tuple[Tuple[GUserEquipment, ...], Tuple[DUserEquipment, ...], Tuple[EUserEquipment, ...]] = (
         g_ue_list_unallocated, d_ue_list_unallocated, e_ue_list_unallocated)
     phase3: Phase3 = Phase3(ChannelModel(cochannel_index), g_nb, e_nb)
-    # phase3.zone_adjust_mcs('enb')
-    # phase3.zone_adjust_mcs(g_zone_allocated)
+    phase3.zone_adjust_mcs(e_zone_allocated)
+    phase3.zone_adjust_mcs(g_zone_allocated)
     # phase3.zone_group_adjust_mcs(g_zone_groups_allocated)
+    # g_ue_list_allocated, g_ue_list_unallocated = divide_ue(g_ue_list)
+    # d_ue_list_allocated, d_ue_list_unallocated = divide_ue(d_ue_list)
+    # e_ue_list_allocated, e_ue_list_unallocated = divide_ue(e_ue_list)
     # phase3.allocate_new_ue()    # ue_list_unallocated
 
     if visualize_the_algo:
