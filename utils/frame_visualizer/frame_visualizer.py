@@ -207,10 +207,10 @@ class FrameRenderer:
 
 
 if __name__ == '__main__':
-    file_to_visualize = "vis_20210118"
+    # file_to_visualize = "vis_20210118"
     # file_to_visualize = "vis_test_calc_weight"
     # file_to_visualize = "vis_test_phase3"
-    # file_to_visualize = "vis_intuitive_20210118"
+    file_to_visualize = "vis_intuitive_20210123"
 
     frame_renderer = FrameRenderer()
     s, gf, ef, t, gue, due, eue = frame_renderer.open_file(file_to_visualize + ".P")

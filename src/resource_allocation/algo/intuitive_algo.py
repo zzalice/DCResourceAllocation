@@ -31,8 +31,7 @@ class Intuitive(Undo):
         self.eue_fail: List[EUserEquipment] = []
 
         self.channel_model: ChannelModel = ChannelModel(cochannel_index)
-        self.adjust_mcs = AdjustMCS(self.channel_model, self.gue_allocated, self.gue_fail,
-                                    self.due_allocated, self.due_fail, self.eue_allocated, self.eue_fail)
+        self.adjust_mcs = AdjustMCS(self.channel_model)
 
     def algorithm(self):
         # Do gNB allocation first, then eNB.
@@ -43,17 +42,17 @@ class Intuitive(Undo):
     def resource_allocation(self, nb_type: NodeBType):
         if nb_type == NodeBType.G:
             self.ue_gnb_to_allocate.sort(key=lambda x: x.coordinate.distance_gnb, reverse=True)
-            ue_nb_to_allocate: List[Union[GUserEquipment, DUserEquipment]] = self.ue_gnb_to_allocate
+            ue_to_allocate: List[Union[GUserEquipment, DUserEquipment]] = self.ue_gnb_to_allocate
             nb: GNodeB = self.gnb
         else:
             self.ue_enb_to_allocate.sort(key=lambda x: x.coordinate.distance_enb, reverse=True)
-            ue_nb_to_allocate: List[Union[EUserEquipment, DUserEquipment]] = self.ue_enb_to_allocate
+            ue_to_allocate: List[Union[EUserEquipment, DUserEquipment]] = self.ue_enb_to_allocate
             nb: ENodeB = self.enb
 
         spaces: Tuple[Space] = self.update_empty_space(nb)
 
-        while ue_nb_to_allocate:
-            ue: UserEquipment = ue_nb_to_allocate.pop()
+        while ue_to_allocate:
+            ue: UserEquipment = ue_to_allocate.pop()
             is_allocated: bool = False
             if len(spaces) > 0:
                 # allocate new ue
@@ -63,7 +62,7 @@ class Intuitive(Undo):
 
                 # the effected UEs
                 if is_allocated:
-                    has_positive_effect: bool = self.adjust_mcs.adjust_mcs_allocated_ues(allow_lower_mcs=False)
+                    has_positive_effect: bool = self.adjust_mcs_allocated_ues(allow_lower_mcs=False)
                     self.append_undo(
                         [lambda a_m=self.adjust_mcs: a_m.undo(), lambda a_m=self.adjust_mcs: a_m.purge_undo()])
                     if not has_positive_effect:
@@ -104,6 +103,22 @@ class Intuitive(Undo):
             if do_extend:
                 tmp_spaces.extend(new_spaces)
         return tuple(tmp_spaces)
+
+    def adjust_mcs_allocated_ues(self, allow_lower_mcs: bool = True) -> bool:
+        while True:
+            is_all_adjusted: bool = True
+            for ue in self.gue_allocated + self.due_allocated + self.eue_allocated:
+                if ue.is_to_recalculate_mcs:
+                    is_all_adjusted: bool = False
+                    self.channel_model.sinr_ue(ue)
+                    self.append_undo(
+                        [lambda c_m=self.channel_model: c_m.undo(), lambda c_m=self.channel_model: c_m.purge_undo()])
+                    has_positive_effect: bool = self.adjust_mcs.greedy(ue, allow_lower_mcs)
+                    if not has_positive_effect:
+                        # the mcs of the ue is lowered down by another UE.
+                        return False
+            if is_all_adjusted:
+                return True
 
     @staticmethod
     def assert_is_empty(spaces, this_ue, is_allocated):

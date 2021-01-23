@@ -11,44 +11,19 @@ from src.resource_allocation.ds.util_enum import E_MCS, G_MCS, UEType
 
 
 class AdjustMCS(Undo):
-    def __init__(self, channel_model: ChannelModel,
-                 gue_allocated: List[GUserEquipment], gue_unallocated: List[GUserEquipment],
-                 due_allocated: List[DUserEquipment], due_unallocated: List[DUserEquipment],
-                 eue_allocated: List[EUserEquipment], eue_unallocated: List[EUserEquipment]):
+    def __init__(self, channel_model: ChannelModel):
         super().__init__()
         self.channel_model: ChannelModel = channel_model
-        self.gue_allocated: List[GUserEquipment] = gue_allocated
-        self.gue_unallocated: List[GUserEquipment] = gue_unallocated
-        self.due_allocated: List[DUserEquipment] = due_allocated
-        self.due_unallocated: List[DUserEquipment] = due_unallocated
-        self.eue_allocated: List[EUserEquipment] = eue_allocated
-        self.eue_unallocated: List[EUserEquipment] = eue_unallocated
 
-    def adjust_mcs_allocated_ues(self, allow_lower_mcs: bool = True) -> bool:
-        while True:
-            is_all_adjusted: bool = True
-            for ue in self.gue_allocated + self.due_allocated + self.eue_allocated:
-                if ue.is_to_recalculate_mcs:
-                    is_all_adjusted: bool = False
-                    self.channel_model.sinr_ue(ue)
-                    self.append_undo(
-                        [lambda c_m=self.channel_model: c_m.undo(), lambda c_m=self.channel_model: c_m.purge_undo()])
-                    has_positive_effect: bool = self.adjust(ue, allow_lower_mcs)
-                    if not has_positive_effect:
-                        # the mcs of the ue is lowered down by another UE.
-                        return False
-            if is_all_adjusted:
-                return True
-
-    def adjust(self, ue: Union[UserEquipment, GUserEquipment, DUserEquipment, EUserEquipment],
+    def greedy(self, ue: Union[UserEquipment, GUserEquipment, DUserEquipment, EUserEquipment],
                allow_lower_mcs: bool = True) -> bool:
         # TODO: 反向操作，先看SINR最好的RB需要幾個RB > 更新MCS > 再算一次需要幾個RB > 刪掉多餘SINR較差的RB (RB照freq time排序)
-        if hasattr(ue, 'gnb_info'):
-            ue.gnb_info.rb.sort(key=lambda x: x.sinr, reverse=True)  # TODO: sort by MCS，又依照i,j排序，才不會讓空間很零碎。但是phase 3 calc_weight時可能會刪掉index大的RB
-            self.append_undo([lambda: ue.gnb_info.rb.sort(key=lambda x: x.sinr, reverse=True)])
-        if hasattr(ue, 'enb_info'):
-            ue.enb_info.rb.sort(key=lambda x: x.sinr, reverse=True)
-            self.append_undo([lambda: ue.enb_info.rb.sort(key=lambda x: x.sinr, reverse=True)])
+        for nb_info in ['gnb_info', 'enb_info']:
+            if hasattr(ue, nb_info):
+                ue_nb_info: Union[GNBInfo, ENBInfo] = getattr(ue, nb_info)
+                ue_nb_info.rb.sort(key=lambda x: x.j_start)  # sort by time
+                ue_nb_info.rb.sort(key=lambda x: x.i_start)  # sort by freq
+                ue_nb_info.rb.sort(key=lambda x: x.mcs.value, reverse=True)     # sort by mcs
 
         while True:  # ue_throughput >= QoS
             # sum throughput
@@ -93,7 +68,7 @@ class AdjustMCS(Undo):
             if tmp_ue_throughput > ue.request_data_rate:
                 # Officially remove the RB
                 worst_rb.remove()
-                self.append_undo([lambda rb=worst_rb: rb.undo(), lambda rb=worst_rb:rb.purge_undo()])
+                self.append_undo([lambda rb=worst_rb: rb.undo(), lambda rb=worst_rb: rb.purge_undo()])
                 continue
             elif ue_throughput >= ue.request_data_rate:
                 # Update the MCS and throughput of the UE
@@ -121,15 +96,6 @@ class AdjustMCS(Undo):
                 # if SINR is out of range, kick out this UE.
                 # Happens only in the MCS adjust for the first time in my Algo, so doesn't have to undo.
                 ue.remove()
-                if ue.ue_type == UEType.G:      # TODO: 刪？不然loop會出問題
-                    self.gue_allocated.remove(ue)
-                    self.gue_unallocated.append(ue)
-                elif ue.ue_type == UEType.D:
-                    self.due_allocated.remove(ue)
-                    self.due_unallocated.append(ue)
-                elif ue.ue_type == UEType.E:
-                    self.eue_allocated.remove(ue)
-                    self.eue_unallocated.append(ue)
                 return True
             else:
                 raise ValueError
