@@ -121,7 +121,7 @@ class AdjustMCS(Undo):
                 # if SINR is out of range, kick out this UE.
                 # Happens only in the MCS adjust for the first time in my Algo, so doesn't have to undo.
                 ue.remove()
-                if ue.ue_type == UEType.G:
+                if ue.ue_type == UEType.G:      # TODO: 刪？不然loop會出問題
                     self.gue_allocated.remove(ue)
                     self.gue_unallocated.append(ue)
                 elif ue.ue_type == UEType.D:

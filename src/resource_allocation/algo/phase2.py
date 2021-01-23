@@ -41,32 +41,37 @@ class Phase2:
             zone_group.set_priority(residual_degree)
         return zone_groups
 
-    def allocate_zone_group(self, zone_groups: Tuple[ZoneGroup, ...]) -> Tuple[Zone, ...]:
+    def allocate_zone_group(self, zone_groups: Tuple[ZoneGroup, ...]) -> Tuple[Tuple[ZoneGroup, ...], Tuple[Zone, ...]]:
         # the idea of first allocate by degree then by BW
         zone_groups: List[ZoneGroup] = sorted(zone_groups, key=lambda x: x.bin[0].zone[0].zone_freq, reverse=True)
         zone_groups: List[ZoneGroup] = sorted(zone_groups, key=lambda x: x.priority, reverse=False)
 
-        zone_unallocated: List[Zone, ...] = list()
+        zone_groups_allocated: List[ZoneGroup] = []
+        zone_unallocated: List[Zone] = []
         for zone_group in zone_groups:
-            if self.nodeb.frame.layer[0].available_bandwidth < zone_group.bin[0].capacity:
-                # collect the zones not allocated
-                for bin_ in zone_group.bin:
-                    zone_unallocated.extend(bin_.zone)
-            else:
+            if self.nodeb.frame.layer[0].available_bandwidth >= zone_group.bin[0].capacity:
                 for layer, bin_ in enumerate(zone_group.bin):
                     for zone in bin_.zone:
                         self.nodeb.frame.layer[layer].allocate_zone(zone)
+                zone_groups_allocated.append(zone_group)
+            else:
+                # collect the zones not allocated
+                for bin_ in zone_group.bin:
+                    zone_unallocated.extend(bin_.zone)
 
         for layer in self.nodeb.frame.layer:
             layer.purge_undo()
-        return tuple(zone_unallocated)
+        return tuple(zone_groups_allocated), tuple(zone_unallocated)
 
-    def allocate_zone_to_layer(self, zone_set: Tuple[Zone, ...]):
+    def allocate_zone_to_layer(self, zone_set: Tuple[Zone, ...]) -> Tuple[Zone, ...]:
         zone_set = sorted(zone_set, key=lambda x: x.zone_freq, reverse=True)
+        allocated_zone: List[Zone] = []
         for zone in zone_set:
             for layer in self.nodeb.frame.layer:
                 if layer.allocate_zone(zone):
+                    allocated_zone.append(zone)
                     break
 
         for layer in self.nodeb.frame.layer:
             layer.purge_undo()
+        return tuple(allocated_zone)

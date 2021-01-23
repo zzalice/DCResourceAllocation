@@ -13,7 +13,8 @@ if __name__ == '__main__':
 
     intuitive: Intuitive = Intuitive(g_nb, e_nb, cochannel_index, g_ue_list, d_ue_list, e_ue_list)
     intuitive.algorithm()
-    system_throughput: float = calc_system_throughput(intuitive.gue_allocated + intuitive.due_allocated + intuitive.eue_allocated)
+    system_throughput: float = calc_system_throughput(
+        tuple(intuitive.gue_allocated + intuitive.due_allocated + intuitive.eue_allocated))
 
     with open("../utils/frame_visualizer/vis_intuitive_" + datetime.today().strftime('%Y%m%d') + ".P", "wb") as file:
         pickle.dump(["intuitive",

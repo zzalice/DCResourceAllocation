@@ -3,7 +3,7 @@ from datetime import datetime
 from typing import Tuple
 
 from src.channel_model.sinr import ChannelModel
-from src.resource_allocation.algo.assistance import calc_system_throughput, divid_ue
+from src.resource_allocation.algo.assistance import calc_system_throughput, divide_ue
 from src.resource_allocation.algo.phase1 import Phase1
 from src.resource_allocation.algo.phase2 import Phase2
 from src.resource_allocation.algo.phase3 import Phase3
@@ -31,10 +31,10 @@ if __name__ == '__main__':
     layer_using: int = g_phase2.calc_layer_using(g_zone_wide)
     g_zone_groups: Tuple[ZoneGroup, ...] = g_phase2.form_group(g_zone_wide, layer_using)
     g_zone_groups: Tuple[ZoneGroup, ...] = g_phase2.calc_residual_degree(g_zone_groups)
-    g_zone_unallocated: Tuple[Zone, ...] = g_phase2.allocate_zone_group(g_zone_groups)
-    g_phase2.allocate_zone_to_layer(g_zone_unallocated)
-    g_ue_list_allocated, g_ue_list_unallocated = divid_ue(g_ue_list)
-    d_ue_list_allocated, d_ue_list_unallocated = divid_ue(d_ue_list)
+    g_zone_groups_allocated, g_zone_unallocated = g_phase2.allocate_zone_group(g_zone_groups)
+    g_zone_allocated: Tuple[Zone, ...] = g_phase2.allocate_zone_to_layer(g_zone_unallocated)
+    g_ue_list_allocated, g_ue_list_unallocated = divide_ue(g_ue_list)
+    _, d_ue_list_unallocated = divide_ue(d_ue_list)
 
     # noinspection PyTypeChecker
     e_phase1: Phase1 = Phase1(e_ue_list + d_ue_list_unallocated)
@@ -44,8 +44,8 @@ if __name__ == '__main__':
 
     e_phase2: Phase2 = Phase2(e_nb)
     e_phase2.allocate_zone_to_layer(e_zone_wide)  # TODO: CP value isn't implemented
-    e_ue_list_allocated, e_ue_list_unallocated = divid_ue(e_ue_list)
-    d_ue_list_unallocated = divid_ue(d_ue_list)[1]
+    e_ue_list_allocated, e_ue_list_unallocated = divide_ue(e_ue_list)
+    d_ue_list_allocated, d_ue_list_unallocated = divide_ue(d_ue_list)
 
     if visualize_the_algo:
         with open(visualization_file_path + ".P", "wb") as file:
@@ -56,18 +56,23 @@ if __name__ == '__main__':
                          {"allocated": e_ue_list_allocated, "unallocated": e_ue_list_unallocated}],
                         file)
 
-    ue_list_allocated: Tuple[Tuple[GUserEquipment, ...], Tuple[DUserEquipment, ...], Tuple[EUserEquipment, ...]] = (
-        g_ue_list_allocated, d_ue_list_allocated, e_ue_list_allocated)
     ue_list_unallocated: Tuple[Tuple[GUserEquipment, ...], Tuple[DUserEquipment, ...], Tuple[EUserEquipment, ...]] = (
         g_ue_list_unallocated, d_ue_list_unallocated, e_ue_list_unallocated)
-    phase3: Phase3 = Phase3(ChannelModel(cochannel_index), g_nb, e_nb, ue_list_allocated, ue_list_unallocated)
-    phase3.increase_resource_efficiency()
+    phase3: Phase3 = Phase3(ChannelModel(cochannel_index), g_nb, e_nb)
+    # phase3.zone_adjust_mcs('enb')
+    # phase3.zone_adjust_mcs(g_zone_allocated)
+    # phase3.zone_group_adjust_mcs(g_zone_groups_allocated)
+    # phase3.allocate_new_ue()    # ue_list_unallocated
 
     if visualize_the_algo:
+        g_ue_list_allocated, g_ue_list_unallocated = divide_ue(g_ue_list)
+        d_ue_list_allocated, d_ue_list_unallocated = divide_ue(d_ue_list)
+        e_ue_list_allocated, e_ue_list_unallocated = divide_ue(e_ue_list)
         with open(visualization_file_path + ".P", "ab+") as file:
             pickle.dump(["Phase3",
-                         g_nb.frame, e_nb.frame, calc_system_throughput(phase3.gue_allocated + phase3.due_allocated + phase3.eue_allocated),
-                         {"allocated": phase3.gue_allocated, "unallocated": phase3.gue_unallocated},
-                         {"allocated": phase3.due_allocated, "unallocated": phase3.due_unallocated},
-                         {"allocated": phase3.eue_allocated, "unallocated": phase3.eue_unallocated}],
+                         g_nb.frame, e_nb.frame,
+                         calc_system_throughput(g_ue_list_allocated + d_ue_list_allocated + e_ue_list_allocated),
+                         {"allocated": g_ue_list_allocated, "unallocated": g_ue_list_unallocated},
+                         {"allocated": d_ue_list_allocated, "unallocated": d_ue_list_unallocated},
+                         {"allocated": e_ue_list_allocated, "unallocated": e_ue_list_unallocated}],
                         file)

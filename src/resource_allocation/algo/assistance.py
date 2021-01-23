@@ -5,7 +5,7 @@ from src.resource_allocation.ds.ngran import DUserEquipment, GUserEquipment
 from src.resource_allocation.ds.ue import UserEquipment
 
 
-def divid_ue(ue_list: Tuple[UserEquipment, ...]) -> Tuple[
+def divide_ue(ue_list: Tuple[UserEquipment, ...]) -> Tuple[
                 Tuple[Union[GUserEquipment, DUserEquipment, EUserEquipment], ...], Tuple[
                       Union[GUserEquipment, DUserEquipment, EUserEquipment], ...]]:
     allocated_ue: List = []
@@ -18,7 +18,7 @@ def divid_ue(ue_list: Tuple[UserEquipment, ...]) -> Tuple[
     return tuple(allocated_ue), tuple(unallocated_ue)
 
 
-def calc_system_throughput(ue_allocated: List[UserEquipment]) -> float:
+def calc_system_throughput(ue_allocated: Tuple[UserEquipment]) -> float:
     system_throughput: float = 0.0
     for ue in ue_allocated:
         system_throughput += ue.throughput
