@@ -207,7 +207,7 @@ class FrameRenderer:
 
 
 if __name__ == '__main__':
-    file_to_visualize = "vis_20210123"
+    file_to_visualize = "vis_20210124"
     # file_to_visualize = "vis_test_calc_weight"
     # file_to_visualize = "vis_test_phase3"
     # file_to_visualize = "vis_intuitive_20210123"

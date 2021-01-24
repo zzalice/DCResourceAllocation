@@ -31,7 +31,7 @@ class Intuitive(Undo):
         self.eue_fail: List[EUserEquipment] = []
 
         self.channel_model: ChannelModel = ChannelModel(cochannel_index)
-        self.adjust_mcs = AdjustMCS(self.channel_model)
+        self.adjust_mcs = AdjustMCS()
 
     def algorithm(self):
         # Do gNB allocation first, then eNB.
@@ -113,7 +113,7 @@ class Intuitive(Undo):
                     self.channel_model.sinr_ue(ue)
                     self.append_undo(
                         [lambda c_m=self.channel_model: c_m.undo(), lambda c_m=self.channel_model: c_m.purge_undo()])
-                    has_positive_effect: bool = self.adjust_mcs.greedy(ue, allow_lower_mcs)
+                    has_positive_effect: bool = self.adjust_mcs.remove_worst_rb(ue, allow_lower_mcs)
                     if not has_positive_effect:
                         # the mcs of the ue is lowered down by another UE.
                         return False

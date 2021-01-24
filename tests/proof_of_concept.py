@@ -61,7 +61,7 @@ if __name__ == '__main__':
     phase3: Phase3 = Phase3(ChannelModel(cochannel_index), g_nb, e_nb)
     phase3.zone_adjust_mcs(e_zone_allocated)
     phase3.zone_adjust_mcs(g_zone_allocated)
-    # phase3.zone_group_adjust_mcs(g_zone_groups_allocated)
+    phase3.zone_group_adjust_mcs(g_zone_groups_allocated)
     # g_ue_list_allocated, g_ue_list_unallocated = divide_ue(g_ue_list)
     # d_ue_list_allocated, d_ue_list_unallocated = divide_ue(d_ue_list)
     # e_ue_list_allocated, e_ue_list_unallocated = divide_ue(e_ue_list)

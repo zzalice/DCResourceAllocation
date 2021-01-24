@@ -75,7 +75,10 @@ class LTEResourceBlock(_Numerology):
 
 class _MCS(Enum):
     def calc_required_rb_count(self, request_data_rate: float) -> int:
-        return math.ceil(request_data_rate / self.value)  # TODO: 用這個
+        if self.value == 0.0:
+            return 0
+        else:
+            return math.ceil(request_data_rate / self.value)
 
     @staticmethod
     def get_worst() -> _MCS:
