@@ -89,10 +89,6 @@ class Layer(Undo):
         nb_info.rb.append(resource_block)
         self.append_undo([lambda: nb_info.rb.remove(resource_block)])
 
-        if not ue.is_allocated:
-            ue.is_allocated = True
-            self.append_undo([lambda: setattr(ue, 'is_allocated', False)])
-
         # restore RB type
         ue.numerology_in_use = tmp_numerology
         return resource_block

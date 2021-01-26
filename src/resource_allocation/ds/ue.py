@@ -25,7 +25,6 @@ class UserEquipment:
         self.numerology_in_use: Optional[Numerology] = None
         self.enb_info: ENBInfo = ENBInfo()
         self.gnb_info: GNBInfo = GNBInfo()
-        self._is_allocated: bool = False
         self._is_to_recalculate_mcs: bool = False
         self.throughput: float = 0.0
 
@@ -45,12 +44,11 @@ class UserEquipment:
 
     @property
     def is_allocated(self) -> bool:
-        return self._is_allocated
-
-    @is_allocated.setter
-    def is_allocated(self, value: bool):
-        self._is_allocated: bool = value
-        self.is_to_recalculate_mcs: bool = value
+        if hasattr(self, 'enb_info') and self.enb_info.rb:
+            return True
+        if hasattr(self, 'gnb_info') and self.gnb_info.rb:
+            return True
+        return False
 
     @property
     def is_to_recalculate_mcs(self) -> bool:
@@ -61,7 +59,6 @@ class UserEquipment:
         self._is_to_recalculate_mcs: bool = value
 
     def remove(self):
-        self.is_allocated: bool = False
         self.throughput: float = 0.0
 
         # empty the allocated RBs & MCS
@@ -75,3 +72,4 @@ class UserEquipment:
             while self.gnb_info.rb:
                 self.gnb_info.rb[0].remove()
             assert not self.gnb_info.rb, "The RB remove failed."
+        self.is_to_recalculate_mcs = False
