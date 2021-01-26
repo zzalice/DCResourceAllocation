@@ -1,4 +1,5 @@
 import pickle
+from datetime import datetime
 from tokenize import String
 from typing import Dict, List, Tuple
 
@@ -207,7 +208,7 @@ class FrameRenderer:
 
 
 if __name__ == '__main__':
-    file_to_visualize = "vis_20210124"
+    file_to_visualize = "vis_" + datetime.today().strftime('%Y%m%d')
     # file_to_visualize = "vis_test_calc_weight"
     # file_to_visualize = "vis_test_phase3"
     # file_to_visualize = "vis_intuitive_20210123"

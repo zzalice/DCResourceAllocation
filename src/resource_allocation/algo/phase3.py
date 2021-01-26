@@ -1,11 +1,14 @@
-from typing import Dict, List, Set, Tuple
+from typing import Dict, List, Set, Tuple, Union
 
 from src.channel_model.adjust_mcs import AdjustMCS
 from src.channel_model.sinr import ChannelModel
+from src.resource_allocation.algo.new_ue_allocation import AllocateUE
 from src.resource_allocation.ds.eutran import ENodeB
 from src.resource_allocation.ds.ngran import GNodeB
+from src.resource_allocation.ds.space import empty_space, Space
 from src.resource_allocation.ds.ue import UserEquipment
 from src.resource_allocation.ds.undo import Undo
+from src.resource_allocation.ds.util_enum import NodeBType
 from src.resource_allocation.ds.zone import Zone, ZoneGroup
 
 
@@ -24,6 +27,8 @@ class Phase3(Undo):
                 self.adjust_mcs.remove_worst_rb(ue)
 
     def zone_group_adjust_mcs(self, zone_groups: Tuple[ZoneGroup, ...]):
+        # TODO: debug: 還是沒有overlap
+        # TODO: for dUE cross
         for zone_group in zone_groups:
             # precalculate the number of RBs in each bin(layer)
             num_rb_needed: Dict = {}
@@ -75,3 +80,55 @@ class Phase3(Undo):
                         self.adjust_mcs.pick_in_overlapped_rb(ue, list(rb_position_2nd))
                 if is_all_adjusted:
                     break
+
+    def allocate_new_ue(self, nb_type: NodeBType, ue_to_allocate: Tuple[UserEquipment],
+                        ue_allocated: Tuple[UserEquipment]):
+        nb: Union[GNodeB, ENodeB] = self.gnb if nb_type == NodeBType.G else self.enb
+        ue_to_allocate: List[UserEquipment] = list(ue_to_allocate)
+        ue_allocated: List[UserEquipment] = list(ue_allocated)
+
+        spaces: List[Space] = [space for layer in nb.frame.layer for space in empty_space(layer)]
+
+        while ue_to_allocate:
+            ue: UserEquipment = ue_to_allocate.pop()
+            for space in spaces:
+                # allocate new ue
+                allocate_ue: AllocateUE = AllocateUE(ue, (space,), self.channel_model)
+                is_allocated: bool = allocate_ue.new_ue()  # TODO: for dUE
+                self.append_undo([lambda a_u=allocate_ue: a_u.undo(), lambda a_u=allocate_ue: a_u.purge_undo()])
+
+                # the effected UEs
+                if is_allocated:
+                    ue_allocated.append(ue)
+                    is_allocated: bool = self.adjust_mcs_allocated_ues(ue_allocated)
+                    self.append_undo(
+                        [lambda a_m=self.adjust_mcs: a_m.undo(), lambda a_m=self.adjust_mcs: a_m.purge_undo()])
+                    if not is_allocated:
+                        ue_allocated.remove(ue)
+
+                if is_allocated:
+                    spaces: List[Space] = [space for layer in nb.frame.layer for space in empty_space(layer)]
+                    self.purge_undo()
+                    break
+                else:
+                    self.undo()
+
+    def adjust_mcs_allocated_ues(self, ue_allocated: List[UserEquipment]) -> bool:
+        while True:
+            is_all_adjusted: bool = True
+            for ue in ue_allocated:
+                if ue.is_to_recalculate_mcs:
+                    assert ue.is_allocated
+                    is_all_adjusted: bool = False
+                    self.channel_model.sinr_ue(ue)
+                    self.append_undo(
+                        [lambda c_m=self.channel_model: c_m.undo(), lambda c_m=self.channel_model: c_m.purge_undo()])
+                    is_fulfilled: bool = self.adjust_mcs.remove_worst_rb(ue, allow_lower_than_cqi0=False,
+                                                                         channel_model=self.channel_model)
+                    self.append_undo(
+                        [lambda a_m=self.adjust_mcs: a_m.undo(), lambda a_m=self.adjust_mcs: a_m.purge_undo()])
+                    if not is_fulfilled:
+                        # the mcs of the ue is lowered down by another UE.
+                        return False
+            if is_all_adjusted:
+                return True

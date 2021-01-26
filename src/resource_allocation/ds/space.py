@@ -26,19 +26,8 @@ class Space:
         It will naturally be aligned every 0.5 ms.
         """
         assert self.starting_i <= bu_i <= self.ending_i and self.starting_j <= bu_j <= self.ending_j
-        if self.layer.nodeb.nb_type == NodeBType.E:
-            rb_type = LTEResourceBlock.E  # TODO: refactor or redesign
-
-        bu_j += rb_type.time
-
-        if bu_j + rb_type.time - 1 > self.ending_j:
-            # next row
-            bu_i += rb_type.freq
-            bu_j: int = self.starting_j
-            if bu_i + rb_type.freq - 1 > self.ending_i:
-                return None  # running out of space
-
-        return bu_i, bu_j
+        return next_rb_in_space(bu_i, bu_j, rb_type, self.layer, self.starting_i, self.starting_j, self.ending_i,
+                                self.ending_j)
 
     def possible_rb_type(self) -> Tuple[Tuple[Union[Numerology, LTEResourceBlock], int]]:
         available_rb_type: List[Tuple[Union[Numerology, LTEResourceBlock], int]] = []
@@ -131,3 +120,28 @@ def merge(spaces: List[Dict]) -> List[Dict]:
         merged_spaces.append(space)
 
     return merged_spaces
+
+
+def next_rb_in_space(bu_starting_i: int, bu_starting_j: int, rb_type: Union[Numerology, LTEResourceBlock],
+                     layer: Layer, space_starting_i: int, space_starting_j: int, space_ending_i: int,
+                     space_ending_j: int
+                     ) -> Optional[Tuple[int, int]]:
+    if layer.nodeb.nb_type == NodeBType.E:
+        rb_type: LTEResourceBlock = LTEResourceBlock.E  # TODO: refactor or redesign
+
+    # the position of next RB
+    bu_starting_j += rb_type.time
+    if bu_starting_j + rb_type.time - 1 > space_ending_j:
+        # next row
+        bu_starting_i += rb_type.freq
+        bu_starting_j: int = space_starting_j
+        if bu_starting_i + rb_type.freq - 1 > space_ending_i:
+            return None  # running out of space
+
+    # check if the space is empty
+    for i in range(bu_starting_i, bu_starting_i + rb_type.freq):
+        for j in range(bu_starting_j, bu_starting_j + rb_type.time):
+            if layer.bu_status[i][j]:
+                return None  # the space is occupied
+
+    return bu_starting_i, bu_starting_j

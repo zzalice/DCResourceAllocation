@@ -1,12 +1,14 @@
 from typing import List, Optional, Tuple, Union
 
+from src.channel_model.sinr import ChannelModel
 from src.resource_allocation.ds.eutran import EUserEquipment
 from src.resource_allocation.ds.ngran import DUserEquipment, GUserEquipment
 from src.resource_allocation.ds.nodeb import ENBInfo, GNBInfo
 from src.resource_allocation.ds.rb import ResourceBlock
+from src.resource_allocation.ds.space import next_rb_in_space
 from src.resource_allocation.ds.ue import UserEquipment
 from src.resource_allocation.ds.undo import Undo
-from src.resource_allocation.ds.util_enum import E_MCS, G_MCS, UEType
+from src.resource_allocation.ds.util_enum import E_MCS, G_MCS, NodeBType, UEType
 
 
 class AdjustMCS(Undo):
@@ -14,13 +16,29 @@ class AdjustMCS(Undo):
         super().__init__()
 
     def remove_worst_rb(self, ue: Union[UserEquipment, GUserEquipment, DUserEquipment, EUserEquipment],
-                        allow_lower_mcs: bool = True) -> bool:
+                        allow_lower_mcs: bool = True, allow_lower_than_cqi0: bool = True,
+                        channel_model: ChannelModel = None) -> bool:
         """
         Delete the RB with worst MCS & highest freq & latest time.
+
+        !!! To adjust mcs for the first time !!!
+        allow_lower_mcs = True
+
+        !!! After adding a certain new UE !!! (and this ue is effected)
+        allow_lower_than_cqi0 = False and
+        channel_model is to be given
+        [or]
+        allow_lower_mcs = False
+
         :param ue: The UE to adjust mcs. For UE with single or dual connection.
-        :param allow_lower_mcs: If is "False", means a certain UEs' new movement has negative effect to this UE.
+        :param allow_lower_mcs: If is "False", means not allowing a certain UEs' new movement has negative effect to this UE.
+        :param allow_lower_than_cqi0: If is "False", means a certain new UE can let this ue have lower mcs
+                                      but CANNOT let it be too low to transmit.
+        :param channel_model: If the algorithm allows the ue to add more RBs, channel_model will have to be passed in.
         :return: If the adjustment has succeed.
         """
+        assert (allow_lower_than_cqi0 is False and channel_model is not None) or (
+                    allow_lower_than_cqi0 is True and channel_model is None)
         for nb_info in ['gnb_info', 'enb_info']:
             if hasattr(ue, nb_info):
                 ue_nb_info: Union[GNBInfo, ENBInfo] = getattr(ue, nb_info)
@@ -66,7 +84,7 @@ class AdjustMCS(Undo):
                 worst_rb: ResourceBlock = ue.enb_info.rb[-1]
                 tmp_ue_throughput: float = self.throughput_ue(ue.enb_info.rb[:-1])
             else:
-                raise AttributeError
+                raise AssertionError
 
             if tmp_ue_throughput > ue.request_data_rate:
                 # Officially remove the RB
@@ -96,12 +114,54 @@ class AdjustMCS(Undo):
                 # the temporarily moved UE has negative effected to this UE
                 return False
             elif ue_throughput == 0.0:
-                # if SINR is out of range, kick out this UE.
-                # Happens only in the MCS adjust for the first time in my Algo, so doesn't have to undo.
-                ue.remove()
-                return True
+                if allow_lower_than_cqi0:
+                    # if SINR is out of range, kick out this UE.
+                    # Happens only in the MCS adjust for the first time in my Algo, so doesn't have to undo.
+                    ue.remove()
+                    return True
+                else:
+                    # Happens when allocating new UE
+                    return False
             else:
-                raise ValueError
+                # add a new RB
+                # Happens when allocating new UE
+
+                # the RB in highest frequency and latest time in a frame
+                last_rb_gnb: Optional[ResourceBlock] = None
+                last_rb_enb: Optional[ResourceBlock] = None
+                last_rb: Optional[ResourceBlock] = None
+                if hasattr(ue, 'gnb_info'):
+                    last_rb_gnb: Optional[ResourceBlock] = self.highest_freq_rb(ue.gnb_info.rb)
+                if hasattr(ue, 'enb_info'):
+                    last_rb_enb: Optional[ResourceBlock] = self.highest_freq_rb(ue.enb_info.rb)
+                if last_rb_gnb and last_rb_enb:
+                    # pick the one with higher efficiency
+                    last_rb: ResourceBlock = last_rb_gnb if last_rb_gnb.mcs.efficiency > last_rb_enb.mcs.efficiency else last_rb_enb
+                elif last_rb_gnb:
+                    last_rb: ResourceBlock = last_rb_gnb
+                elif last_rb_enb:
+                    last_rb: ResourceBlock = last_rb_enb
+                else:
+                    assert last_rb_gnb is not None or last_rb_enb is not None, "The UE isn't allocated."
+
+                # check if there is empty space for one RB after the last_rb
+                next_rb: Optional[Tuple[int, int]] = next_rb_in_space(last_rb.i_start, last_rb.j_start,
+                                                                      ue.numerology_in_use, last_rb.layer,
+                                                                      0, 0, last_rb.layer.FREQ, last_rb.layer.TIME)
+                if next_rb is None:  # no continuous space for another RB. run out of space.
+                    return False
+
+                # allocate a RB in the space
+                new_rb: Optional[ResourceBlock] = last_rb.layer.allocate_resource_block(next_rb[0], next_rb[1], ue)
+                if new_rb is None:  # allocation failed
+                    return False
+                self.append_undo([lambda l=new_rb.layer: l.undo(), lambda l=new_rb.layer: l.purge_undo()])
+
+                # the SINR of the new RB
+                assert channel_model is not None, "Channel model isn't passed in to add a new RB."
+                channel_model.sinr_rb(new_rb)
+                (ue.gnb_info if new_rb.layer.nodeb.nb_type == NodeBType.G else ue.enb_info).rb.sort(
+                    key=lambda x: x.mcs.value, reverse=True)
 
     @staticmethod
     def throughput_ue(rb_list: List[ResourceBlock]) -> float:
@@ -110,6 +170,17 @@ class AdjustMCS(Undo):
             return lowest_mcs.value * len(rb_list)
         else:
             return 0.0
+
+    @staticmethod
+    def highest_freq_rb(rb_list: List[ResourceBlock]) -> Optional[ResourceBlock]:
+        if not rb_list:
+            return None
+        last_rb: ResourceBlock = rb_list[0]
+        for rb in rb_list[1:]:
+            if rb.i_start >= last_rb.i_start and rb.j_start > last_rb.j_start:
+                # higher frequency and later time
+                last_rb: ResourceBlock = rb
+        return last_rb
 
     def remove_from_high_freq(self, ue: UserEquipment, ue_rb_list: List[ResourceBlock],
                               precalculate: bool = False) -> int:
@@ -144,14 +215,14 @@ class AdjustMCS(Undo):
         lapped_rb.sort(key=lambda x: x.mcs.value, reverse=True)  # sort by mcs
         non_lapped_rb.sort(key=lambda x: x.j_start)  # sort by time
         non_lapped_rb.sort(key=lambda x: x.i_start)  # sort by freq
-        non_lapped_rb.sort(key=lambda x: x.mcs.value, reverse=True)  # sort by mcs
+        # non_lapped_rb.sort(key=lambda x: x.mcs.value, reverse=True)  # sort by mcs
         self.pick_in_order(ue, lapped_rb + non_lapped_rb)
 
     @staticmethod
     def pick_in_order(ue: UserEquipment, rb_list: List[ResourceBlock], precalculate: bool = False) -> int:
         """
         Delete the RB with highest freq & latest time.
-        :param ue: The UE to adjust mcs. For UE with single connection.
+        :param ue: The UE to adjust mcs. For UE with single connection and had a number of RBs calculated by CQI_1
         :param rb_list: The UEs' RBs in gnb_info or enb_info.
         :param precalculate: If is "True", don't remove or add RBs after knowing how many RBs to use.
         :return: The number of RB this ue needs.
@@ -176,7 +247,7 @@ class AdjustMCS(Undo):
                     ue.is_to_recalculate_mcs = False
                 return i
             elif i > current_mcs.calc_required_rb_count(ue.request_data_rate):
-                raise AssertionError    # need more RBs?
+                raise AssertionError  # need more RBs?
 
             # main
             for rb in rb_list[i:current_mcs.calc_required_rb_count(ue.request_data_rate)]:

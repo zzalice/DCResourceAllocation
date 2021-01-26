@@ -26,6 +26,7 @@ class UEProfiles:
 
 
 if __name__ == '__main__':
+    # TODO: channel_model too
     EUE_COUNT = GUE_COUNT = DUE_COUNT = 300
 
     e_nb: ENodeB = ENodeB(coordinate=Coordinate(0.0, 0.0), radius=0.5)
