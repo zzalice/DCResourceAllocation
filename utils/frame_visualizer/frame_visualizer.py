@@ -115,55 +115,35 @@ class FrameRenderer:
     def gen_phase(self, stage, g_frame, e_frame, system_throughput, g_ue_list, d_ue_list, e_ue_list):
         tab_title_id: List[String] = []
         tab_div: String = '<div class="tab-demo">'
-        tab_title_end: String = '</ul>'
         div_end: String = '</div>'
 
-        # gFrame
-        for l in range(g_frame[0].max_layer):
-            self.body.append(tab_div)
-            title_id: String = f'g_{l}'
-            self.body.append(f'<ul id="{title_id}" class="tab-title">')
-            tab_title_id.append(title_id)
-            self.body.extend([f'<li><a href="#{stage[s]}_g_{l}">{stage[s]}</a></li>' for s in range(len(stage))])
-            self.body.append(tab_title_end)
-            for _s in range(len(stage)):
-                self.body.append(f'<div id="{stage[_s]}_g_{l}" class="tab-inner">')
+        self.body.append(tab_div)
+        title_id: String = "whole"
+        self.body.append(f'<ul id="{title_id}" class="tab-title">')
+        tab_title_id.append(title_id)
+        self.body.extend([f'<li><a href="#{stage[s]}">{stage[s]}</a></li>' for s in range(len(stage))])
+        self.body.append('</ul>')
+
+        for _s in range(len(stage)):
+            self.body.append(f'<div id="{stage[_s]}" class="tab-inner">')
+
+            # gFrame
+            for l in range(g_frame[0].max_layer):
                 self.gen_layer(g_frame[_s].layer[l])
-                self.body.append(div_end)
-            self.body.append(div_end)
 
-        # eFrame
-        self.body.append(tab_div)
-        title_id: String = f'e'
-        self.body.append(f'<ul id="{title_id}" class="tab-title">')
-        tab_title_id.append(title_id)
-        self.body.extend([f'<li><a href="#{stage[s]}_e">{stage[s]}</a></li>' for s in range(len(stage))])
-        self.body.append(tab_title_end)
-        for _s in range(len(stage)):
-            self.body.append(f'<div id="{stage[_s]}_e" class="tab-inner">')
+            # eFrame
             self.gen_layer(e_frame[_s].layer[0])
-            self.body.append(div_end)
-        self.body.append(div_end)
 
-        # system throughput & UEs
-        self.body.append(tab_div)
-        title_id: String = f'ue'
-        self.body.append(f'<ul id="{title_id}" class="tab-title">')
-        tab_title_id.append(title_id)
-        self.body.extend([f'<li><a href="#{stage[s]}_ue">{stage[s]}</a></li>' for s in range(len(stage))])
-        self.body.append(tab_title_end)
-        for _s in range(len(stage)):
-            self.body.append(f'<div id="{stage[_s]}_ue" class="tab-inner">')
-
+            # ue
             self.body.append(
                 f'<div>system throughput: {(system_throughput[_s] / 1000_000) * (1000 // (g_frame[_s].frame_time // 16))} Mbps</div>')
-
             self.gen_ue_list(g_ue_list[_s]['allocated'], "allocated")
             self.gen_ue_list(d_ue_list[_s]['allocated'], "allocated")
             self.gen_ue_list(e_ue_list[_s]['allocated'], "allocated")
             self.gen_ue_list(g_ue_list[_s]['unallocated'], "unallocated")
             self.gen_ue_list(d_ue_list[_s]['unallocated'], "unallocated")
             self.gen_ue_list(e_ue_list[_s]['unallocated'], "unallocated")
+
             self.body.append(div_end)
         self.body.append(div_end)
         return tab_title_id
@@ -211,7 +191,7 @@ if __name__ == '__main__':
     file_to_visualize = "vis_" + datetime.today().strftime('%Y%m%d')
     # file_to_visualize = "vis_test_calc_weight"
     # file_to_visualize = "vis_test_phase3"
-    # file_to_visualize = "vis_intuitive_20210123"
+    # file_to_visualize = "vis_intuitive_" + datetime.today().strftime('%Y%m%d')
 
     frame_renderer = FrameRenderer()
     s, gf, ef, t, gue, due, eue = frame_renderer.open_file(file_to_visualize + ".P")

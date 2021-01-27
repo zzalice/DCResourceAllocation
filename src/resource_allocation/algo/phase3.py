@@ -1,3 +1,5 @@
+import pickle
+from datetime import datetime
 from typing import Dict, List, Set, Tuple, Union
 
 from src.channel_model.adjust_mcs import AdjustMCS
@@ -27,7 +29,6 @@ class Phase3(Undo):
                 self.adjust_mcs.remove_worst_rb(ue)
 
     def zone_group_adjust_mcs(self, zone_groups: Tuple[ZoneGroup, ...]):
-        # TODO: debug: 還是沒有overlap
         # TODO: for dUE cross
         for zone_group in zone_groups:
             # precalculate the number of RBs in each bin(layer)
@@ -132,3 +133,13 @@ class Phase3(Undo):
                         return False
             if is_all_adjusted:
                 return True
+
+    def visualize(self, title):
+        with open("../utils/frame_visualizer/vis_" + datetime.today().strftime('%Y%m%d') + ".P", "ab+") as f:
+            pickle.dump([title,
+                         self.gnb.frame, self.enb.frame,
+                         0.0,
+                         {"allocated": [], "unallocated": []},
+                         {"allocated": [], "unallocated": []},
+                         {"allocated": [], "unallocated": []}],
+                        f)

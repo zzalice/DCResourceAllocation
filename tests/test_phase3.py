@@ -411,11 +411,6 @@ def test_calc_weight(phase3, gue_bad):
     assert weight[str(gue_bad.uuid)].get(str(space_random_e.uuid)) is None
 
 
-def test_matching():
-    pass
-    # one UE
-
-
 def test_fixture(phase3, gnb, gue_bad):
     phase3.store()
     assert not phase3.gnb.frame.layer[2].bu[0][0].is_used

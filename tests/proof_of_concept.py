@@ -2,7 +2,6 @@ import pickle
 from datetime import datetime
 from typing import Tuple
 
-from src.channel_model.sinr import ChannelModel
 from src.resource_allocation.algo.assistance import calc_system_throughput, divide_ue
 from src.resource_allocation.algo.phase1 import Phase1
 from src.resource_allocation.algo.phase2 import Phase2
@@ -35,7 +34,7 @@ if __name__ == '__main__':
     data_set_file_path = "../src/resource_allocation/simulation/data/" + "data_generator" + ".P"
 
     with open(data_set_file_path, "rb") as file:
-        g_nb, e_nb, cochannel_index, g_ue_list, d_ue_list, e_ue_list = pickle.load(file)
+        g_nb, e_nb, cochannel_index, channel_model, g_ue_list, d_ue_list, e_ue_list = pickle.load(file)
 
     # noinspection PyTypeChecker
     g_phase1: Phase1 = Phase1(d_ue_list + g_ue_list)
@@ -66,7 +65,7 @@ if __name__ == '__main__':
     if visualize_the_algo:
         visualize(visualization_file_path, "wb", "Phase2", g_nb, e_nb, g_ue_list, d_ue_list, e_ue_list)
 
-    phase3: Phase3 = Phase3(ChannelModel(cochannel_index), g_nb, e_nb)
+    phase3: Phase3 = Phase3(channel_model, g_nb, e_nb)
     phase3.zone_adjust_mcs(e_zone_allocated)
     phase3.zone_adjust_mcs(g_zone_allocated)  # TODO: dUE cross BS
     phase3.zone_group_adjust_mcs(g_zone_groups_allocated)

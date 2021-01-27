@@ -4,6 +4,7 @@ import random
 from pathlib import Path
 from typing import Dict, Tuple
 
+from src.channel_model.sinr import ChannelModel
 from src.resource_allocation.ds.cochannel import cochannel
 from src.resource_allocation.ds.eutran import ENodeB, EUserEquipment
 from src.resource_allocation.ds.ngran import DUserEquipment, GNodeB, GUserEquipment
@@ -26,12 +27,12 @@ class UEProfiles:
 
 
 if __name__ == '__main__':
-    # TODO: channel_model too
     EUE_COUNT = GUE_COUNT = DUE_COUNT = 300
 
     e_nb: ENodeB = ENodeB(coordinate=Coordinate(0.0, 0.0), radius=0.5)
     g_nb: GNodeB = GNodeB(coordinate=Coordinate(0.4, 0.0), radius=0.1)
     cochannel_index: Dict = cochannel(e_nb, g_nb)
+    channel_model: ChannelModel = ChannelModel(cochannel_index)
 
     # sample code to generate random profiles (the last tuple `distance_range.e_random` ONLY exists in dUE)
     sec_to_frame: int = 1000 // (e_nb.frame.frame_time // 16)
@@ -80,4 +81,4 @@ if __name__ == '__main__':
         d_ue.numerology_in_use = d_ue.candidate_set[-1]
 
     with open(Path(__file__).stem + ".P", "wb") as file_of_frame_and_ue:
-        pickle.dump([g_nb, e_nb, cochannel_index, g_ue_list, d_ue_list, e_ue_list], file_of_frame_and_ue)
+        pickle.dump([g_nb, e_nb, cochannel_index, channel_model, g_ue_list, d_ue_list, e_ue_list], file_of_frame_and_ue)
