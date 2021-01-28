@@ -52,8 +52,8 @@ class ResourceBlock(Undo):
                     rb.ue.is_to_recalculate_mcs = True
                     self.append_undo([lambda r=rb: setattr(r.ue, 'is_to_recalculate_mcs', origin_value)])
 
-                bu.clear_up_bu()
-                self.append_undo([lambda b=bu: b.set_up_bu(self)])
+                bu.clear_up()
+                self.append_undo([lambda b=bu: b.set_up(self)])
 
     @property
     def sinr(self) -> float:

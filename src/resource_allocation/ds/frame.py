@@ -84,8 +84,8 @@ class Layer(Undo):
                         overlapped_rb.ue.is_to_recalculate_mcs = True  # mark the effected UEs to recalculate
                         self.append_undo([lambda: setattr(overlapped_rb.ue, 'is_to_recalculate_mcs', origin_bool)])
 
-                bu.set_up_bu(resource_block)
-                self.append_undo([lambda b=bu: b.clear_up_bu()])  # note the dummy parameter with a default value
+                bu.set_up(resource_block)
+                self.append_undo([lambda b=bu: b.clear_up()])  # note the dummy parameter with a default value
         nb_info.rb.append(resource_block)
         self.append_undo([lambda: nb_info.rb.remove(resource_block)])
 
@@ -157,14 +157,14 @@ class BaseUnit:
         self.within_rb: Optional[ResourceBlock] = None
         self.sinr: float = float('-inf')
 
-    def set_up_bu(self, resource_block: ResourceBlock):
+    def set_up(self, resource_block: ResourceBlock):
         # relative position of this BU withing a RB
         assert not self.is_used, f'BU({self.absolute_i}, {self.absolute_j}) in {self.layer.nodeb.nb_type} layer {self.layer.layer_index} is used'
         self.within_rb: ResourceBlock = resource_block
 
         self.layer.bu_status_cache_is_valid = False
 
-    def clear_up_bu(self):
+    def clear_up(self):
         assert self.is_used
         self.within_rb = None
         self.sinr: float = float('-inf')

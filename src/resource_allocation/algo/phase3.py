@@ -92,6 +92,8 @@ class Phase3(Undo):
 
         while ue_to_allocate:
             ue: UserEquipment = ue_to_allocate.pop()
+            ue_allocated.append(ue)
+            is_allocated: bool = False
             for space in spaces:
                 # allocate new ue
                 allocate_ue: AllocateUE = AllocateUE(ue, (space,), self.channel_model)
@@ -100,12 +102,7 @@ class Phase3(Undo):
 
                 # the effected UEs
                 if is_allocated:
-                    ue_allocated.append(ue)
                     is_allocated: bool = self.adjust_mcs_allocated_ues(ue_allocated)
-                    self.append_undo(
-                        [lambda a_m=self.adjust_mcs: a_m.undo(), lambda a_m=self.adjust_mcs: a_m.purge_undo()])
-                    if not is_allocated:
-                        ue_allocated.remove(ue)
 
                 if is_allocated:
                     spaces: List[Space] = [space for layer in nb.frame.layer for space in empty_space(layer)]
@@ -113,6 +110,8 @@ class Phase3(Undo):
                     break
                 else:
                     self.undo()
+            if not is_allocated:
+                ue_allocated.remove(ue)
 
     def adjust_mcs_allocated_ues(self, ue_allocated: List[UserEquipment]) -> bool:
         while True:

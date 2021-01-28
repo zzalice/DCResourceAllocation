@@ -38,7 +38,7 @@ class AdjustMCS(Undo):
         :return: If the adjustment has succeed.
         """
         assert (allow_lower_than_cqi0 is False and channel_model is not None) or (
-                    allow_lower_than_cqi0 is True and channel_model is None)
+                allow_lower_than_cqi0 is True and channel_model is None)
         for nb_info in ['gnb_info', 'enb_info']:
             if hasattr(ue, nb_info):
                 ue_nb_info: Union[GNBInfo, ENBInfo] = getattr(ue, nb_info)
@@ -184,7 +184,6 @@ class AdjustMCS(Undo):
 
     def remove_from_high_freq(self, ue: UserEquipment, ue_rb_list: List[ResourceBlock],
                               precalculate: bool = False) -> int:
-        # how many RBs does the UE need?
         ue_rb_list.sort(key=lambda x: x.j_start)  # sort by time
         ue_rb_list.sort(key=lambda x: x.i_start)  # sort by freq
         return self.pick_in_order(ue, ue_rb_list, precalculate)
@@ -215,16 +214,16 @@ class AdjustMCS(Undo):
         lapped_rb.sort(key=lambda x: x.mcs.value, reverse=True)  # sort by mcs
         non_lapped_rb.sort(key=lambda x: x.j_start)  # sort by time
         non_lapped_rb.sort(key=lambda x: x.i_start)  # sort by freq
-        # non_lapped_rb.sort(key=lambda x: x.mcs.value, reverse=True)  # sort by mcs
         self.pick_in_order(ue, lapped_rb + non_lapped_rb)
 
     @staticmethod
     def pick_in_order(ue: UserEquipment, rb_list: List[ResourceBlock], precalculate: bool = False) -> int:
         """
         Delete the RB with highest freq & latest time.
+        Only get better MCS or remove(CQI 0).
         :param ue: The UE to adjust mcs. For UE with single connection and had a number of RBs calculated by CQI_1
         :param rb_list: The UEs' RBs in gnb_info or enb_info.
-        :param precalculate: If is "True", don't remove or add RBs after knowing how many RBs to use.
+        :param precalculate: If is "True", don't actually remove the ue or add RBs.
         :return: The number of RB this ue needs.
         """
         current_mcs: Union[G_MCS, E_MCS] = rb_list[0].mcs
@@ -239,8 +238,10 @@ class AdjustMCS(Undo):
                     # Remove the extra RBs
                     nb_info: Union[GNBInfo, ENBInfo] = ue.gnb_info if isinstance(current_mcs, G_MCS) else ue.enb_info
                     while len(rb_list) > i:
-                        rb_list[-1].remove()
+                        rb_list[-1].remove()  # call the remove method in rb.py
                         if nb_info.rb is not rb_list:
+                            # if rb_list is a combination of lists, not "the" nb_info in ue.
+                            # else the RB will be removed from rb_list at the remove() in rb.py
                             rb_list.pop()
                     ue.throughput = current_mcs.value * i
                     nb_info.mcs = current_mcs
