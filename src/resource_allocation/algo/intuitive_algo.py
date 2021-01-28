@@ -37,6 +37,7 @@ class Intuitive(Undo):
         # Do gNB allocation first, then eNB.
         self.resource_allocation(self.gnb.nb_type)
         self.ue_enb_to_allocate.extend(self.due_fail)
+        self.due_fail: List[DUserEquipment] = []
         self.resource_allocation(self.enb.nb_type)
 
     def resource_allocation(self, nb_type: NodeBType):
