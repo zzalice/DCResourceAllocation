@@ -13,7 +13,7 @@ class FrameRenderer:
     def __init__(self):
         self.header = [
             '<style type="text/css">',
-            'table {\nborder-collapse: collapse;\ntext-align: center;}',
+            'table {\nborder-collapse: collapse;\ntext-align: center;\nfloat: left;\nmargin-left: 10px}',
             'table, th, td {\nborder: 1px solid black;\nfont-family: monospace;\nvertical-align: center;}',
             'th {background-color: lightgray;}',
             'td {min-width: 32px;}',
@@ -66,11 +66,11 @@ class FrameRenderer:
                 self.body.append('<br>')
             self.body.append(f'[{rb.position[0]}, {rb.position[2]}]')
 
-    def gen_ue(self, ue_list: Tuple[GUserEquipment, ...]):
+    def gen_ue(self, ue_list: Tuple[GUserEquipment, ...], frame_time: int):
         for ue in ue_list:
             self.body.append(f'\n<div><b>User ID</b>: {ue.uuid.hex[:4]}\n<div>')
             self.body.append(f'\nnumerology: {ue.numerology_in_use}')
-            self.body.append(f'\nQos: {ue.request_data_rate}')
+            self.body.append(f'\nQos: {ue.request_data_rate * (1000 // (frame_time // 16))} bps')
             if hasattr(ue, 'gnb_info'):
                 self.body.append(f'\n<br>gnb_info: distance(km): {"{:.3f}".format(ue.coordinate.distance_gnb)}')
                 self.body.append(f'\n<br>MCS: {ue.gnb_info.mcs.name if ue.gnb_info.mcs else "None"}')
@@ -84,11 +84,11 @@ class FrameRenderer:
             self.body.append('\n</div>\n</div>')
         self.body.append('\n</div>')
 
-    def gen_ue_list(self, ue_list: Tuple[GUserEquipment, ...], ue_status: str):
+    def gen_ue_list(self, ue_list: Tuple[GUserEquipment, ...], ue_status: str, frame_time: int):
         if ue_list:
             self.body.append(
                 f'\n<div><span class="{ue_status}">{ue_status} {ue_list[0].ue_type.name}UE: {len(ue_list)}</span>')
-            self.gen_ue(ue_list)
+            self.gen_ue(ue_list, frame_time)
 
     def gen_layer(self, layer: Layer):
         base_unit = layer.bu
@@ -137,12 +137,12 @@ class FrameRenderer:
             # ue
             self.body.append(
                 f'<div>system throughput: {(system_throughput[_s] / 1000_000) * (1000 // (g_frame[_s].frame_time // 16))} Mbps</div>')
-            self.gen_ue_list(g_ue_list[_s]['allocated'], "allocated")
-            self.gen_ue_list(d_ue_list[_s]['allocated'], "allocated")
-            self.gen_ue_list(e_ue_list[_s]['allocated'], "allocated")
-            self.gen_ue_list(g_ue_list[_s]['unallocated'], "unallocated")
-            self.gen_ue_list(d_ue_list[_s]['unallocated'], "unallocated")
-            self.gen_ue_list(e_ue_list[_s]['unallocated'], "unallocated")
+            self.gen_ue_list(g_ue_list[_s]['allocated'], "allocated", g_frame[_s].frame_time)
+            self.gen_ue_list(d_ue_list[_s]['allocated'], "allocated", g_frame[_s].frame_time)
+            self.gen_ue_list(e_ue_list[_s]['allocated'], "allocated", g_frame[_s].frame_time)
+            self.gen_ue_list(g_ue_list[_s]['unallocated'], "unallocated", g_frame[_s].frame_time)
+            self.gen_ue_list(d_ue_list[_s]['unallocated'], "unallocated", g_frame[_s].frame_time)
+            self.gen_ue_list(e_ue_list[_s]['unallocated'], "unallocated", g_frame[_s].frame_time)
 
             self.body.append(div_end)
         self.body.append(div_end)
