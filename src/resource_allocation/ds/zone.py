@@ -30,7 +30,7 @@ class Zone:
         for ue in ue_list:
             num_of_rb: int = (G_MCS if nodeb.nb_type == NodeBType.G else E_MCS).get_worst().calc_required_rb_count(
                 ue.request_data_rate)
-            num_of_bu_time += num_of_rb * ue.numerology_in_use.time
+            num_of_bu_time += num_of_rb * self.numerology.time
 
         self.zone_freq: int = (
                 math.ceil(num_of_bu_time / nodeb.frame.frame_time) * self.numerology.freq)  # numbers of BU
