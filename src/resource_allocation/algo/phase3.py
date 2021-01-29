@@ -27,6 +27,9 @@ class Phase3(Undo):
             for ue in zone.ue_list:
                 self.channel_model.sinr_ue(ue)
                 self.adjust_mcs.remove_worst_rb(ue)
+        self.append_undo([lambda: self.channel_model.undo(), lambda: self.channel_model.purge_undo()])
+        self.append_undo([lambda: self.adjust_mcs.undo(), lambda: self.adjust_mcs.purge_undo()])
+        self.purge_undo()
 
     def zone_group_adjust_mcs(self, zone_groups: Tuple[ZoneGroup, ...]):
         # TODO: for dUE cross
@@ -57,7 +60,7 @@ class Phase3(Undo):
                         rb_position.append((rb.i_start, rb.j_start))
                     ue_in_zone_group.append(ue)
 
-            # adjust the mcs for rest of the UEs with the restrict of overlapping the RBs in max_num_rb_bin_index
+            # adjust the mcs for rest of the UEs, with the restrict of overlapping the RBs in max_num_rb_bin_index
             rb_position_2nd: Set[Tuple[int, int]] = set()
             for b, bin_ in enumerate(zone_group.bin):
                 if b == max_num_rb_bin_index:
@@ -71,7 +74,7 @@ class Phase3(Undo):
                             rb_position_2nd.add((rb.i_start, rb.j_start))
                         ue_in_zone_group.append(ue)
 
-            # adjust the effected UEs. Start from the ue in max_num_rb_bin_index
+            # adjust the effected UEs, the UEs will have to overlap the RBs in the bins that is not max_num_rb_bin_index
             while True:
                 is_all_adjusted: bool = True
                 for ue in ue_in_zone_group:
@@ -81,6 +84,9 @@ class Phase3(Undo):
                         self.adjust_mcs.pick_in_overlapped_rb(ue, list(rb_position_2nd))
                 if is_all_adjusted:
                     break
+        self.append_undo([lambda: self.channel_model.undo(), lambda: self.channel_model.purge_undo()])
+        self.append_undo([lambda: self.adjust_mcs.undo(), lambda: self.adjust_mcs.purge_undo()])
+        self.purge_undo()
 
     def allocate_new_ue(self, nb_type: NodeBType, ue_to_allocate: Tuple[UserEquipment],
                         ue_allocated: Tuple[UserEquipment]):
@@ -133,12 +139,13 @@ class Phase3(Undo):
             if is_all_adjusted:
                 return True
 
-    def visualize(self, title):
+    @staticmethod
+    def visualize(title, gnb: GNodeB, enb: ENodeB, g_a=(), d_a=(), e_a=(), g_una=(), d_una=(), e_una=()):
         with open("../utils/frame_visualizer/vis_" + datetime.today().strftime('%Y%m%d') + ".P", "ab+") as f:
             pickle.dump([title,
-                         self.gnb.frame, self.enb.frame,
+                         gnb.frame, enb.frame,
                          0.0,
-                         {"allocated": [], "unallocated": []},
-                         {"allocated": [], "unallocated": []},
-                         {"allocated": [], "unallocated": []}],
+                         {"allocated": g_a, "unallocated": g_una},
+                         {"allocated": d_a, "unallocated": d_una},
+                         {"allocated": e_a, "unallocated": e_una}],
                         f)

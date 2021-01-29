@@ -1,12 +1,13 @@
 import pickle
+import re
 from datetime import datetime
 from tokenize import String
 from typing import Dict, List, Tuple
 
+from src.resource_allocation.ds.eutran import EUserEquipment
 from src.resource_allocation.ds.frame import Frame, Layer
-from src.resource_allocation.ds.ngran import GUserEquipment
+from src.resource_allocation.ds.ngran import DUserEquipment, GUserEquipment
 from src.resource_allocation.ds.rb import ResourceBlock
-from src.resource_allocation.ds.util_enum import UEType
 
 
 class FrameRenderer:
@@ -156,12 +157,12 @@ class FrameRenderer:
             e_frame: List[Frame] = []
             system_throughput: List[float] = []
             g_ue_list: List[Dict[str, Tuple[GUserEquipment, ...]]] = []
-            d_ue_list: List[Dict[str, Tuple[GUserEquipment, ...]]] = []
-            e_ue_list: List[Dict[str, Tuple[GUserEquipment, ...]]] = []
+            d_ue_list: List[Dict[str, Tuple[DUserEquipment, ...]]] = []
+            e_ue_list: List[Dict[str, Tuple[EUserEquipment, ...]]] = []
             while True:
                 try:
                     _s, _gf, _ef, _t, _gue, _due, _eue = pickle.load(file_of_frame_and_ue)
-                    stage.append(_s)
+                    stage.append(re.sub("[ ]", "_", _s))
                     g_frame.append(_gf)
                     e_frame.append(_ef)
                     system_throughput.append(_t)
@@ -173,8 +174,8 @@ class FrameRenderer:
                     e_frame: Tuple[Frame, ...] = tuple(e_frame)
                     system_throughput: Tuple[float] = tuple(system_throughput)
                     g_ue_list: Tuple[Dict[str, Tuple[GUserEquipment, ...]], ...] = tuple(g_ue_list)
-                    d_ue_list: Tuple[Dict[str, Tuple[GUserEquipment, ...]], ...] = tuple(d_ue_list)
-                    e_ue_list: Tuple[Dict[str, Tuple[GUserEquipment, ...]], ...] = tuple(e_ue_list)
+                    d_ue_list: Tuple[Dict[str, Tuple[DUserEquipment, ...]], ...] = tuple(d_ue_list)
+                    e_ue_list: Tuple[Dict[str, Tuple[EUserEquipment, ...]], ...] = tuple(e_ue_list)
                     break
         return stage, g_frame, e_frame, system_throughput, g_ue_list, d_ue_list, e_ue_list
 
@@ -191,7 +192,7 @@ if __name__ == '__main__':
     file_to_visualize = "vis_" + datetime.today().strftime('%Y%m%d')
     # file_to_visualize = "vis_test_calc_weight"
     # file_to_visualize = "vis_test_phase3"
-    # file_to_visualize = "vis_intuitive_" + datetime.today().strftime('%Y%m%d')
+    file_to_visualize = "vis_intuitive_" + datetime.today().strftime('%Y%m%d')
 
     frame_renderer = FrameRenderer()
     s, gf, ef, t, gue, due, eue = frame_renderer.open_file(file_to_visualize + ".P")

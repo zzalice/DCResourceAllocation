@@ -159,7 +159,7 @@ class BaseUnit:
 
     def set_up(self, resource_block: ResourceBlock):
         # relative position of this BU withing a RB
-        assert not self.is_used, f'BU({self.absolute_i}, {self.absolute_j}) in {self.layer.nodeb.nb_type} layer {self.layer.layer_index} is used'
+        assert not self.is_used, f'BU({self.absolute_i}, {self.absolute_j}) in {self.layer.nodeb.nb_type} layer {self.layer.layer_index} is used by UE {self.within_rb.ue.uuid.hex[:4]}(uuid)'
         self.within_rb: ResourceBlock = resource_block
 
         self.layer.bu_status_cache_is_valid = False
