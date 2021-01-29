@@ -4,6 +4,7 @@ from datetime import datetime
 
 from src.resource_allocation.algo.assistance import calc_system_throughput
 from src.resource_allocation.algo.intuitive_algo import Intuitive
+from utils.frame_visualizer.pickle_generator import visualize_phase
 
 if __name__ == '__main__':
     data_set_file_path = "../src/resource_allocation/simulation/data/" + "data_generator" + ".P"
@@ -16,10 +17,7 @@ if __name__ == '__main__':
     system_throughput: float = calc_system_throughput(
         tuple(intuitive.gue_allocated + intuitive.due_allocated + intuitive.eue_allocated))
 
-    with open("../utils/frame_visualizer/vis_intuitive_" + datetime.today().strftime('%Y%m%d') + ".P", "wb") as file:
-        pickle.dump(["intuitive",
-                     g_nb.frame, e_nb.frame, system_throughput,
-                     {"allocated": intuitive.gue_allocated, "unallocated": intuitive.gue_fail},
-                     {"allocated": intuitive.due_allocated, "unallocated": intuitive.due_fail},
-                     {"allocated": intuitive.eue_allocated, "unallocated": intuitive.eue_fail}],
-                    file)
+    visualize_phase(f'../utils/frame_visualizer/vis_intuitive_{datetime.today().strftime("%Y%m%d")}.P', 'wb',
+                    "intuitive", g_nb, e_nb, tuple(intuitive.gue_allocated), tuple(intuitive.due_allocated),
+                    tuple(intuitive.eue_allocated), tuple(intuitive.gue_fail), tuple(intuitive.due_fail),
+                    tuple(intuitive.eue_fail))
