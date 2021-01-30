@@ -2,19 +2,21 @@ import pickle
 import re
 from datetime import datetime
 from tokenize import String
-from typing import Dict, List, Tuple
+from typing import Dict, List, Tuple, Union
 
 from src.resource_allocation.ds.eutran import EUserEquipment
 from src.resource_allocation.ds.frame import Frame, Layer
 from src.resource_allocation.ds.ngran import DUserEquipment, GUserEquipment
+from src.resource_allocation.ds.nodeb import ENBInfo, GNBInfo
 from src.resource_allocation.ds.rb import ResourceBlock
+from src.resource_allocation.ds.util_enum import NodeBType
 
 
 class FrameRenderer:
     def __init__(self):
         self.header = [
             '<style type="text/css">',
-            'table {\nborder-collapse: collapse;\ntext-align: center;\nfloat: left;\nmargin-left: 10px}',
+            'table {\nborder-collapse: collapse;\ntext-align: center;\nmargin-left: 10px}',
             'table, th, td {\nborder: 1px solid black;\nfont-family: monospace;\nvertical-align: center;}',
             'th {background-color: lightgray;}',
             'td {min-width: 32px;}',
@@ -71,17 +73,18 @@ class FrameRenderer:
         for ue in ue_list:
             self.body.append(f'\n<div><b>User ID</b>: {ue.uuid.hex[:4]}\n<div>')
             self.body.append(f'\nnumerology: {ue.numerology_in_use}')
-            self.body.append(f'\nQos: {ue.request_data_rate * (1000 // (frame_time // 16))} bps')
-            if hasattr(ue, 'gnb_info'):
-                self.body.append(f'\n<br>gnb_info: distance(km): {"{:.3f}".format(ue.coordinate.distance_gnb)}')
-                self.body.append(f'\n<br>MCS: {ue.gnb_info.mcs.name if ue.gnb_info.mcs else "None"}')
-                self.body.append(f'\nthe number of RBs: {len(ue.gnb_info.rb)}')
-                self.gen_rb(ue.gnb_info.rb)
-            if hasattr(ue, 'enb_info'):
-                self.body.append(f'\n<br>enb_info: distance(km): {"{:.3f}".format(ue.coordinate.distance_enb)}')
-                self.body.append(f'\n<br>MCS: {ue.enb_info.mcs.name if ue.enb_info.mcs else "None"}')
-                self.body.append(f'\nthe number of RBs: {len(ue.enb_info.rb)}')
-                self.gen_rb(ue.enb_info.rb)
+            self.body.append(f'\nQos: {(ue.request_data_rate * (1000 // (frame_time // 16))):,} bps')
+            for nb_info in ['gnb_info', 'enb_info']:
+                if hasattr(ue, nb_info):
+                    ue_nb_info: Union[GNBInfo, ENBInfo] = getattr(ue, nb_info)
+                    self.body.append(
+                        f'\n<br>{nb_info}: distance(km): {"{:.3f}".format(ue.coordinate.distance_gnb if ue_nb_info.nb_type == NodeBType.G else ue.coordinate.distance_enb)}')
+                    self.body.append(
+                        f'\n<br>throughput(bps): {ue.throughput * (1000 // (frame_time // 16))} is_to_recalc_mcs: {ue.is_to_recalculate_mcs}')
+                    self.body.append(f'\n<br>MCS: {ue_nb_info.mcs.name if ue_nb_info.mcs else "None"}')
+                    self.body.append(f'\nSINR: {ue_nb_info.rb[-1].sinr if ue_nb_info.rb else "None"}')
+                    self.body.append(f'\nthe number of RBs: {len(ue_nb_info.rb)}')
+                    self.gen_rb(ue_nb_info.rb)
             self.body.append('\n</div>\n</div>')
         self.body.append('\n</div>')
 
@@ -91,13 +94,13 @@ class FrameRenderer:
                 f'\n<div><span class="{ue_status}">{ue_status} {ue_list[0].ue_type.name}UE: {len(ue_list)}</span>')
             self.gen_ue(ue_list, frame_time)
 
-    def gen_layer(self, layer: Layer):
+    def gen_layer(self, layer: Layer, float_left: bool = False):
         base_unit = layer.bu
         height, width = len(base_unit), len(base_unit[0])
 
         table_header = '<th></th>' + ''.join([f'<th>j:{i}</th>' for i in range(width)])
 
-        self.body.append('<table>')
+        self.body.append(f'<table style="float: left">') if float_left else self.body.append('<table>')
         self.body.append(f'\n<tr>{table_header}</tr>')
         for i in range(height):
             tr = f'<tr><th>i:{i}</th>\n'
@@ -130,14 +133,14 @@ class FrameRenderer:
 
             # gFrame
             for l in range(g_frame[0].max_layer):
-                self.gen_layer(g_frame[_s].layer[l])
+                self.gen_layer(g_frame[_s].layer[l], float_left=True)
 
             # eFrame
             self.gen_layer(e_frame[_s].layer[0])
 
             # ue
             self.body.append(
-                f'<div>system throughput: {(system_throughput[_s] / 1000_000) * (1000 // (g_frame[_s].frame_time // 16))} Mbps</div>')
+                f'<div>system throughput: {round((system_throughput[_s] / 1000_000) * (1000 // (g_frame[_s].frame_time // 16)), 5)} Mbps</div>')
             self.gen_ue_list(g_ue_list[_s]['allocated'], "allocated", g_frame[_s].frame_time)
             self.gen_ue_list(d_ue_list[_s]['allocated'], "allocated", g_frame[_s].frame_time)
             self.gen_ue_list(e_ue_list[_s]['allocated'], "allocated", g_frame[_s].frame_time)
@@ -192,7 +195,7 @@ if __name__ == '__main__':
     file_to_visualize = "vis_" + datetime.today().strftime('%Y%m%d')
     # file_to_visualize = "vis_test_calc_weight"
     # file_to_visualize = "vis_test_phase3"
-    file_to_visualize = "vis_intuitive_" + datetime.today().strftime('%Y%m%d')
+    # file_to_visualize = "vis_intuitive_" + datetime.today().strftime('%Y%m%d')
 
     frame_renderer = FrameRenderer()
     s, gf, ef, t, gue, due, eue = frame_renderer.open_file(file_to_visualize + ".P")
