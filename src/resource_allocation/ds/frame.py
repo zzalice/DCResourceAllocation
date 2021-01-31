@@ -87,7 +87,11 @@ class Layer(Undo):
                 bu.set_up(resource_block)
                 self.append_undo([lambda b=bu: b.clear_up()])  # note the dummy parameter with a default value
         nb_info.rb.append(resource_block)
-        self.append_undo([lambda: nb_info.rb.remove(resource_block)])
+        try:
+            self.append_undo([lambda: nb_info.rb.remove(resource_block)])
+        except ValueError:
+            # TODO: undo error?
+            raise ValueError
 
         # restore RB type
         ue.numerology_in_use = tmp_numerology

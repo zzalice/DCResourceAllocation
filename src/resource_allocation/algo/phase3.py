@@ -97,7 +97,7 @@ class Phase3(Undo):
         ue_to_allocate: List[UserEquipment] = list(ue_to_allocate)
         ue_allocated: List[UserEquipment] = list(ue_allocated)
 
-        spaces: List[Space] = [space for layer in nb.frame.layer for space in empty_space(layer)]
+        spaces: List[Space] = self.update_empty_space(nb)
 
         while ue_to_allocate:
             ue: UserEquipment = ue_to_allocate.pop()
@@ -116,15 +116,14 @@ class Phase3(Undo):
                     self.append_undo([lambda: self.adjust_mcs.undo(), lambda: self.adjust_mcs.purge_undo()])
 
                 if is_allocated:
-                    spaces: List[Space] = [space for layer in nb.frame.layer for space in empty_space(layer)]
+                    spaces: List[Space] = self.update_empty_space(nb)
                     self.purge_undo()
                     break
                 else:
                     self.undo()
                 if any(u.is_to_recalculate_mcs is True for u in ue_allocated):
-                    # TODO: debug before commit
+                    # raise AssertionError  # TODO: ue.is_to_recalculate_mcs is not False
                     pass
-                    # raise AssertionError  # "ue.is_to_recalculate_mcs is not False"
             if not is_allocated:
                 ue_allocated.remove(ue)
 
@@ -144,3 +143,9 @@ class Phase3(Undo):
             if is_all_adjusted:
                 return True
 
+    @staticmethod
+    def update_empty_space(nb: Union[GNodeB, ENodeB]) -> List[Space]:
+        spaces: List[Space] = [space for layer in nb.frame.layer for space in empty_space(layer)]  # sort by layer
+        spaces.sort(key=lambda s: s.starting_j)  # sort by time
+        spaces.sort(key=lambda s: s.starting_i)  # sort by freq
+        return spaces
