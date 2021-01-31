@@ -22,9 +22,9 @@ class UserEquipment:
 
         # properties to be configured at runtime
         self.ue_type: Optional[UEType] = None
-        self.numerology_in_use: Optional[Numerology] = None
         self.enb_info: ENBInfo = ENBInfo()
         self.gnb_info: GNBInfo = GNBInfo()
+        self.numerology_in_use: Optional[Numerology] = None
         self._is_to_recalculate_mcs: bool = False
         self.throughput: float = 0.0
 

@@ -1,5 +1,3 @@
-import pickle
-from datetime import datetime
 from typing import Dict, List, Set, Tuple, Union
 
 from src.channel_model.adjust_mcs import AdjustMCS
@@ -17,9 +15,9 @@ from src.resource_allocation.ds.zone import Zone, ZoneGroup
 class Phase3(Undo):
     def __init__(self, channel_model: ChannelModel, gnb: GNodeB, enb: ENodeB):
         super().__init__()
-        self.channel_model: ChannelModel = channel_model
         self.gnb: GNodeB = gnb
         self.enb: ENodeB = enb
+        self.channel_model: ChannelModel = channel_model
         self.adjust_mcs = AdjustMCS()
 
     def zone_adjust_mcs(self, zones: Tuple[Zone, ...]):
@@ -41,20 +39,23 @@ class Phase3(Undo):
                 for zone in bin_.zone:
                     for ue in zone.ue_list:
                         self.channel_model.sinr_ue(ue)
-                        num_rb_needed[b] += self.adjust_mcs.remove_from_high_freq(ue, ue.gnb_info.rb, precalculate=True)
+                        num_rb_needed[b] += self.adjust_mcs.remove_from_high_freq(ue, ue.gnb_info.rb,
+                                                                                  self.channel_model, precalculate=True)
 
             # find the bin(layer) that will need most RBs
             max_num_rb_bin_index: int = 0
             for bin_index in num_rb_needed:
                 if num_rb_needed[bin_index] > num_rb_needed[max_num_rb_bin_index]:
                     max_num_rb_bin_index: int = bin_index
+            assert (num_rb_needed[max_num_rb_bin_index] == 0 and max_num_rb_bin_index == 0) or num_rb_needed[
+                max_num_rb_bin_index] > 0  # if UE in any bin has CQI 0, the UE in bin 0(lowest layer) will be removed"
 
             # adjust the mcs for the UEs in the bin(layer) of max_num_rb_bin_index
             rb_position: List[Tuple[int, int]] = []
             ue_in_zone_group: List[UserEquipment] = []
             for zone in zone_group.bin[max_num_rb_bin_index].zone:
                 for ue in zone.ue_list:
-                    self.adjust_mcs.remove_from_high_freq(ue, ue.gnb_info.rb)
+                    self.adjust_mcs.remove_from_high_freq(ue, ue.gnb_info.rb, self.channel_model)
                     # record the RB indexes
                     for rb in ue.gnb_info.rb:
                         rb_position.append((rb.i_start, rb.j_start))
@@ -68,7 +69,8 @@ class Phase3(Undo):
                 for zone in bin_.zone:
                     for ue in zone.ue_list:
                         self.channel_model.sinr_ue(ue)
-                        self.adjust_mcs.pick_in_overlapped_rb(ue, rb_position)
+                        self.adjust_mcs.remove_from_high_freq(ue, ue.gnb_info.rb, self.channel_model)
+                        # self.adjust_mcs.pick_in_overlapped_rb(ue, rb_position)
                         # record the RB indexes
                         for rb in ue.gnb_info.rb:
                             rb_position_2nd.add((rb.i_start, rb.j_start))
@@ -81,7 +83,8 @@ class Phase3(Undo):
                     if ue.is_to_recalculate_mcs:
                         is_all_adjusted: bool = False
                         self.channel_model.sinr_ue(ue)
-                        self.adjust_mcs.pick_in_overlapped_rb(ue, list(rb_position_2nd))
+                        self.adjust_mcs.remove_from_high_freq(ue, ue.gnb_info.rb, self.channel_model)
+                        # self.adjust_mcs.pick_in_overlapped_rb(ue, list(rb_position_2nd))
                 if is_all_adjusted:
                     break
         self.append_undo([lambda: self.channel_model.undo(), lambda: self.channel_model.purge_undo()])
@@ -109,6 +112,8 @@ class Phase3(Undo):
                 # the effected UEs
                 if is_allocated:
                     is_allocated: bool = self.adjust_mcs_allocated_ues(ue_allocated)
+                    self.append_undo([lambda: self.channel_model.undo(), lambda: self.channel_model.purge_undo()])
+                    self.append_undo([lambda: self.adjust_mcs.undo(), lambda: self.adjust_mcs.purge_undo()])
 
                 if is_allocated:
                     spaces: List[Space] = [space for layer in nb.frame.layer for space in empty_space(layer)]
@@ -116,6 +121,10 @@ class Phase3(Undo):
                     break
                 else:
                     self.undo()
+                if any(u.is_to_recalculate_mcs is True for u in ue_allocated):
+                    # TODO: debug before commit
+                    pass
+                    # raise AssertionError  # "ue.is_to_recalculate_mcs is not False"
             if not is_allocated:
                 ue_allocated.remove(ue)
 
@@ -127,25 +136,11 @@ class Phase3(Undo):
                     assert ue.is_allocated
                     is_all_adjusted: bool = False
                     self.channel_model.sinr_ue(ue)
-                    self.append_undo(
-                        [lambda c_m=self.channel_model: c_m.undo(), lambda c_m=self.channel_model: c_m.purge_undo()])
                     is_fulfilled: bool = self.adjust_mcs.remove_worst_rb(ue, allow_lower_than_cqi0=False,
                                                                          channel_model=self.channel_model)
-                    self.append_undo(
-                        [lambda a_m=self.adjust_mcs: a_m.undo(), lambda a_m=self.adjust_mcs: a_m.purge_undo()])
                     if not is_fulfilled:
                         # the mcs of the ue is lowered down by another UE.
                         return False
             if is_all_adjusted:
                 return True
 
-    @staticmethod
-    def visualize(title, gnb: GNodeB, enb: ENodeB, g_a=(), d_a=(), e_a=(), g_una=(), d_una=(), e_una=()):
-        with open("../utils/frame_visualizer/vis_" + datetime.today().strftime('%Y%m%d') + ".P", "ab+") as f:
-            pickle.dump([title,
-                         gnb.frame, enb.frame,
-                         0.0,
-                         {"allocated": g_a, "unallocated": g_una},
-                         {"allocated": d_a, "unallocated": d_una},
-                         {"allocated": e_a, "unallocated": e_una}],
-                        f)

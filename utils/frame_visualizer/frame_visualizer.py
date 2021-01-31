@@ -72,15 +72,15 @@ class FrameRenderer:
     def gen_ue(self, ue_list: Tuple[GUserEquipment, ...], frame_time: int):
         for ue in ue_list:
             self.body.append(f'\n<div><b>User ID</b>: {ue.uuid.hex[:4]}\n<div>')
-            self.body.append(f'\nnumerology: {ue.numerology_in_use}')
-            self.body.append(f'\nQos: {(ue.request_data_rate * (1000 // (frame_time // 16))):,} bps')
+            self.body.append(f'numerology: {ue.numerology_in_use} ')
+            self.body.append(f'is_to_recalc_mcs: {ue.is_to_recalculate_mcs}')
+            self.body.append(f'\n<br>Qos: {(ue.request_data_rate * (1000 // (frame_time // 16))):,} bps ')
+            self.body.append(f'throughput: {ue.throughput * (1000 // (frame_time // 16))} bps')
             for nb_info in ['gnb_info', 'enb_info']:
                 if hasattr(ue, nb_info):
                     ue_nb_info: Union[GNBInfo, ENBInfo] = getattr(ue, nb_info)
                     self.body.append(
                         f'\n<br>{nb_info}: distance(km): {"{:.3f}".format(ue.coordinate.distance_gnb if ue_nb_info.nb_type == NodeBType.G else ue.coordinate.distance_enb)}')
-                    self.body.append(
-                        f'\n<br>throughput(bps): {ue.throughput * (1000 // (frame_time // 16))} is_to_recalc_mcs: {ue.is_to_recalculate_mcs}')
                     self.body.append(f'\n<br>MCS: {ue_nb_info.mcs.name if ue_nb_info.mcs else "None"}')
                     self.body.append(f'\nSINR: {ue_nb_info.rb[-1].sinr if ue_nb_info.rb else "None"}')
                     self.body.append(f'\nthe number of RBs: {len(ue_nb_info.rb)}')

@@ -3,9 +3,9 @@ from typing import Dict, List, Tuple, Union
 from src.channel_model.adjust_mcs import AdjustMCS
 from src.channel_model.sinr import ChannelModel
 from src.resource_allocation.algo.new_ue_allocation import AllocateUE
-from src.resource_allocation.ds.space import empty_space, Space
 from src.resource_allocation.ds.eutran import ENodeB, EUserEquipment
 from src.resource_allocation.ds.ngran import DUserEquipment, GNodeB, GUserEquipment
+from src.resource_allocation.ds.space import empty_space, Space
 from src.resource_allocation.ds.ue import UserEquipment
 from src.resource_allocation.ds.undo import Undo
 from src.resource_allocation.ds.util_enum import NodeBType, UEType
@@ -63,9 +63,10 @@ class Intuitive(Undo):
 
                 # the effected UEs
                 if is_allocated:
-                    has_positive_effect: bool = self.adjust_mcs_allocated_ues(allow_lower_mcs=False)
-                    self.append_undo(
-                        [lambda a_m=self.adjust_mcs: a_m.undo(), lambda a_m=self.adjust_mcs: a_m.purge_undo()])
+                    has_positive_effect: bool = self.adjust_mcs_allocated_ues(
+                        [ue] + self.gue_allocated + self.due_allocated + self.eue_allocated, allow_lower_mcs=False)
+                    self.append_undo([lambda: self.channel_model.undo(), lambda: self.channel_model.purge_undo()])
+                    self.append_undo([lambda: self.adjust_mcs.undo(), lambda: self.adjust_mcs.purge_undo()])
                     if not has_positive_effect:
                         is_allocated: bool = False
 
@@ -105,15 +106,13 @@ class Intuitive(Undo):
                 tmp_spaces.extend(new_spaces)
         return tuple(tmp_spaces)
 
-    def adjust_mcs_allocated_ues(self, allow_lower_mcs: bool = True) -> bool:
+    def adjust_mcs_allocated_ues(self, allocated_ue: List[UserEquipment], allow_lower_mcs) -> bool:
         while True:
             is_all_adjusted: bool = True
-            for ue in self.gue_allocated + self.due_allocated + self.eue_allocated:
+            for ue in allocated_ue:
                 if ue.is_to_recalculate_mcs:
                     is_all_adjusted: bool = False
                     self.channel_model.sinr_ue(ue)
-                    self.append_undo(
-                        [lambda c_m=self.channel_model: c_m.undo(), lambda c_m=self.channel_model: c_m.purge_undo()])
                     has_positive_effect: bool = self.adjust_mcs.remove_worst_rb(ue, allow_lower_mcs)
                     if not has_positive_effect:
                         # the mcs of the ue is lowered down by another UE.
