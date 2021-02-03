@@ -156,8 +156,8 @@ class AdjustMCS(Undo):
 
         # check if there is empty space for one RB after the last_rb
         next_rb: Optional[Tuple[int, int]] = next_rb_in_space(last_rb.i_start, last_rb.j_start, ue.numerology_in_use,
-                                                              last_rb.layer, 0, 0, last_rb.layer.FREQ,
-                                                              last_rb.layer.TIME)
+                                                              last_rb.layer, 0, 0,
+                                                              last_rb.layer.FREQ - 1, last_rb.layer.TIME - 1)
         if next_rb is None:  # no continuous space for another RB. run out of space.
             return False
 

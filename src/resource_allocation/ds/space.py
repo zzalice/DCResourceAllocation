@@ -129,6 +129,8 @@ def next_rb_in_space(bu_starting_i: int, bu_starting_j: int, rb_type: Union[Nume
                      layer: Layer, space_starting_i: int, space_starting_j: int, space_ending_i: int,
                      space_ending_j: int
                      ) -> Optional[Tuple[int, int]]:
+    assert 0 <= space_starting_i <= space_ending_i < layer.FREQ
+    assert 0 <= space_starting_j <= space_ending_j < layer.TIME
     if layer.nodeb.nb_type == NodeBType.E:
         rb_type: LTEResourceBlock = LTEResourceBlock.E  # TODO: refactor or redesign
 

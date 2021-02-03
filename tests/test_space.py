@@ -2,7 +2,7 @@ import pytest
 
 from src.resource_allocation.ds.eutran import ENodeB
 from src.resource_allocation.ds.ngran import GNodeB, GUserEquipment
-from src.resource_allocation.ds.space import empty_space, Space
+from src.resource_allocation.ds.space import empty_space, next_rb_in_space, Space
 from src.resource_allocation.ds.util_enum import LTEResourceBlock, Numerology
 from src.resource_allocation.ds.util_type import Coordinate
 
@@ -128,13 +128,25 @@ def test_empty_space(enb, gnb, layer_e, layer_g_0):
                                  [4, 0, 4, frame_time],
                                  [5, 0, 8, 5], [5, 10, 8, frame_time],
                                  [9, 0, 13, frame_time],
-                                 [14, 0, 17, 1], [14, 6, 17, 11],
+                                 [14, 6, 17, 11],
                                  [18, 0, 19, frame_time],
-                                 [20, 0, 23, 0], [20, 9, 22, frame_time],
-                                 [23, 9, 23, 11],
-                                 [24, 0, 24, 11],
-                                 [25, 0, 25, 6], [25, 11, 26, 11],
-                                 [26, 0, 29, 2],
-                                 [27, 11, 28, frame_time],
-                                 [29, 7, 29, frame_time],
                                  [30, 0, gnb.frame.frame_freq - 1, frame_time]]
+    # These spaces are too small for any RB
+    #                            [14, 0, 17, 1],
+    #                            [20, 0, 23, 0], [20, 9, 22, frame_time],
+    #                            [23, 9, 23, 11],
+    #                            [24, 0, 24, 11],
+    #                            [25, 0, 25, 6], [25, 11, 26, 11],
+    #                            [26, 0, 29, 2],
+    #                            [27, 11, 28, frame_time],
+    #                            [29, 7, 29, frame_time],
+
+
+def test_next_rb_in_space(enb, gnb, layer_g_0):
+    assert next_rb_in_space(212, 8, Numerology.N2, layer_g_0, 212, 12, gnb.frame.frame_freq - 1, gnb.frame.frame_time - 1) == (212, 12)
+    assert next_rb_in_space(212, 9, Numerology.N2, layer_g_0, 212, 12, gnb.frame.frame_freq - 1, gnb.frame.frame_time - 1) is None
+    try:
+        next_rb_in_space(212, 9, Numerology.N2, layer_g_0, 212, 12, gnb.frame.frame_freq, gnb.frame.frame_time)
+    except AssertionError:
+        pass
+
