@@ -46,7 +46,7 @@ class _Numerology(Enum):
 
 class Numerology(_Numerology):
     # immutable Numerology Size (FREQ/HEIGHT, TIME/WIDTH), case where num_of_symbols is 16
-    N0 = (2 ** 0, 2 ** 4)  # F: 1, T: 16
+    N0 = (2 ** 0, 2 ** 4)  # F: 1, T: 16  TODO: (1, 8) & frame time too
     N1 = (2 ** 1, 2 ** 3)  # F: 2, T: 8
     N2 = (2 ** 2, 2 ** 2)  # F: 4, T: 4
     N3 = (2 ** 3, 2 ** 1)  # F: 8, T: 2
@@ -66,7 +66,7 @@ class Numerology(_Numerology):
 
 
 class LTEResourceBlock(_Numerology):
-    E = (1, 8)  # F: 1, T: 8
+    E = (1, 8)  # F: 1, T: 8    # TODO: (1, 4)
 
     @staticmethod
     def gen_candidate_set() -> CandidateSet:

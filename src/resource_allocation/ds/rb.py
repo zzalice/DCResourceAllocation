@@ -50,7 +50,7 @@ class ResourceBlock(Undo):
                 for rb in bu.overlapped_rb:
                     origin_value: bool = rb.ue.is_to_recalculate_mcs
                     rb.ue.is_to_recalculate_mcs = True
-                    self.append_undo([lambda r=rb: setattr(r.ue, 'is_to_recalculate_mcs', origin_value)])
+                    self.append_undo([lambda u=rb.ue, o=origin_value: setattr(u, 'is_to_recalculate_mcs', o)])
 
                 bu.clear_up()
                 self.append_undo([lambda b=bu: b.set_up(self)])

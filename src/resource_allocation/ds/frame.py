@@ -82,12 +82,12 @@ class Layer(Undo):
                     else:
                         origin_bool: bool = overlapped_rb.ue.is_to_recalculate_mcs
                         overlapped_rb.ue.is_to_recalculate_mcs = True  # mark the effected UEs to recalculate
-                        self.append_undo([lambda u=overlapped_rb.ue: setattr(u, 'is_to_recalculate_mcs', origin_bool)])
+                        self.append_undo([lambda u=overlapped_rb.ue, o=origin_bool: setattr(u, 'is_to_recalculate_mcs', o)])
 
                 bu.set_up(resource_block)
                 self.append_undo([lambda b=bu: b.clear_up()])  # note the dummy parameter with a default value
         nb_info.rb.append(resource_block)
-        self.append_undo([lambda: nb_info.rb.remove(resource_block)])   # TODO: ValueError undo error?
+        self.append_undo([lambda: nb_info.rb.remove(resource_block)])
 
         # restore RB type
         ue.numerology_in_use = tmp_numerology

@@ -84,10 +84,13 @@ class AllocateUE(Undo):
             if tmp_throughput >= self.request_data_rate:
                 origin_mcs: Union[G_MCS, E_MCS] = nb_info.mcs
                 origin_throughput: float = self.ue.throughput
+                origin_recalc: bool = self.ue.is_to_recalculate_mcs
+
                 nb_info.mcs = nb_info.rb[-1].mcs
                 self.ue.update_throughput()
                 self.ue.is_to_recalculate_mcs = False
 
                 self.append_undo([lambda: setattr(nb_info, 'mcs', origin_mcs)])
                 self.append_undo([lambda: setattr(self.ue, 'throughput', origin_throughput)])
+                self.append_undo([lambda: setattr(self.ue, 'is_to_recalculate_mcs', origin_recalc)])
                 return True

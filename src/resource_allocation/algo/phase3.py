@@ -8,7 +8,7 @@ from src.resource_allocation.ds.ngran import GNodeB
 from src.resource_allocation.ds.space import empty_space, Space
 from src.resource_allocation.ds.ue import UserEquipment
 from src.resource_allocation.ds.undo import Undo
-from src.resource_allocation.ds.util_enum import NodeBType, UEType
+from src.resource_allocation.ds.util_enum import NodeBType
 from src.resource_allocation.ds.zone import Zone, ZoneGroup
 
 
@@ -20,7 +20,7 @@ class Phase3(Undo):
         self.channel_model: ChannelModel = channel_model
         self.adjust_mcs = AdjustMCS()
 
-    def zone_adjust_mcs(self, zones: Tuple[Zone, ...]):
+    def zone_adjust_mcs(self, zones: Tuple[Zone, ...]):  # TODO: delete
         for zone in zones:
             for ue in zone.ue_list:
                 self.channel_model.sinr_ue(ue)
@@ -29,7 +29,7 @@ class Phase3(Undo):
         self.append_undo([lambda: self.adjust_mcs.undo(), lambda: self.adjust_mcs.purge_undo()])
         self.purge_undo()
 
-    def zone_group_adjust_mcs(self, zone_groups: Tuple[ZoneGroup, ...]):
+    def zone_group_adjust_mcs(self, zone_groups: Tuple[ZoneGroup, ...]):  # TODO: delete
         # TODO: for dUE cross
         for zone_group in zone_groups:
             # precalculate the number of RBs in each bin(layer)
@@ -122,8 +122,7 @@ class Phase3(Undo):
                 else:
                     self.undo()
                 if any(u.is_to_recalculate_mcs is True for u in ue_allocated):
-                    # raise AssertionError  # TODO: ue.is_to_recalculate_mcs is not False
-                    pass
+                    raise AssertionError
             if not is_allocated:
                 ue_allocated.remove(ue)
 

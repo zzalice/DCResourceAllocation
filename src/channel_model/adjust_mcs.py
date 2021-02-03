@@ -95,11 +95,7 @@ class AdjustMCS(Undo):
                 worst_rb.remove()
                 continue
             elif ue_throughput >= ue.request_data_rate:
-                # Update the MCS and throughput of the UE
-                origin_throughput: float = ue.throughput
-                ue.throughput = ue_throughput
-                self.append_undo([lambda u=ue: setattr(u, 'throughput', origin_throughput)])
-
+                # Update the UE
                 # update MCS
                 for nb_info in ['gnb_info', 'enb_info']:
                     if hasattr(ue, nb_info):
@@ -109,9 +105,16 @@ class AdjustMCS(Undo):
                             ue_nb_info.mcs = ue_nb_info.rb[-1].mcs
                         else:
                             ue_nb_info.mcs = None
-                        self.append_undo([lambda n_i=ue_nb_info: setattr(n_i, 'mcs', origin_mcs)])
+                        self.append_undo([lambda n_i=ue_nb_info, m=origin_mcs: setattr(n_i, 'mcs', m)])
 
+                # update throughput
+                origin_throughput: float = ue.throughput
+                ue.update_throughput()
+                self.append_undo([lambda: setattr(ue, 'throughput', origin_throughput)])
+
+                origin_recalc: bool = ue.is_to_recalculate_mcs
                 ue.is_to_recalculate_mcs = False
+                self.append_undo([lambda: setattr(ue, 'is_to_recalculate_mcs', origin_recalc)])
                 return True
             elif not allow_lower_mcs:
                 # the temporarily moved UE has negative effected to this UE
@@ -167,6 +170,7 @@ class AdjustMCS(Undo):
         # the SINR of the new RB
         assert channel_model is not None, "Channel model isn't passed in to add a new RB."
         channel_model.sinr_rb(new_rb)
+        self.append_undo([lambda: channel_model.undo(), lambda: channel_model.purge_undo()])
         (ue.gnb_info if new_rb.layer.nodeb.nb_type == NodeBType.G else ue.enb_info).rb.sort(key=lambda x: x.mcs.value,
                                                                                             reverse=True)
         return new_rb
@@ -229,6 +233,7 @@ class AdjustMCS(Undo):
         """
         Delete the RB with highest freq & latest time.
         Only get better MCS or remove(CQI 0).
+        Undo not implemented, no need.
         :param ue: The UE to adjust mcs. For UE with SINGLE CONNECTION and had a number of RBs calculated by CQI_1
         :param rb_list: The UEs' RBs in gnb_info or enb_info.
         :param channel_model: For adding new RBs.
@@ -252,8 +257,8 @@ class AdjustMCS(Undo):
                             # if rb_list is a combination of lists, not "the" nb_info in ue.
                             # else the RB will be removed from rb_list at the remove() in rb.py
                             rb_list.pop()
-                    ue.throughput = current_mcs.value * i
                     nb_info.mcs = current_mcs
+                    ue.update_throughput()
                     ue.is_to_recalculate_mcs = False
                 return i
             elif i == len(rb_list) and i < current_mcs.calc_required_rb_count(ue.request_data_rate):
@@ -288,7 +293,7 @@ class AdjustMCS(Undo):
             # no cutting
             return True
         for _ in range(rm_to - rm_from):
-            self.append_undo([lambda rb=ue_nb_info.rb[rm_from]: rb.undo(), lambda rb=ue_nb_info.rb[rm_from]: rb.purge_undo()])  # TODO: 確定undo後RB是同一個，且sinr, mcs沒變
+            self.append_undo([lambda rb=ue_nb_info.rb[rm_from]: rb.undo(), lambda rb=ue_nb_info.rb[rm_from]: rb.purge_undo()])
             ue_nb_info.rb[rm_from].remove()
         self.append_undo([lambda: setattr(ue_nb_info, 'mcs', ue_nb_info.mcs)])
         ue_nb_info.mcs = new_mcs
@@ -301,7 +306,7 @@ class AdjustMCS(Undo):
         # add new RBs
         allocate_ue = AllocateUE(ue, ue.request_data_rate - new_throughput, tuple(spaces), channel_model)
         is_succeed: bool = allocate_ue.allocate()
-        self.append_undo([lambda a_u=allocate_ue: a_u.undo(), lambda a_u=allocate_ue: a_u.purge_undo()])
+        self.append_undo([lambda: allocate_ue.undo(), lambda: allocate_ue.purge_undo()])
         # TODO: if the MCS is higher than cqi-left/right
 
         if not is_succeed:

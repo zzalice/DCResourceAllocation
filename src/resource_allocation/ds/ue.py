@@ -26,7 +26,7 @@ class UserEquipment:
         self.gnb_info: GNBInfo = GNBInfo()
         self.numerology_in_use: Optional[Numerology] = None
         self._is_to_recalculate_mcs: bool = False
-        self.throughput: float = 0.0
+        self._throughput: float = 0.0
 
     def set_numerology(self, numerology: Numerology):
         assert numerology in self.candidate_set
@@ -59,14 +59,26 @@ class UserEquipment:
         self.is_to_recalculate_mcs = False
 
     def update_throughput(self):
+        # !! Don't forget to update MCS before calling this method !!
         tmp_throughput: float = 0.0
         if hasattr(self, 'gnb_info') and self.gnb_info.mcs:
+            assert self.gnb_info.rb, "There is MCS but no RB(s)"
             assert (self.gnb_info.mcs.value <= rb.mcs.value for rb in self.gnb_info.rb)
             tmp_throughput += self.gnb_info.mcs.value * len(self.gnb_info.rb)
         if hasattr(self, 'enb_info') and self.enb_info.mcs:
+            assert self.enb_info.rb, "There is MCS but no RB(s)"
             assert (self.enb_info.mcs.value <= rb.mcs.value for rb in self.enb_info.rb)
             tmp_throughput += self.enb_info.mcs.value * len(self.enb_info.rb)
-        self.throughput = tmp_throughput
+        self._throughput = tmp_throughput
+
+    @property
+    def throughput(self):
+        return self._throughput
+
+    @throughput.setter
+    def throughput(self, value: float):
+        # for undo process
+        self._throughput: float = value
 
     @property
     def is_allocated(self) -> bool:
