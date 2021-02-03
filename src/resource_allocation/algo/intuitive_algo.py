@@ -57,8 +57,8 @@ class Intuitive(Undo):
             is_allocated: bool = False
             if len(spaces) > 0:
                 # allocate new ue
-                allocate_ue: AllocateUE = AllocateUE(ue, spaces, self.channel_model)
-                is_allocated: bool = allocate_ue.new_ue()
+                allocate_ue: AllocateUE = AllocateUE(ue, ue.request_data_rate, spaces, self.channel_model)
+                is_allocated: bool = allocate_ue.allocate()
                 self.append_undo([lambda a_u=allocate_ue: a_u.undo(), lambda a_u=allocate_ue: a_u.purge_undo()])
 
                 # the effected UEs

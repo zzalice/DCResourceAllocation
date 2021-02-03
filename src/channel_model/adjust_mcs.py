@@ -1,11 +1,13 @@
 from typing import List, Optional, Tuple, Union
 
 from src.channel_model.sinr import ChannelModel
+from src.resource_allocation.algo.max_subarray import MaxSubarray
+from src.resource_allocation.algo.new_ue_allocation import AllocateUE
 from src.resource_allocation.ds.eutran import EUserEquipment
 from src.resource_allocation.ds.ngran import DUserEquipment, GUserEquipment
 from src.resource_allocation.ds.nodeb import ENBInfo, GNBInfo
 from src.resource_allocation.ds.rb import ResourceBlock
-from src.resource_allocation.ds.space import next_rb_in_space
+from src.resource_allocation.ds.space import empty_space, next_rb_in_space, Space
 from src.resource_allocation.ds.ue import UserEquipment
 from src.resource_allocation.ds.undo import Undo
 from src.resource_allocation.ds.util_enum import E_MCS, G_MCS, NodeBType, UEType
@@ -31,7 +33,8 @@ class AdjustMCS(Undo):
         allow_lower_mcs = False
 
         :param ue: The UE to adjust mcs. For UE with single or dual connection.
-        :param allow_lower_mcs: If is "False", means not allowing a certain UEs' new movement has negative effect to this UE.
+        :param allow_lower_mcs: If is "False", means
+                                not allowing a certain UEs' new movement has negative effect to this UE.
         :param allow_lower_than_cqi0: If is "False", means a certain new UE can let this ue have lower mcs
                                       but CANNOT let it be too low to transmit.
         :param channel_model: If the algorithm allows the ue to add more RBs, channel_model will have to be passed in.
@@ -88,8 +91,8 @@ class AdjustMCS(Undo):
 
             if tmp_ue_throughput > ue.request_data_rate:
                 # Officially remove the RB
+                self.append_undo([lambda b=worst_rb: b.undo(), lambda b=worst_rb: b.purge_undo()])
                 worst_rb.remove()
-                self.append_undo([lambda rb=worst_rb: rb.undo(), lambda rb=worst_rb: rb.purge_undo()])
                 continue
             elif ue_throughput >= ue.request_data_rate:
                 # Update the MCS and throughput of the UE
@@ -270,3 +273,39 @@ class AdjustMCS(Undo):
                 if rb.mcs.efficiency < current_mcs.efficiency:
                     current_mcs: Union[G_MCS, E_MCS] = rb.mcs
                     break
+
+    def due_cutting(self, ue: DUserEquipment, ue_nb_info: Union[GNBInfo, ENBInfo], channel_model: ChannelModel) -> bool:
+        # TODO: debug
+        assert ue.ue_type == UEType.D
+        self.purge_undo()
+
+        # crop the RBs with lower MCS
+        ue_nb_info.rb.sort(key=lambda x: x.j_start)  # sort by time
+        ue_nb_info.rb.sort(key=lambda x: x.i_start)  # sort by freq
+        ue_nb_info.rb.sort(key=lambda x: x.layer.layer_index)  # sort by layer
+        rm_from, rm_to, new_mcs = MaxSubarray().max_subarray([rb.mcs for rb in ue_nb_info.rb])
+        if rm_from == rm_to:
+            # no cutting
+            return True
+        for _ in range(rm_to - rm_from):
+            self.append_undo([lambda rb=ue_nb_info.rb[rm_from]: rb.undo(), lambda rb=ue_nb_info.rb[rm_from]: rb.purge_undo()])  # TODO: 確定undo後RB是同一個，且sinr, mcs沒變
+            ue_nb_info.rb[rm_from].remove()
+        self.append_undo([lambda: setattr(ue_nb_info, 'mcs', ue_nb_info.mcs)])
+        ue_nb_info.mcs = new_mcs
+        new_throughput: float = ue_nb_info.mcs.value * len(ue_nb_info.rb)
+
+        # find spaces in another BS to fulfill QoS
+        another_nb_info: Union[GNBInfo, ENBInfo] = ue.enb_info if isinstance(ue_nb_info, GNBInfo) else ue.gnb_info
+        spaces: List[Space] = [space for layer in another_nb_info.nb.frame.layer for space in empty_space(layer)]
+
+        # add new RBs
+        allocate_ue = AllocateUE(ue, ue.request_data_rate - new_throughput, tuple(spaces), channel_model)
+        is_succeed: bool = allocate_ue.allocate()
+        self.append_undo([lambda a_u=allocate_ue: a_u.undo(), lambda a_u=allocate_ue: a_u.purge_undo()])
+        # TODO: if the MCS is higher than cqi-left/right
+
+        if not is_succeed:
+            self.undo()
+        else:
+            self.purge_undo()
+        return True

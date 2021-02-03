@@ -143,16 +143,16 @@ def test_new_ue(channel_model, space_g0_0_0_3_15, space_g0_4_0_5_15, space_g0_6_
     """"""
     # 理論上所有UE CQI都會是15
     """ [test] 一個空間就滿足QoS """
-    assert AllocateUE(gue, (space_g0_0_0_3_15,), channel_model).new_ue() is True
-    assert AllocateUE(eue, (space_e_0_0_1_15,), channel_model).new_ue() is True
+    assert AllocateUE(gue, (space_g0_0_0_3_15,), channel_model).allocate() is True
+    assert AllocateUE(eue, (space_e_0_0_1_15,), channel_model).allocate() is True
 
     """ [test] 一個空間無法滿足QoS """
-    assert AllocateUE(due, (space_g0_4_0_5_15,), channel_model).new_ue() is False
-    assert AllocateUE(eue_2, (space_e_2_0_2_15,), channel_model).new_ue() is False
+    assert AllocateUE(due, (space_g0_4_0_5_15,), channel_model).allocate() is False
+    assert AllocateUE(eue_2, (space_e_2_0_2_15,), channel_model).allocate() is False
 
     """ [test] 多個空間可以滿足QoS """
     # assert AllocateUE(due, (space_g0_0_0_3_15, space_g0_4_0_5_15), channel_model).allocate() is True
-    assert AllocateUE(due_2, (space_g0_6_0_7_15, space_g0_8_0_11_15), channel_model).new_ue() is True
+    assert AllocateUE(due_2, (space_g0_6_0_7_15, space_g0_8_0_11_15), channel_model).allocate() is True
 
 
 def test_small_step_undo():
@@ -165,7 +165,7 @@ def test_small_step_undo():
 def test_new_ue_numerology_restore(channel_model, space_e_3_0_4_15, space_e_5_0_5_15, due_enb, due_enb_2):
     """"""
     """ [test] 一個空間就滿足QoS """
-    assert AllocateUE(due_enb, (space_e_3_0_4_15,), channel_model).new_ue() is True
+    assert AllocateUE(due_enb, (space_e_3_0_4_15,), channel_model).allocate() is True
 
     """ [test] 一個空間無法滿足QoS """
-    assert AllocateUE(due_enb_2, (space_e_5_0_5_15,), channel_model).new_ue() is False
+    assert AllocateUE(due_enb_2, (space_e_5_0_5_15,), channel_model).allocate() is False

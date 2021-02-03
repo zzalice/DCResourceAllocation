@@ -40,7 +40,7 @@ class MaxSubarray:
     Output: 1 1
     """
 
-    def max_subarray(self, array: List[Union[G_MCS, E_MCS]]):
+    def max_subarray(self, array: List[Union[G_MCS, E_MCS]]) -> Tuple[int, int, Union[G_MCS, E_MCS]]:
         """
         To cut part of the allocated RB to the other BS for dUE.
         :param array: The MCS of the RBs of ONE UE in ONE BS.
@@ -67,10 +67,10 @@ class MaxSubarray:
         if not max_throughput['cqi-right'] or max_throughput['cqi-left'].value >= max_throughput['cqi-right'].value:
             # if the input list len == 1 OR right half has lower MCS
             # remove right half
-            return max_throughput['idx'], idx
+            return max_throughput['idx'], idx, max_throughput['cqi-left']
         else:
             # remove left half
-            return 0, max_throughput['idx']
+            return 0, max_throughput['idx'], max_throughput['cqi-right']
 
     @staticmethod
     def subarray(subarray: List[Union[G_MCS, E_MCS]]) -> Tuple[Union[None, G_MCS, E_MCS], float]:

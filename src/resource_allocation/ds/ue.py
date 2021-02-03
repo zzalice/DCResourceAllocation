@@ -42,22 +42,6 @@ class UserEquipment:
             self.gnb_info.nb = g_nb
             assert self.coordinate.distance_gnb <= g_nb.radius
 
-    @property
-    def is_allocated(self) -> bool:
-        if hasattr(self, 'enb_info') and self.enb_info.rb:
-            return True
-        if hasattr(self, 'gnb_info') and self.gnb_info.rb:
-            return True
-        return False
-
-    @property
-    def is_to_recalculate_mcs(self) -> bool:
-        return self._is_to_recalculate_mcs
-
-    @is_to_recalculate_mcs.setter
-    def is_to_recalculate_mcs(self, value: bool):
-        self._is_to_recalculate_mcs: bool = value
-
     def remove(self):
         self.throughput: float = 0.0
 
@@ -73,3 +57,29 @@ class UserEquipment:
                 self.gnb_info.rb[0].remove()
             assert not self.gnb_info.rb, "The RB remove failed."
         self.is_to_recalculate_mcs = False
+
+    def update_throughput(self):
+        tmp_throughput: float = 0.0
+        if hasattr(self, 'gnb_info') and self.gnb_info.mcs:
+            assert (self.gnb_info.mcs.value <= rb.mcs.value for rb in self.gnb_info.rb)
+            tmp_throughput += self.gnb_info.mcs.value * len(self.gnb_info.rb)
+        if hasattr(self, 'enb_info') and self.enb_info.mcs:
+            assert (self.enb_info.mcs.value <= rb.mcs.value for rb in self.enb_info.rb)
+            tmp_throughput += self.enb_info.mcs.value * len(self.enb_info.rb)
+        self.throughput = tmp_throughput
+
+    @property
+    def is_allocated(self) -> bool:
+        if hasattr(self, 'enb_info') and self.enb_info.rb:
+            return True
+        if hasattr(self, 'gnb_info') and self.gnb_info.rb:
+            return True
+        return False
+
+    @property
+    def is_to_recalculate_mcs(self) -> bool:
+        return self._is_to_recalculate_mcs
+
+    @is_to_recalculate_mcs.setter
+    def is_to_recalculate_mcs(self, value: bool):
+        self._is_to_recalculate_mcs: bool = value

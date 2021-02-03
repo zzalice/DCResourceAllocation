@@ -36,8 +36,8 @@ if __name__ == '__main__':
 
     # sample code to generate random profiles (the last tuple `distance_range.e_random` ONLY exists in dUE)
     sec_to_frame: int = 1000 // (e_nb.frame.frame_time // 16)
-    qos_lower_bound_bps: int = 100_000  # QoS range: 100,000-3,000,000 bps
-    qos_higher_bound_bps: int = 3_000_000
+    qos_lower_bound_bps: int = 10_000  # QoS range: 10,000-3,00,000 bps
+    qos_higher_bound_bps: int = 3_00_000
 
     e_profiles: UEProfiles = UEProfiles(
         EUE_COUNT,

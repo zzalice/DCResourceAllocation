@@ -79,7 +79,10 @@ def empty_space(layer: Layer) -> Tuple[Space, ...]:
 
     empty_spaces: List[Space] = []
     for space in spaces:
-        empty_spaces.append(Space(layer, space['i_start'], space['j_start'], space['i_end'], space['j_end']))
+        s: Space = Space(layer, space['i_start'], space['j_start'], space['i_end'], space['j_end'])
+        if not s.rb_type:   # if the space is too narrow to contain even one RB
+            continue
+        empty_spaces.append(s)
     return tuple(empty_spaces)
 
 

@@ -8,7 +8,7 @@ from src.resource_allocation.ds.ngran import GNodeB
 from src.resource_allocation.ds.space import empty_space, Space
 from src.resource_allocation.ds.ue import UserEquipment
 from src.resource_allocation.ds.undo import Undo
-from src.resource_allocation.ds.util_enum import NodeBType
+from src.resource_allocation.ds.util_enum import NodeBType, UEType
 from src.resource_allocation.ds.zone import Zone, ZoneGroup
 
 
@@ -105,8 +105,8 @@ class Phase3(Undo):
             is_allocated: bool = False
             for space in spaces:
                 # allocate new ue
-                allocate_ue: AllocateUE = AllocateUE(ue, (space,), self.channel_model)
-                is_allocated: bool = allocate_ue.new_ue()  # TODO: for dUE
+                allocate_ue: AllocateUE = AllocateUE(ue, ue.request_data_rate, (space,), self.channel_model)
+                is_allocated: bool = allocate_ue.allocate()  # TODO: for dUE
                 self.append_undo([lambda a_u=allocate_ue: a_u.undo(), lambda a_u=allocate_ue: a_u.purge_undo()])
 
                 # the effected UEs
