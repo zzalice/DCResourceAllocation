@@ -172,7 +172,7 @@ class BaseUnit:
         self.layer.bu_status_cache_is_valid = False
 
     @property
-    def overlapped_rb(self) -> List[ResourceBlock]:
+    def overlapped_rb(self) -> List[ResourceBlock]:  # TODO: implement a cache bool
         rb_list: List[ResourceBlock] = []
         for layer in self.layer.nodeb.frame.layer:
             if layer is not self.layer:

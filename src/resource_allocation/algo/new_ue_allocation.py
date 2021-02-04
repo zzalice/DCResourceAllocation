@@ -68,10 +68,10 @@ class AllocateUE(Undo):
                     continue
 
             rb: Optional[ResourceBlock] = space.layer.allocate_resource_block(bu_i, bu_j, self.ue)
+            self.append_undo([lambda l=space.layer: l.undo(), lambda l=space.layer: l.purge_undo()])
             if not rb:
                 # overlapped with itself
                 continue
-            self.append_undo([lambda l=space.layer: l.undo(), lambda l=space.layer: l.purge_undo()])
 
             self.channel_model.sinr_rb(rb)
             if rb.mcs is (G_MCS if nb_info.nb_type == NodeBType.G else E_MCS).CQI0:

@@ -163,9 +163,9 @@ class AdjustMCS(Undo):
 
         # allocate a RB in the space
         new_rb: Optional[ResourceBlock] = last_rb.layer.allocate_resource_block(next_rb[0], next_rb[1], ue)
+        self.append_undo([lambda l=new_rb.layer: l.undo(), lambda l=new_rb.layer: l.purge_undo()])
         if new_rb is None:  # allocation failed
             return False
-        self.append_undo([lambda l=new_rb.layer: l.undo(), lambda l=new_rb.layer: l.purge_undo()])
 
         # the SINR of the new RB
         assert channel_model is not None, "Channel model isn't passed in to add a new RB."

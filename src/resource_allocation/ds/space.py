@@ -50,6 +50,7 @@ class Space:
         for rb in self._rb:
             if rb_type is rb[0]:
                 return rb[1]
+        # TODO: return False
 
     @property
     def rb_type(self) -> List[Numerology]:
