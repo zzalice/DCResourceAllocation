@@ -104,6 +104,8 @@ class Phase3(Undo):
             ue_allocated.append(ue)
             is_allocated: bool = False
             for space in spaces:
+                if any(u.is_to_recalculate_mcs is True for u in ue_allocated):
+                    raise AssertionError    # for undo debug
                 # allocate new ue
                 allocate_ue: AllocateUE = AllocateUE(ue, ue.request_data_rate, (space,), self.channel_model)
                 is_allocated: bool = allocate_ue.allocate()  # TODO: for dUE
@@ -122,7 +124,7 @@ class Phase3(Undo):
                 else:
                     self.undo()
                 if any(u.is_to_recalculate_mcs is True for u in ue_allocated):
-                    raise AssertionError
+                    raise AssertionError    # for undo debug
             if not is_allocated:
                 ue_allocated.remove(ue)
 

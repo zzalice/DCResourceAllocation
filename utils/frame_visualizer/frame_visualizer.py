@@ -74,8 +74,8 @@ class FrameRenderer:
             self.body.append(f'\n<div><b>User ID</b>: {ue.uuid.hex[:4]}\n<div>')
             self.body.append(f'numerology: {ue.numerology_in_use} ')
             self.body.append(f'is_to_recalc_mcs: {ue.is_to_recalculate_mcs}')
-            self.body.append(f'\n<br>Qos: {(ue.request_data_rate * (1000 // (frame_time // 16))):,} bps ')
-            self.body.append(f'throughput: {ue.throughput * (1000 // (frame_time // 16))} bps')
+            self.body.append(f'\n<br>Qos: {(ue.request_data_rate * (1000 // (frame_time // 8))):,} bps ')
+            self.body.append(f'throughput: {ue.throughput * (1000 // (frame_time // 8))} bps')
             for nb_info in ['gnb_info', 'enb_info']:
                 if hasattr(ue, nb_info):
                     ue_nb_info: Union[GNBInfo, ENBInfo] = getattr(ue, nb_info)
@@ -140,7 +140,7 @@ class FrameRenderer:
 
             # ue
             self.body.append(
-                f'<div>system throughput: {round((system_throughput[_s] / 1000_000) * (1000 // (g_frame[_s].frame_time // 16)), 5)} Mbps</div>')
+                f'<div>system throughput: {round((system_throughput[_s] / 1000_000) * (1000 // (g_frame[_s].frame_time // 8)), 5)} Mbps</div>')
             self.gen_ue_list(g_ue_list[_s]['allocated'], "allocated", g_frame[_s].frame_time)
             self.gen_ue_list(d_ue_list[_s]['allocated'], "allocated", g_frame[_s].frame_time)
             self.gen_ue_list(e_ue_list[_s]['allocated'], "allocated", g_frame[_s].frame_time)
