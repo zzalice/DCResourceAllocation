@@ -37,6 +37,8 @@ class Zone:
         self.zone_time: int = nodeb.frame.frame_time  # numbers of BU
         self.last_row_duration: int = num_of_bu_time % self.zone_time or self.zone_time  # = zone_time when % == 0
 
+        self.priority: float = float('inf')  # for eNB in phase 2
+
     def merge(self, zone_to_merge: Zone) -> bool:
         assert zone_to_merge.numerology == self.numerology, "The zone to merge doesn't have the same numerology."
         is_mergeable: bool = zone_to_merge.last_row_duration <= self.last_row_remaining_time

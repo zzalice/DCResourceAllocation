@@ -1,6 +1,6 @@
 import pickle
 from datetime import datetime
-from typing import Tuple
+from typing import List, Tuple
 
 from src.resource_allocation.algo.assistance import divide_ue
 from src.resource_allocation.algo.phase1 import Phase1
@@ -29,8 +29,9 @@ if __name__ == '__main__':
     layer_using: int = g_phase2.calc_layer_using(g_zone_wide)
     g_zone_groups: Tuple[ZoneGroup, ...] = g_phase2.form_group(g_zone_wide, layer_using)
     g_zone_groups: Tuple[ZoneGroup, ...] = g_phase2.calc_residual_degree(g_zone_groups)
-    g_zone_groups_allocated, g_zone_unallocated = g_phase2.allocate_zone_group(g_zone_groups)
-    g_zone_allocated: Tuple[Zone, ...] = g_phase2.allocate_zone_to_layer(g_zone_unallocated)
+    g_zone_allocated, g_zone_unallocated = g_phase2.allocate_zone_group(g_zone_groups)
+    g_zone_allocated: List[List[Zone]] = g_phase2.allocate_zone_to_layer(g_nb.nb_type, g_zone_allocated,
+                                                                         g_zone_unallocated)
     _, d_ue_list_unallocated = divide_ue(d_ue_list)
 
     # noinspection PyTypeChecker
@@ -40,15 +41,15 @@ if __name__ == '__main__':
     e_zone_wide, e_zone_narrow = e_phase1.categorize_zone(e_zone_fit, e_zone_merged)
 
     e_phase2: Phase2 = Phase2(e_nb)
-    e_zone_allocated: Tuple[Zone, ...] = e_phase2.allocate_zone_to_layer(
-        e_zone_wide)  # TODO: CP value isn't implemented
+    e_zone_allocated: List[List[Zone]] = e_phase2.allocate_zone_to_layer(e_nb.nb_type, [[]], e_zone_wide)
 
     if visualize_the_algo:
         visualize_phase_uncategorized_ue(visualization_file_path, "wb",
                                          "Phase2", g_nb, e_nb, g_ue_list, d_ue_list, e_ue_list)
 
     phase3: Phase3 = Phase3(channel_model, g_nb, e_nb)
-    phase3.phase2_ue_adjust_mcs()
+    phase3.phase2_ue_adjust_mcs(e_zone_allocated)
+    phase3.phase2_ue_adjust_mcs(g_zone_allocated)
 
     if visualize_the_algo:
         visualize_phase_uncategorized_ue(visualization_file_path, "ab+",

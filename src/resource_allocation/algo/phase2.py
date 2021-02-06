@@ -3,6 +3,7 @@ from typing import List, Tuple, Union
 
 from src.resource_allocation.ds.eutran import ENodeB
 from src.resource_allocation.ds.ngran import GNodeB
+from src.resource_allocation.ds.util_enum import NodeBType
 from src.resource_allocation.ds.zone import Zone, ZoneGroup
 
 
@@ -41,19 +42,19 @@ class Phase2:
             zone_group.set_priority(residual_degree)
         return zone_groups
 
-    def allocate_zone_group(self, zone_groups: Tuple[ZoneGroup, ...]) -> Tuple[Tuple[ZoneGroup, ...], Tuple[Zone, ...]]:
+    def allocate_zone_group(self, zone_groups: Tuple[ZoneGroup, ...]) -> Tuple[List[List[Zone]], Tuple[Zone, ...]]:
         # the idea of first allocate by degree then by BW
         zone_groups: List[ZoneGroup] = sorted(zone_groups, key=lambda x: x.bin[0].zone[0].zone_freq, reverse=True)
         zone_groups: List[ZoneGroup] = sorted(zone_groups, key=lambda x: x.priority, reverse=False)
 
-        zone_groups_allocated: List[ZoneGroup] = []
+        zone_allocated: List[List[Zone]] = [[], [], []]
         zone_unallocated: List[Zone] = []
         for zone_group in zone_groups:
             if self.nodeb.frame.layer[0].available_bandwidth >= zone_group.bin[0].capacity:
                 for layer, bin_ in enumerate(zone_group.bin):
                     for zone in bin_.zone:
                         self.nodeb.frame.layer[layer].allocate_zone(zone)
-                zone_groups_allocated.append(zone_group)
+                    zone_allocated[layer].extend(bin_.zone)
             else:
                 # collect the zones not allocated
                 for bin_ in zone_group.bin:
@@ -61,17 +62,27 @@ class Phase2:
 
         for layer in self.nodeb.frame.layer:
             layer.purge_undo()
-        return tuple(zone_groups_allocated), tuple(zone_unallocated)
+        return zone_allocated, tuple(zone_unallocated)
 
-    def allocate_zone_to_layer(self, zone_set: Tuple[Zone, ...]) -> Tuple[Zone, ...]:
-        zone_set = sorted(zone_set, key=lambda x: x.zone_freq, reverse=True)
-        allocated_zone: List[Zone] = []
-        for zone in zone_set:
+    def allocate_zone_to_layer(self, nb_type: NodeBType, zone_allocated: List[List[Zone]],
+                               zone_unallocated: Tuple[Zone, ...]) -> List[List[Zone]]:
+        zone_unallocated: List[Zone] = sorted(zone_unallocated, key=lambda x: x.zone_freq, reverse=True)
+        if nb_type == NodeBType.E:
+            zone_unallocated: List[Zone] = self.calc_residual_degree_enb(zone_unallocated)
+            zone_unallocated.sort(key=lambda x: x.priority)
+
+        for zone in zone_unallocated:
             for layer in self.nodeb.frame.layer:
                 if layer.allocate_zone(zone):
-                    allocated_zone.append(zone)
+                    zone_allocated[layer.layer_index].append(zone)
                     break
 
         for layer in self.nodeb.frame.layer:
             layer.purge_undo()
-        return tuple(allocated_zone)
+        return zone_allocated
+
+    @staticmethod
+    def calc_residual_degree_enb(zone_unallocated: List[Zone]) -> List[Zone]:
+        for zone in zone_unallocated:
+            zone.priority = zone.last_row_remaining_time / (zone.zone_freq * zone.zone_time)
+        return zone_unallocated
