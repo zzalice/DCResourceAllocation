@@ -75,17 +75,12 @@ class Layer(Undo):
         for i in range(ue.numerology_in_use.freq):
             for j in range(ue.numerology_in_use.time):
                 bu: BaseUnit = self.bu[offset_i + i][offset_j + j]
-                for overlapped_rb in bu.overlapped_rb:
-                    if overlapped_rb.ue is ue:  # The new RB will overlap with the UE itself
-                        ue.numerology_in_use = tmp_numerology  # restore RB type
-                        return None
-                    else:
-                        origin_bool: bool = overlapped_rb.ue.is_to_recalculate_mcs
-                        overlapped_rb.ue.is_to_recalculate_mcs = True  # mark the effected UEs to recalculate
-                        self.append_undo([lambda u=overlapped_rb.ue, o=origin_bool: setattr(u, 'is_to_recalculate_mcs', o)])
+                if ue in bu.overlapped_ue:  # The new RB will overlap with the UE itself
+                    ue.numerology_in_use = tmp_numerology  # restore RB type
+                    return None
 
                 bu.set_up(resource_block)
-                self.append_undo([lambda b=bu: b.clear_up()])  # note the dummy parameter with a default value
+                self.append_undo([lambda b=bu: b.undo(), lambda b=bu: b.purge_undo()])
         nb_info.rb.append(resource_block)
         self.append_undo([lambda: nb_info.rb.remove(resource_block)])
 
@@ -144,54 +139,94 @@ class Layer(Undo):
         self._cache_is_valid: bool = value
 
 
-class BaseUnit:
+class BaseUnit(Undo):
     def __init__(self, absolute_i: int, absolute_j: int, layer: Layer):
+        super().__init__()
         self._absolute_i: int = absolute_i
         self._absolute_j: int = absolute_j
         self._layer: Layer = layer
+
+        # properties to be configured at runtime
         self._is_cochannel: bool = False
         self._cochannel_nb: Optional[Union[ENodeB, GNodeB]] = None
         self._cochannel_absolute_i: Optional[int] = None
-
-        # properties to be configured at runtime
         self.within_rb: Optional[ResourceBlock] = None
         self.sinr: float = float('-inf')
+        self._is_to_recalculate_sinr: bool = True
+        self._lapped_cache_is_valid: bool = False
+        self._overlapped_bu: Tuple[BaseUnit, ...] = ()
+        self._overlapped_rb: Tuple[ResourceBlock, ...] = ()
+        self._overlapped_ue: Tuple[UserEquipment, ...] = ()
 
     def set_up(self, resource_block: ResourceBlock):
         # relative position of this BU withing a RB
         assert not self.is_used, f'BU({self.absolute_i}, {self.absolute_j}) in {self.layer.nodeb.nb_type} layer {self.layer.layer_index} is used by UE {self.within_rb.ue.uuid.hex[:4]}(uuid)'
+        self.append_undo([lambda rb=self.within_rb: setattr(self, "within_rb", rb)])
         self.within_rb: ResourceBlock = resource_block
 
+        self._effect_others()
         self.layer.bu_status_cache_is_valid = False
 
     def clear_up(self):
         assert self.is_used
+        self.append_undo([lambda rb=self.within_rb: setattr(self, "within_rb", rb)])
         self.within_rb = None
+        self.append_undo([lambda i=self.sinr: setattr(self, "sinr", i)])
         self.sinr: float = float('-inf')
 
+        self._effect_others()
         self.layer.bu_status_cache_is_valid = False
 
-    @property
-    def overlapped_rb(self) -> List[ResourceBlock]:  # TODO: implement a cache bool
-        rb_list: List[ResourceBlock] = []
-        for layer in self.layer.nodeb.frame.layer:
-            if layer is not self.layer:
-                if rb := layer.bu[self.absolute_i][self.absolute_j].within_rb:
-                    rb_list.append(rb)
-        if self.is_cochannel:
-            for layer in self.cochannel_nb.frame.layer:
-                if rb := layer.bu[self.cochannel_bu_i][self.absolute_j].within_rb:
-                    rb_list.append(rb)
-        return rb_list
+    def _effect_others(self):
+        for ue in self.overlapped_ue:
+            self.append_undo([lambda u=ue, calc=ue.is_to_recalculate_mcs: setattr(u, "is_to_recalculate_mcs", calc)])
+            ue.is_to_recalculate_mcs = True
+        for bu in self.overlapped_bu:
+            self.append_undo([lambda b=bu, calc=bu._is_to_recalculate_sinr: setattr(b, "_is_to_recalculate_sinr", calc)])
+            self.append_undo([lambda b=bu, cache=bu._lapped_cache_is_valid: setattr(b, "_lapped_cache_is_valid", cache)])
+            bu._is_to_recalculate_sinr = True
+            bu._lapped_cache_is_valid = False
 
     @property
-    def is_used(self) -> bool:
-        return self.within_rb is not None
+    def overlapped_bu(self) -> Tuple[BaseUnit, ...]:
+        return self._overlapped_bu
+
+    @property
+    def overlapped_rb(self) -> Tuple[ResourceBlock]:
+        if not self._lapped_cache_is_valid:
+            self._overlapped_element()
+        return self._overlapped_rb
+
+    @property
+    def overlapped_ue(self) -> Tuple[UserEquipment]:
+        if not self._lapped_cache_is_valid:
+            self._overlapped_element()
+        return self._overlapped_ue
+
+    def _overlapped_element(self):
+        overlapped_rb: List[ResourceBlock] = []
+        overlapped_ue = set()
+        for bu in self.overlapped_bu:
+            if rb := bu.within_rb:
+                overlapped_rb.append(rb)
+                overlapped_ue.add(rb.ue)
+
+        self._overlapped_rb: Tuple[ResourceBlock, ...] = tuple(overlapped_rb)
+        self._overlapped_ue: Tuple[UserEquipment, ...] = tuple(overlapped_ue)
+        self._lapped_cache_is_valid: bool = True
 
     def set_cochannel(self, nodeb: Union[ENodeB, GNodeB], absolute_i: int):
         self._is_cochannel: bool = True
         self._cochannel_nb: Union[ENodeB, GNodeB] = nodeb
         self._cochannel_absolute_i: int = absolute_i
+
+        overlapped_bu: List[BaseUnit] = []
+        for layer in self.layer.nodeb.frame.layer:
+            if layer is not self.layer:
+                overlapped_bu.append(layer.bu[self.absolute_i][self.absolute_j])
+        for layer in self.cochannel_nb.frame.layer:
+            overlapped_bu.append(layer.bu[self.cochannel_bu_i][self.absolute_j])
+        self._overlapped_bu: Tuple[BaseUnit, ...] = tuple(overlapped_bu)
 
     @property
     def is_cochannel(self) -> bool:
@@ -204,6 +239,19 @@ class BaseUnit:
     @property
     def cochannel_bu_i(self) -> int:
         return self._cochannel_absolute_i
+
+    @property
+    def is_to_recalculate_sinr(self) -> bool:
+        return self._is_to_recalculate_sinr
+
+    @is_to_recalculate_sinr.setter
+    def is_to_recalculate_sinr(self, value: bool):
+        assert not value, "Only SINR calculator will change the status of this bool from outside the BaseUnit object."
+        self._is_to_recalculate_sinr: bool = value
+
+    @property
+    def is_used(self) -> bool:
+        return self.within_rb is not None
 
     @property
     def absolute_i(self) -> int:

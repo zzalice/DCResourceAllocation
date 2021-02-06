@@ -37,7 +37,7 @@ class ChannelModel(Undo):
         tmp_sinr_rb: float = float('inf')
         for bu_i in range(rb.position[0], rb.position[1] + 1):
             for bu_j in range(rb.position[2], rb.position[3] + 1):
-                self.sinr_bu(rb.layer.bu[bu_i][bu_j])
+                self._sinr_bu(rb.layer.bu[bu_i][bu_j])
                 if tmp_sinr_rb > rb.layer.bu[bu_i][bu_j].sinr:
                     tmp_sinr_rb: float = rb.layer.bu[bu_i][bu_j].sinr
         origin_sinr: float = rb.sinr
@@ -45,13 +45,14 @@ class ChannelModel(Undo):
         self.append_undo([lambda: setattr(rb, 'sinr', origin_sinr)])
         # print(f'RB SINR: {rb.sinr}')
 
-    def sinr_bu(self, bu: BaseUnit):
+    def _sinr_bu(self, bu: BaseUnit):
         """
         SINR(ratio) = rx power(mW) / (noma(mW) + ini(mW) + cross-tier(mW) + interference from other BSs(mW) + awgn(mW))
         :param bu: The BU to calculate its' SINR.
         :return: SINR in dB
         """
-        # TODO: recalculate the effected BU to improve the program efficiency.
+        if not bu.is_to_recalculate_sinr:
+            return True
         # print(f'rb({bu.relative_i},{bu.relative_j})')
         rb: ResourceBlock = bu.within_rb
         ue: UserEquipment = rb.ue
@@ -96,6 +97,7 @@ class ChannelModel(Undo):
         bu.sinr = 10 * math.log10(sinr)  # ratio to dB
         self.append_undo([lambda: setattr(bu, 'sinr', origin_sinr)])
         # print(f'BU SINR: {bu.sinr}')
+        bu.is_to_recalculate_sinr = False
 
     def channel_interference(self, bu: BaseUnit) -> float:
         """

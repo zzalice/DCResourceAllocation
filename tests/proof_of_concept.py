@@ -48,9 +48,7 @@ if __name__ == '__main__':
                                          "Phase2", g_nb, e_nb, g_ue_list, d_ue_list, e_ue_list)
 
     phase3: Phase3 = Phase3(channel_model, g_nb, e_nb)
-    phase3.zone_adjust_mcs(e_zone_allocated)
-    phase3.zone_adjust_mcs(g_zone_allocated)  # TODO: dUE cross BS
-    phase3.zone_group_adjust_mcs(g_zone_groups_allocated)
+    phase3.phase2_ue_adjust_mcs()
 
     if visualize_the_algo:
         visualize_phase_uncategorized_ue(visualization_file_path, "ab+",

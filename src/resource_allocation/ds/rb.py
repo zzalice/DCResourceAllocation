@@ -45,15 +45,8 @@ class ResourceBlock(Undo):
         for bu_i in range(self.i_start, self.i_end + 1):
             for bu_j in range(self.j_start, self.j_end + 1):
                 bu: BaseUnit = self.layer.bu[bu_i][bu_j]
-
-                # Mark the affected UEs
-                for rb in bu.overlapped_rb:
-                    origin_value: bool = rb.ue.is_to_recalculate_mcs
-                    rb.ue.is_to_recalculate_mcs = True
-                    self.append_undo([lambda u=rb.ue, o=origin_value: setattr(u, 'is_to_recalculate_mcs', o)])
-
                 bu.clear_up()
-                self.append_undo([lambda b=bu: b.set_up(self)])
+                self.append_undo([lambda b=bu: b.undo(), lambda b=bu: b.purge_undo()])
 
     @property
     def sinr(self) -> float:
