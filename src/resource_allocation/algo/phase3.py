@@ -1,4 +1,4 @@
-from typing import Dict, List, Set, Tuple, Union
+from typing import List, Tuple, Union
 
 from src.channel_model.adjust_mcs import AdjustMCS
 from src.channel_model.sinr import ChannelModel
@@ -9,7 +9,7 @@ from src.resource_allocation.ds.space import empty_space, Space
 from src.resource_allocation.ds.ue import UserEquipment
 from src.resource_allocation.ds.undo import Undo
 from src.resource_allocation.ds.util_enum import NodeBType
-from src.resource_allocation.ds.zone import Zone, ZoneGroup
+from src.resource_allocation.ds.zone import Zone
 
 
 class Phase3(Undo):
@@ -20,8 +20,18 @@ class Phase3(Undo):
         self.channel_model: ChannelModel = channel_model
         self.adjust_mcs = AdjustMCS()
 
-    def phase2_ue_adjust_mcs(self):
-        pass
+    def phase2_ue_adjust_mcs(self, nb_type: NodeBType, zones: List[List[Zone]]):
+        """
+        Adjust the MCS of the allocated UEs in Phase 2.
+        :param zones: Saves the zones in each layer.
+        :return:
+        """
+        # layer 0
+        for zone in zones[0]:
+            for ue in zone.ue_list:
+                self.adjust_mcs.from_highest_mcs(ue, ue.gnb_info.rb if nb_type == NodeBType.G else ue.enb_info.rb, self.channel_model)
+
+        # layer above 0
 
     def allocate_new_ue(self, nb_type: NodeBType, ue_to_allocate: Tuple[UserEquipment],
                         ue_allocated: Tuple[UserEquipment]):

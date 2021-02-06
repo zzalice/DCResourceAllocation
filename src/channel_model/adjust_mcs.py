@@ -194,11 +194,15 @@ class AdjustMCS(Undo):
                 last_rb: ResourceBlock = rb
         return last_rb
 
-    def remove_from_high_freq(self, ue: UserEquipment, ue_rb_list: List[ResourceBlock], channel_model: ChannelModel,
-                              precalculate: bool = False) -> int:
+    def from_lowest_freq(self, ue: UserEquipment, ue_rb_list: List[ResourceBlock], channel_model: ChannelModel,
+                         precalculate: bool = False) -> int:
         ue_rb_list.sort(key=lambda x: x.j_start)  # sort by time
         ue_rb_list.sort(key=lambda x: x.i_start)  # sort by freq
         return self.pick_in_order(ue, ue_rb_list, channel_model, precalculate)
+
+    def from_highest_mcs(self, ue: UserEquipment, ue_rb_list: List[ResourceBlock], channel_model: ChannelModel):
+        ue_rb_list.sort(key=lambda x: x.mcs.value, reverse=True)
+        return self.pick_in_order(ue, ue_rb_list, channel_model)
 
     # def pick_in_overlapped_rb(self, ue: Union[UserEquipment, GUserEquipment, EUserEquipment],
     #                           rb_position: List[Tuple[int, int]], channel_model: ChannelModel):
