@@ -1,5 +1,5 @@
 # reference: shorturl.at/rDLS0
-from typing import Callable, List, Union
+from typing import Callable, Dict, List, Union
 
 
 class Undo:
@@ -49,3 +49,15 @@ class Undo:
 
         while self._purge_stack:
             (self._purge_stack[-1])()
+
+    def __getstate__(self):
+        return self.empty_undo_stake(self.__dict__)
+
+    @staticmethod
+    def empty_undo_stake(d):
+        d_copy: Dict = d.copy()
+        if d_copy['_undo_stack']:
+            d_copy['_undo_stack'] = []
+        if d_copy['_purge_stack']:
+            d_copy['_purge_stack'] = []
+        return d_copy

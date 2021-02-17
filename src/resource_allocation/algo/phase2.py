@@ -59,9 +59,6 @@ class Phase2:
                 # collect the zones not allocated
                 for bin_ in zone_group.bin:
                     zone_unallocated.extend(bin_.zone)
-
-        for layer in self.nodeb.frame.layer:
-            layer.purge_undo()
         return zone_allocated, tuple(zone_unallocated)
 
     def allocate_zone_to_layer(self, nb_type: NodeBType, zone_allocated: List[List[Zone]],
@@ -76,9 +73,6 @@ class Phase2:
                 if layer.allocate_zone(zone):
                     zone_allocated[layer.layer_index].append(zone)
                     break
-
-        for layer in self.nodeb.frame.layer:
-            layer.purge_undo()
         return zone_allocated
 
     @staticmethod
