@@ -11,6 +11,7 @@ from src.resource_allocation.ds.space import empty_space, next_rb_in_space, Spac
 from src.resource_allocation.ds.ue import UserEquipment
 from src.resource_allocation.ds.undo import Undo
 from src.resource_allocation.ds.util_enum import E_MCS, G_MCS, NodeBType, UEType
+from src.resource_allocation.ds.util_type import LappingPositionList
 
 
 class AdjustMCS(Undo):
@@ -204,33 +205,32 @@ class AdjustMCS(Undo):
         ue_rb_list.sort(key=lambda x: x.mcs.value, reverse=True)
         return self.pick_in_order(ue, ue_rb_list, channel_model)
 
-    # def pick_in_overlapped_rb(self, ue: Union[UserEquipment, GUserEquipment, EUserEquipment],
-    #                           rb_position: List[Tuple[int, int]], channel_model: ChannelModel):
-    #     """
-    #     Use the RBs in certain positions. Unless the RBs are not enough to fulfill QoS.
-    #     For gNB.
-    #     :param ue: The UE to adjust mcs. The ue has SINGLE CONNECTION and request RBs in single layer.
-    #     :param rb_position: The position of RBs to use in the first place.
-    #     :param channel_model: For add new RBs if the MCS is lower than the old one.
-    #     """
-    #     # collect the overlapped RBs in ue
-    #     non_lapped_rb: List[ResourceBlock] = []
-    #     lapped_rb: List[ResourceBlock] = []
-    #     is_lapped: bool = False
-    #     for rb in ue.gnb_info.rb:
-    #         for position in rb_position:
-    #             if rb.i_start == position[0] and rb.j_start == position[1]:
-    #                 is_lapped: bool = True
-    #                 break
-    #         lapped_rb.append(rb) if is_lapped else non_lapped_rb.append(rb)
-    #
-    #     # adjust mcs
-    #     lapped_rb.sort(key=lambda x: x.j_start)  # sort by time
-    #     lapped_rb.sort(key=lambda x: x.i_start)  # sort by freq
-    #     lapped_rb.sort(key=lambda x: x.mcs.value, reverse=True)  # sort by mcs
-    #     non_lapped_rb.sort(key=lambda x: x.j_start)  # sort by time
-    #     non_lapped_rb.sort(key=lambda x: x.i_start)  # sort by freq
-    #     self.pick_in_order(ue, lapped_rb + non_lapped_rb, channel_model)
+    def from_lapped_rb(self, ue: UserEquipment, rb_position: LappingPositionList, channel_model: ChannelModel):
+        """
+        Use the RBs in certain positions. Unless the RBs are not enough to fulfill QoS.
+        FOR gNB ONLY.
+        :param ue: The UE to adjust mcs. The ue has SINGLE CONNECTION and request RBs in single layer.
+        :param rb_position: The position of RBs to use in the first place.
+        :param channel_model: For adding new RBs if the MCS is lower than the old one.
+        """
+        # collect the overlapped RBs in ue
+        non_lapped_rb: List[ResourceBlock] = []
+        lapped_rb: List[ResourceBlock] = []
+        for rb in ue.gnb_info.rb:
+            is_lapped: bool = False
+            for position in rb_position:
+                if rb.i_start == position.i_start and rb.j_start == position.j_start:
+                    is_lapped: bool = True
+                    break
+            lapped_rb.append(rb) if is_lapped else non_lapped_rb.append(rb)
+
+        # adjust mcs TODO: Use the RB with highest overlap times
+        lapped_rb.sort(key=lambda x: x.j_start)  # sort by time
+        lapped_rb.sort(key=lambda x: x.i_start)  # sort by freq
+        lapped_rb.sort(key=lambda x: x.mcs.value, reverse=True)  # sort by mcs
+        non_lapped_rb.sort(key=lambda x: x.j_start)  # sort by time
+        non_lapped_rb.sort(key=lambda x: x.i_start)  # sort by freq
+        self.pick_in_order(ue, lapped_rb + non_lapped_rb, channel_model)
 
     def pick_in_order(self, ue: UserEquipment, rb_list: List[ResourceBlock], channel_model: ChannelModel,
                       precalculate: bool = False) -> int:
@@ -297,7 +297,8 @@ class AdjustMCS(Undo):
             # no cutting
             return True
         for _ in range(rm_to - rm_from):
-            self.append_undo([lambda rb=ue_nb_info.rb[rm_from]: rb.undo(), lambda rb=ue_nb_info.rb[rm_from]: rb.purge_undo()])
+            self.append_undo(
+                [lambda rb=ue_nb_info.rb[rm_from]: rb.undo(), lambda rb=ue_nb_info.rb[rm_from]: rb.purge_undo()])
             ue_nb_info.rb[rm_from].remove()
         self.append_undo([lambda: setattr(ue_nb_info, 'mcs', ue_nb_info.mcs)])
         ue_nb_info.mcs = new_mcs

@@ -3,9 +3,10 @@ from __future__ import annotations
 import dataclasses
 import math
 import random
-from typing import NewType, Optional, Tuple, TYPE_CHECKING
+from _ast import List
+from typing import NewType, Optional, Tuple, TYPE_CHECKING, Union
 
-from .util_enum import _Numerology, NodeBType, UEType
+from .util_enum import _Numerology, NodeBType, Numerology, UEType
 
 if TYPE_CHECKING:
     from .eutran import ENodeB
@@ -53,3 +54,29 @@ class Coordinate:
                 tmp_coordinate = Coordinate.random_gen_coordinate(ue_type, e_nb, g_nb)
 
         return tmp_coordinate
+
+
+@dataclasses.dataclass
+class LappingPosition:
+    _position: [int, int]
+    numerology: Numerology
+    time: int = 1
+
+    @property
+    def i_start(self) -> int:
+        return self._position[0]
+
+    @property
+    def j_start(self) -> int:
+        return self._position[1]
+
+    def overlapping(self):
+        self.time += 1
+
+
+class LappingPositionList(list):
+    def exist(self, position: List[int, int, Numerology]) -> Union[int, None]:
+        for i, p in enumerate(self):
+            if p.i_start == position[0] and p.j_start == position[1] and p.numerology == position[2]:
+                return i
+        return None

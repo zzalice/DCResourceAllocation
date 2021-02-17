@@ -6,6 +6,7 @@ from src.resource_allocation.algo.assistance import divide_ue
 from src.resource_allocation.algo.phase1 import Phase1
 from src.resource_allocation.algo.phase2 import Phase2
 from src.resource_allocation.algo.phase3 import Phase3
+from src.resource_allocation.ds.util_enum import NodeBType
 from src.resource_allocation.ds.zone import Zone, ZoneGroup
 from utils.frame_visualizer.pickle_generator import visualize_phase_uncategorized_ue
 
@@ -48,8 +49,8 @@ if __name__ == '__main__':
                                          "Phase2", g_nb, e_nb, g_ue_list, d_ue_list, e_ue_list)
 
     phase3: Phase3 = Phase3(channel_model, g_nb, e_nb)
-    phase3.phase2_ue_adjust_mcs(e_zone_allocated)
-    phase3.phase2_ue_adjust_mcs(g_zone_allocated)
+    phase3.phase2_ue_adjust_mcs(NodeBType.E, e_zone_allocated)
+    phase3.phase2_ue_adjust_mcs(NodeBType.G, g_zone_allocated)
 
     if visualize_the_algo:
         visualize_phase_uncategorized_ue(visualization_file_path, "ab+",
