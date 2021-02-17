@@ -51,7 +51,8 @@ class Phase3(Undo):
                     self.adjust_mcs.from_lapped_rb(ue, position[ue.numerology_in_use], self.channel_model)
                     self.marking_occupied_position(ue.gnb_info.rb, position)
 
-        # purge undo TODO: some lambda isn't cleared. Might be in RBs.
+        # purge undo
+        # TODO: some lambda isn't cleared. Might be in RBs. 把RB和BU的Undo都加入Layer, adjust_mcs, 或channelModel的purge stack
         for layer in (self.gnb if nb_type == NodeBType.G else self.enb).frame.layer:
             layer.purge_undo()
             for i in range(layer.FREQ):

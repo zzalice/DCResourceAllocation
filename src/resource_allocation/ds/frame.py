@@ -163,6 +163,7 @@ class BaseUnit(Undo):
         assert not self.is_used, f'BU({self.absolute_i}, {self.absolute_j}) in {self.layer.nodeb.nb_type} layer {self.layer.layer_index} is used by UE {self.within_rb.ue.uuid.hex[:4]}(uuid)'
         self.append_undo([lambda rb=self.within_rb: setattr(self, "within_rb", rb)])
         self.within_rb: ResourceBlock = resource_block
+        self._is_to_recalculate_sinr: bool = True
 
         self._effect_others()
         self.layer.bu_status_cache_is_valid = False
