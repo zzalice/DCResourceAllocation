@@ -150,9 +150,9 @@ class BaseUnit(Undo):
         self._is_cochannel: bool = False
         self._cochannel_nb: Optional[Union[ENodeB, GNodeB]] = None
         self._cochannel_absolute_i: Optional[int] = None
-        self.within_rb: Optional[ResourceBlock] = None
+        self._within_rb: Optional[ResourceBlock] = None
         self.sinr: float = float('-inf')
-        self._is_to_recalculate_sinr: bool = True
+        self._is_to_recalculate_sinr: bool = False
         self._lapped_cache_is_valid: bool = False
         self._overlapped_bu: Tuple[BaseUnit, ...] = ()
         self._overlapped_rb: Tuple[ResourceBlock, ...] = ()
@@ -161,8 +161,8 @@ class BaseUnit(Undo):
     def set_up(self, resource_block: ResourceBlock):
         # relative position of this BU withing a RB
         assert not self.is_used, f'BU({self.absolute_i}, {self.absolute_j}) in {self.layer.nodeb.nb_type} layer {self.layer.layer_index} is used by UE {self.within_rb.ue.uuid.hex[:4]}(uuid)'
-        self.append_undo([lambda rb=self.within_rb: setattr(self, "within_rb", rb)])
-        self.within_rb: ResourceBlock = resource_block
+        self.append_undo([lambda rb=self._within_rb: setattr(self, "_within_rb", rb)])
+        self._within_rb: ResourceBlock = resource_block
         self._is_to_recalculate_sinr: bool = True
 
         self._effect_others()
@@ -170,10 +170,11 @@ class BaseUnit(Undo):
 
     def clear_up(self):
         assert self.is_used
-        self.append_undo([lambda rb=self.within_rb: setattr(self, "within_rb", rb)])
-        self.within_rb = None
+        self.append_undo([lambda rb=self._within_rb: setattr(self, "_within_rb", rb)])
+        self._within_rb = None
         self.append_undo([lambda i=self.sinr: setattr(self, "sinr", i)])
         self.sinr: float = float('-inf')
+        self._is_to_recalculate_sinr: bool = False
 
         self._effect_others()
         self.layer.bu_status_cache_is_valid = False
@@ -249,6 +250,10 @@ class BaseUnit(Undo):
     def is_to_recalculate_sinr(self, value: bool):
         assert not value, "Only SINR calculator will change the status of this bool from outside the BaseUnit object."
         self._is_to_recalculate_sinr: bool = value
+
+    @property
+    def within_rb(self) -> ResourceBlock:
+        return self._within_rb
 
     @property
     def is_used(self) -> bool:
