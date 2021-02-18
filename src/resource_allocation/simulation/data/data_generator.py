@@ -8,6 +8,7 @@ from src.channel_model.sinr import ChannelModel
 from src.resource_allocation.ds.cochannel import cochannel
 from src.resource_allocation.ds.eutran import ENodeB, EUserEquipment
 from src.resource_allocation.ds.ngran import DUserEquipment, GNodeB, GUserEquipment
+from src.resource_allocation.ds.noma import setup_noma
 from src.resource_allocation.ds.util_enum import LTEResourceBlock, Numerology, UEType
 from src.resource_allocation.ds.util_type import CandidateSet, Coordinate
 
@@ -31,6 +32,7 @@ if __name__ == '__main__':
 
     e_nb: ENodeB = ENodeB(coordinate=Coordinate(0.0, 0.0), radius=0.5)
     g_nb: GNodeB = GNodeB(coordinate=Coordinate(0.4, 0.0), radius=0.1)
+    setup_noma([g_nb])
     cochannel_index: Dict = cochannel(e_nb, g_nb)
     channel_model: ChannelModel = ChannelModel(cochannel_index)
 

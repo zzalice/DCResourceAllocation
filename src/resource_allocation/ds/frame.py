@@ -158,6 +158,14 @@ class BaseUnit(Undo):
         self._overlapped_rb: Tuple[ResourceBlock, ...] = ()
         self._overlapped_ue: Tuple[UserEquipment, ...] = ()
 
+    def set_noma_bu(self):
+        """Execute once."""
+        overlapped_bu: List[BaseUnit] = []
+        for layer in self.layer.nodeb.frame.layer:
+            if layer is not self.layer:
+                overlapped_bu.append(layer.bu[self.absolute_i][self.absolute_j])
+        self._overlapped_bu: Tuple[BaseUnit, ...] = tuple(overlapped_bu)
+
     def set_up(self, resource_block: ResourceBlock):
         # relative position of this BU withing a RB
         assert not self.is_used, f'BU({self.absolute_i}, {self.absolute_j}) in {self.layer.nodeb.nb_type} layer {self.layer.layer_index} is used by UE {self.within_rb.ue.uuid.hex[:4]}(uuid)'
@@ -222,10 +230,7 @@ class BaseUnit(Undo):
         self._cochannel_nb: Union[ENodeB, GNodeB] = nodeb
         self._cochannel_absolute_i: int = absolute_i
 
-        overlapped_bu: List[BaseUnit] = []
-        for layer in self.layer.nodeb.frame.layer:
-            if layer is not self.layer:
-                overlapped_bu.append(layer.bu[self.absolute_i][self.absolute_j])
+        overlapped_bu: List[BaseUnit] = list(self._overlapped_bu)
         for layer in self.cochannel_nb.frame.layer:
             overlapped_bu.append(layer.bu[self.cochannel_bu_i][self.absolute_j])
         self._overlapped_bu: Tuple[BaseUnit, ...] = tuple(overlapped_bu)
