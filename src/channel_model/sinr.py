@@ -3,10 +3,7 @@ import random
 from random import randint
 from typing import Dict, List, Tuple
 
-from src.resource_allocation.ds.cochannel import cochannel
-from src.resource_allocation.ds.eutran import ENodeB
-from src.resource_allocation.ds.frame import BaseUnit, Layer
-from src.resource_allocation.ds.ngran import GNodeB
+from src.resource_allocation.ds.frame import BaseUnit
 from src.resource_allocation.ds.nodeb import NodeB
 from src.resource_allocation.ds.rb import ResourceBlock
 from src.resource_allocation.ds.ue import UserEquipment
@@ -221,68 +218,3 @@ class ChannelModel(Undo):
         """
         seed: float = (1103515245 * seed + 12345) & 0x7fffffff
         return seed
-
-
-if __name__ == '__main__':
-    from src.resource_allocation.ds.eutran import EUserEquipment
-    from src.resource_allocation.ds.ngran import DUserEquipment, GUserEquipment
-    from src.resource_allocation.ds.util_enum import LTEResourceBlock, Numerology
-
-    eNB: ENodeB = ENodeB(radius=0.5, coordinate=Coordinate(0.0, 0.0))
-    gNB: GNodeB = GNodeB(radius=0.1, coordinate=Coordinate(0.4, 0.0))
-    co_index: Dict = cochannel(eNB, gNB)
-    layer_e: Layer = eNB.frame.layer[0]
-    layer_0: Layer = gNB.frame.layer[0]
-    layer_1: Layer = gNB.frame.layer[1]
-    layer_2: Layer = gNB.frame.layer[2]
-
-    # EUE, in co-channel area
-    # eue_1: UserEquipment = EUserEquipment(12345, [LTEPhysicalResourceBlock], Coordinate(0.3, 0.0))
-    # eue_1.register_nb(eNB, gNB)
-    # layer_e.allocate_resource_block(75, 0, eue_1)
-    # rb_0: ResourceBlock = eue_1.enb_info.rb[0]
-
-    # DUE in eNB, in co-channel area
-    # due_1: UserEquipment = DUserEquipment(12345, [Numerology.N0, Numerology.N1], Coordinate(0.5, 0.0))
-    # due_1.register_nb(eNB, gNB)
-    # due_1.set_numerology(Numerology.N0)
-    # layer_e.allocate_resource_block(75, 0, due_1)
-    # rb_1: ResourceBlock = due_1.enb_info.rb[0]
-
-    # DUE in gNB, N0
-    # due_2: UserEquipment = DUserEquipment(12345, [Numerology.N0, Numerology.N1], Coordinate(0.399, 0.0))
-    # due_2.register_nb(eNB, gNB)
-    # due_2.set_numerology(Numerology.N0)
-    # layer_0.allocate_resource_block(0, 0, due_2)
-    # rb_2: ResourceBlock = due_2.gnb_info.rb[0]
-
-    # GUE, N0
-    # gue_1: UserEquipment = GUserEquipment(12345, [Numerology.N0, Numerology.N1], Coordinate(0.30000001, 0.0))
-    # gue_1.register_nb(eNB, gNB)
-    # gue_1.set_numerology(Numerology.N0)
-    # layer_1.allocate_resource_block(0, 0, gue_1)
-    # rb_3: ResourceBlock = gue_1.gnb_info.rb[0]
-
-    # GUE, N1
-    gue_2: UserEquipment = GUserEquipment(12345, [Numerology.N1, Numerology.N2], Coordinate(0.43, 0.0))
-    gue_2.register_nb(eNB, gNB)
-    gue_2.set_numerology(Numerology.N1)
-    layer_0.allocate_resource_block(0, 0, gue_2)
-    rb_4: ResourceBlock = gue_2.gnb_info.rb[0]
-
-    # GUE, N2
-    gue_3: UserEquipment = GUserEquipment(12345, [Numerology.N1, Numerology.N2], Coordinate(0.5, 0.0))
-    gue_3.register_nb(eNB, gNB)
-    gue_3.set_numerology(Numerology.N2)
-    layer_1.allocate_resource_block(0, 0, gue_3)
-    rb_5: ResourceBlock = gue_3.gnb_info.rb[0]
-
-    # GUE, N3
-    gue_4: UserEquipment = GUserEquipment(12345, [Numerology.N1, Numerology.N2, Numerology.N3], Coordinate(0.5, 0.0))
-    gue_4.register_nb(eNB, gNB)
-    gue_4.set_numerology(Numerology.N3)
-    layer_2.allocate_resource_block(0, 0, gue_4)
-    rb_6: ResourceBlock = gue_4.gnb_info.rb[0]
-
-    channel_model: ChannelModel = ChannelModel(co_index)
-    channel_model.sinr_rb(rb_6)

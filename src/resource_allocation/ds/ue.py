@@ -60,16 +60,29 @@ class UserEquipment:
 
     def update_throughput(self):
         # !! Don't forget to update MCS before calling this method !!
+        if hasattr(self, 'gnb_info'):
+            if self.gnb_info.mcs:
+                assert self.gnb_info.rb, "There is MCS but no RB(s)"
+                assert (self.gnb_info.mcs.value <= rb.mcs.value for rb in self.gnb_info.rb)
+            else:
+                assert self.gnb_info.mcs is None and not self.gnb_info.rb, "The MCS is not up-to-date."
+        if hasattr(self, 'enb_info'):
+            if self.enb_info.mcs:
+                assert self.enb_info.rb, "There is MCS but no RB(s)"
+                assert (self.enb_info.mcs.value <= rb.mcs.value for rb in self.enb_info.rb)
+            else:
+                assert self.enb_info.mcs is None and not self.enb_info.rb, "The MCS is not up-to-date."
+
+        self._throughput = self.calc_throughput()
+
+    def calc_throughput(self) -> float:     # TODO: use this
+        """ Won't change any value in UserEquipment. """
         tmp_throughput: float = 0.0
-        if hasattr(self, 'gnb_info') and self.gnb_info.mcs:
-            assert self.gnb_info.rb, "There is MCS but no RB(s)"
-            assert (self.gnb_info.mcs.value <= rb.mcs.value for rb in self.gnb_info.rb)
-            tmp_throughput += self.gnb_info.mcs.value * len(self.gnb_info.rb)
-        if hasattr(self, 'enb_info') and self.enb_info.mcs:
-            assert self.enb_info.rb, "There is MCS but no RB(s)"
-            assert (self.enb_info.mcs.value <= rb.mcs.value for rb in self.enb_info.rb)
-            tmp_throughput += self.enb_info.mcs.value * len(self.enb_info.rb)
-        self._throughput = tmp_throughput
+        if hasattr(self, 'gnb_info') and self.gnb_info.rb:
+            tmp_throughput += min(self.gnb_info.rb, key=lambda rb: rb.mcs.value).mcs.value * len(self.gnb_info.rb)
+        if hasattr(self, 'enb_info') and self.enb_info.rb:
+            tmp_throughput += min(self.enb_info.rb, key=lambda rb: rb.mcs.value).mcs.value * len(self.enb_info.rb)
+        return tmp_throughput
 
     @property
     def throughput(self):
