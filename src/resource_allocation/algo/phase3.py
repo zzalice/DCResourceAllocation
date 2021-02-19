@@ -84,7 +84,7 @@ class Phase3(Undo):
             is_allocated: bool = False
             for space in spaces:
                 # allocate new ue
-                allocate_ue: AllocateUE = AllocateUE(ue, ue.request_data_rate, (space,), self.channel_model)
+                allocate_ue: AllocateUE = AllocateUE(ue, (space,), self.channel_model)
                 is_allocated: bool = allocate_ue.allocate()  # TODO: for dUE
                 self.append_undo([lambda a_u=allocate_ue: a_u.undo(), lambda a_u=allocate_ue: a_u.purge_undo()])
 

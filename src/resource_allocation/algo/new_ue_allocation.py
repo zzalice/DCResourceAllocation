@@ -1,22 +1,27 @@
 from typing import List, Optional, Tuple, Union
 
 from src.channel_model.sinr import ChannelModel
-from src.resource_allocation.ds.space import Space
 from src.resource_allocation.ds.nodeb import ENBInfo, GNBInfo
 from src.resource_allocation.ds.rb import ResourceBlock
+from src.resource_allocation.ds.space import Space
 from src.resource_allocation.ds.ue import UserEquipment
 from src.resource_allocation.ds.undo import Undo
 from src.resource_allocation.ds.util_enum import E_MCS, G_MCS, LTEResourceBlock, NodeBType, Numerology, UEType
 
 
 class AllocateUE(Undo):
-    def __init__(self, ue: UserEquipment, request_data_rate: float, spaces: Tuple[Space, ...],
+    """
+    In this method, self.ue will be allocated to one BS only.
+    The RBs can be discontinuous.
+    :return: If the allocation has succeed.
+    """
+
+    def __init__(self, ue: UserEquipment, spaces: Tuple[Space, ...],
                  channel_model: ChannelModel):
         super().__init__()
         self.ue: UserEquipment = ue
-        assert request_data_rate > 0.0
-        self.request_data_rate: float = request_data_rate
-        assert len(set([s.layer.nodeb.nb_type for s in spaces])) == 1
+        assert len(
+            set([s.layer.nodeb.nb_type for s in spaces])) == 1, "The input spaces are not from the same BS or is empty."
         self.spaces: List[Space] = list(spaces)
         self.channel_model: ChannelModel = channel_model
 
@@ -32,25 +37,21 @@ class AllocateUE(Undo):
         return is_succeed
 
     def _allocate(self) -> bool:
-        """
-        In this method, self.ue will be allocated to one BS only.
-        The RBs can be discontinuous.
-        :return: If the allocation has succeed.
-        """
+        assert self.ue.calc_throughput() < self.ue.request_data_rate
+        nb_info: Union[GNBInfo, ENBInfo] = (
+            self.ue.gnb_info if self.spaces[0].layer.nodeb.nb_type == NodeBType.G else self.ue.enb_info)
         bu_i: int = -1
         bu_j: int = -1
-        nb_info: Optional[GNBInfo, ENBInfo] = None
         space: Optional[Space] = None
         is_to_next_space: bool = True
         while True:
+            # the position for the new RB
             if is_to_next_space:
                 if self.spaces:
                     space: Space = self.spaces.pop(0)
                     if self.ue.numerology_in_use in space.rb_type:
                         bu_i: int = space.starting_i
                         bu_j: int = space.starting_j
-                        nb_info: Union[GNBInfo, ENBInfo] = (
-                            self.ue.gnb_info if space.layer.nodeb.nb_type == NodeBType.G else self.ue.enb_info)
                         is_to_next_space: bool = False
                     else:
                         # the space is not big enough for a RB the UE is using
@@ -67,6 +68,7 @@ class AllocateUE(Undo):
                     is_to_next_space: bool = True
                     continue
 
+            # allocate a new RB
             rb: Optional[ResourceBlock] = space.layer.allocate_resource_block(bu_i, bu_j, self.ue)
             self.append_undo([lambda l=space.layer: l.undo(), lambda l=space.layer: l.purge_undo()])
             if not rb:
@@ -77,20 +79,15 @@ class AllocateUE(Undo):
             if rb.mcs is (G_MCS if nb_info.nb_type == NodeBType.G else E_MCS).CQI0:
                 # SINR out of range
                 return False  # TODO: [refactor] 可以只刪掉這個rb，繼續試下一個位子(非is_to_next_space=True)
-            nb_info.rb.sort(key=lambda x: x.sinr, reverse=True)
 
-            tmp_throughput: float = nb_info.rb[-1].mcs.value * len(nb_info.rb)
+            # check if the allocated RBs fulfill request data rate
+            if self.ue.calc_throughput() >= self.ue.request_data_rate:
+                self.append_undo([lambda origin=nb_info.mcs: setattr(nb_info, 'mcs', origin)])
+                self.append_undo([lambda origin=self.ue.throughput: setattr(self.ue, 'throughput', origin)])
+                self.append_undo(
+                    [lambda origin=self.ue.is_to_recalculate_mcs: setattr(self.ue, 'is_to_recalculate_mcs', origin)])
 
-            if tmp_throughput >= self.request_data_rate:
-                origin_mcs: Union[G_MCS, E_MCS] = nb_info.mcs
-                origin_throughput: float = self.ue.throughput
-                origin_recalc: bool = self.ue.is_to_recalculate_mcs
-
-                nb_info.mcs = nb_info.rb[-1].mcs
+                nb_info.update_mcs()
                 self.ue.update_throughput()
                 self.ue.is_to_recalculate_mcs = False
-
-                self.append_undo([lambda: setattr(nb_info, 'mcs', origin_mcs)])
-                self.append_undo([lambda: setattr(self.ue, 'throughput', origin_throughput)])
-                self.append_undo([lambda: setattr(self.ue, 'is_to_recalculate_mcs', origin_recalc)])
                 return True
