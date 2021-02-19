@@ -164,7 +164,7 @@ class AdjustMCS(Undo):
 
         # allocate a RB in the space
         new_rb: Optional[ResourceBlock] = last_rb.layer.allocate_resource_block(next_rb[0], next_rb[1], ue)
-        self.append_undo([lambda l=new_rb.layer: l.undo(), lambda l=new_rb.layer: l.purge_undo()])
+        self.append_undo([lambda l=last_rb.layer: l.undo(), lambda l=last_rb.layer: l.purge_undo()])
         if new_rb is None:  # allocation failed
             return False
 
