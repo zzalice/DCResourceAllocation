@@ -40,11 +40,13 @@ class MaxSubarray:
     Output: 1 1
     """
 
-    def max_subarray(self, array: List[Union[G_MCS, E_MCS]]) -> Tuple[int, int, Union[G_MCS, E_MCS]]:
+    def max_subarray(self, array: List[Union[G_MCS, E_MCS]]) -> Tuple[
+                                                                int, int, Union[G_MCS, E_MCS], Union[G_MCS, E_MCS]]:
         """
         To cut part of the allocated RB to the other BS for dUE.
         :param array: The MCS of the RBs of ONE UE in ONE BS.
-        :return: The index range of the RBs to move to the other BS.
+        :return: The index range of the RBs to move to the other BS,
+                 the MCS of the better half, and the MCS of the lower half.
         """
         assert array, "Input empty list."
         max_throughput: Dict = {'idx': 1, 'cqi-left': array[0], 'cqi-right': (self.subarray(array[1:]))[0],
@@ -67,10 +69,12 @@ class MaxSubarray:
         if not max_throughput['cqi-right'] or max_throughput['cqi-left'].value >= max_throughput['cqi-right'].value:
             # if the input list len == 1 OR right half has lower MCS
             # remove right half
-            return max_throughput['idx'], idx, max_throughput['cqi-left']
+            assert max_throughput['idx'] <= idx
+            return max_throughput['idx'], idx, max_throughput['cqi-left'], max_throughput['cqi-right']
         else:
             # remove left half
-            return 0, max_throughput['idx'], max_throughput['cqi-right']
+            assert 0 <= max_throughput['idx']
+            return 0, max_throughput['idx'], max_throughput['cqi-right'], max_throughput['cqi-left']
 
     @staticmethod
     def subarray(subarray: List[Union[G_MCS, E_MCS]]) -> Tuple[Union[None, G_MCS, E_MCS], float]:
