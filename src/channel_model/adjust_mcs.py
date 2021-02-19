@@ -284,38 +284,70 @@ class AdjustMCS(Undo):
                     break
 
     def due_cutting(self, ue: DUserEquipment, ue_nb_info: Union[GNBInfo, ENBInfo], channel_model: ChannelModel) -> bool:
-        # TODO: debug
-        assert ue.ue_type == UEType.D
-        self.purge_undo()
+        """
+        Cut part of the RBs in a BS to another BS.
+        To improve resource efficiency by using fewer RBs.
+        :param ue: Must be dUE, can be a single or dual connection dUE.
+        :param ue_nb_info: The BS to be modified.
+        :param channel_model:
+        :return: Always True because there's no cutting failure.
+        """
+        assert ue.ue_type == UEType.D and ue.is_allocated
 
-        # crop the RBs with lower MCS
-        ue_nb_info.rb.sort(key=lambda x: x.j_start)  # sort by time
-        ue_nb_info.rb.sort(key=lambda x: x.i_start)  # sort by freq
-        ue_nb_info.rb.sort(key=lambda x: x.layer.layer_index)  # sort by layer
-        rm_from, rm_to, new_mcs = MaxSubarray().max_subarray([rb.mcs for rb in ue_nb_info.rb])
-        if rm_from == rm_to:
-            # no cutting
+        while True:
+            # where to crop the RBs with lower MCS
+            ue_nb_info.rb.sort(key=lambda x: x.j_start)  # sort by time
+            ue_nb_info.rb.sort(key=lambda x: x.i_start)  # sort by freq
+            ue_nb_info.rb.sort(key=lambda x: x.layer.layer_index)  # sort by layer
+            rm_from, rm_to, new_mcs, lower_mcs = MaxSubarray().max_subarray([rb.mcs for rb in ue_nb_info.rb])
+            if rm_from == rm_to:
+                # if the MCS can not be improved
+                # no cutting
+                return True
+            assert new_mcs and lower_mcs and new_mcs != lower_mcs, f'Should not do RB cutting. Error in MaxSubarray? new_mcs:{new_mcs} lower_mcs:{lower_mcs}'
+
+            # if the MCS of the other BS is lower than the old(current) MCS of this BS, don't cut RBs.
+            another_nb_info: Union[GNBInfo, ENBInfo] = ue.gnb_info if ue_nb_info.nb_type == NodeBType.E else ue.enb_info
+            mcs_of_another_bs: Optional[G_MCS, E_MCS] = another_nb_info.mcs
+            assert another_nb_info.rb if mcs_of_another_bs is not None else not another_nb_info.rb, "The MCS in NBInfo isn't up-to-date."
+            if mcs_of_another_bs is not None and lower_mcs.efficiency > mcs_of_another_bs.efficiency:
+                # if (the dUE was allocated to another BS) and (the other BS has bad MCS)
+                # don't cut
+                return True
+
+            # remove the RBs that makes MCS worst
+            for _ in range(rm_to - rm_from):
+                self.append_undo(
+                    [lambda rb=ue_nb_info.rb[rm_from]: rb.undo(), lambda rb=ue_nb_info.rb[rm_from]: rb.purge_undo()])
+                ue_nb_info.rb[rm_from].remove()
+            self.append_undo([lambda origin=ue_nb_info.mcs: setattr(ue_nb_info, 'mcs', origin)])
+            ue_nb_info.update_mcs()
+
+            if ue.calc_throughput() >= ue.request_data_rate:
+                # SPECIAL CASE: After the MCS is improved, the QoS is fulfill and might even need less RBs.
+                # For example, the origin RB list is [CQI 2, CQI 1, CQI 11, CQI 11, CQI 11, CQI 11, CQI 11, CQI 2],
+                #   throughput = CQI 1 * 8 = 176.085
+                # After removing the first two RBs, the RB list became [CQI 11, CQI 11, CQI 11, CQI 11, CQI 11, CQI 2],
+                #   throughput = CQI 2 * 6 = 203.175
+                # but the ue.request_data_rate is 160.
+                # Eventually, the UE only need ONE RB of CQI 11.
+                is_success: bool = self.remove_worst_rb(ue, allow_lower_mcs=False)
+                self.append_undo([lambda: self.undo(), lambda: self.purge_undo()])
+                if not is_success:
+                    raise AssertionError
+                continue
+
+            # find spaces in another BS to fulfill QoS
+            spaces: List[Space] = [space for layer in another_nb_info.nb.frame.layer for space in empty_space(layer)]
+
+            # add new RBs
+            allocate_ue = AllocateUE(ue, tuple(spaces), channel_model)
+            is_succeed: bool = allocate_ue.allocate()
+            self.append_undo([lambda: allocate_ue.undo(), lambda: allocate_ue.purge_undo()])
+            # TODO: if the another BSs' MCS is lower after cut(in other word, the total num of RBs increase), undo.
+
+            if not is_succeed:
+                self.undo()
+            else:
+                self.purge_undo()
             return True
-        for _ in range(rm_to - rm_from):
-            self.append_undo(
-                [lambda rb=ue_nb_info.rb[rm_from]: rb.undo(), lambda rb=ue_nb_info.rb[rm_from]: rb.purge_undo()])
-            ue_nb_info.rb[rm_from].remove()
-        self.append_undo([lambda: setattr(ue_nb_info, 'mcs', ue_nb_info.mcs)])
-        ue_nb_info.mcs = new_mcs
-        new_throughput: float = ue_nb_info.mcs.value * len(ue_nb_info.rb)
-
-        # find spaces in another BS to fulfill QoS
-        another_nb_info: Union[GNBInfo, ENBInfo] = ue.enb_info if isinstance(ue_nb_info, GNBInfo) else ue.gnb_info
-        spaces: List[Space] = [space for layer in another_nb_info.nb.frame.layer for space in empty_space(layer)]
-
-        # add new RBs
-        allocate_ue = AllocateUE(ue, ue.request_data_rate - new_throughput, tuple(spaces), channel_model)
-        is_succeed: bool = allocate_ue.allocate()
-        self.append_undo([lambda: allocate_ue.undo(), lambda: allocate_ue.purge_undo()])
-        # TODO: if the MCS is higher than cqi-left/right
-
-        if not is_succeed:
-            self.undo()
-        else:
-            self.purge_undo()
-        return True

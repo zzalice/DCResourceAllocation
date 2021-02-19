@@ -9,7 +9,7 @@ from src.resource_allocation.ds.rb import ResourceBlock
 from src.resource_allocation.ds.space import empty_space, Space
 from src.resource_allocation.ds.ue import UserEquipment
 from src.resource_allocation.ds.undo import Undo
-from src.resource_allocation.ds.util_enum import NodeBType, Numerology
+from src.resource_allocation.ds.util_enum import NodeBType, Numerology, UEType
 from src.resource_allocation.ds.util_type import LappingPosition, LappingPositionList
 from src.resource_allocation.ds.zone import Zone
 
@@ -85,8 +85,13 @@ class Phase3(Undo):
             for space in spaces:
                 # allocate new ue
                 allocate_ue: AllocateUE = AllocateUE(ue, (space,), self.channel_model)
-                is_allocated: bool = allocate_ue.allocate()  # TODO: for dUE
+                is_allocated: bool = allocate_ue.allocate()
                 self.append_undo([lambda a_u=allocate_ue: a_u.undo(), lambda a_u=allocate_ue: a_u.purge_undo()])
+
+                if is_allocated and ue.ue_type == UEType.D:
+                    self.adjust_mcs.due_cutting(ue, ue.gnb_info if nb_type == NodeBType.G else ue.enb_info,
+                                                self.channel_model)
+                    self.append_undo([lambda: self.adjust_mcs.undo(), lambda: self.adjust_mcs.purge_undo()])
 
                 # the effected UEs
                 if is_allocated:
