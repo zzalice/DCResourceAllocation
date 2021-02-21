@@ -6,7 +6,7 @@ from src.resource_allocation.ds.util_enum import E_MCS, G_MCS
 class MaxSubarray:
     """
     Find the cut of an array into two half with highest throughput.
-    Remove the half with lower CQI.
+    Remove the half with lower MCS(CQI).
 
     :return: the range of the RBs to remove with lower MCS.
 
@@ -49,39 +49,42 @@ class MaxSubarray:
                  the MCS of the better half, and the MCS of the lower half.
         """
         assert array, "Input empty list."
-        max_throughput: Dict = {'idx': 1, 'cqi-left': array[0], 'cqi-right': (self.subarray(array[1:]))[0],
-                                'throughput': array[0].value + (self.subarray(array[1:]))[1]}
+        assert len(set(type(mcs) for mcs in array)) == 1, "The input MCS should belong to a BS."
+        mcs_right, throughput_right = self.subarray(array[1:])
+        max_throughput: Dict = {'idx': 1,
+                                'mcs-left': array[0],
+                                'mcs-right': mcs_right,
+                                'throughput': array[0].value + throughput_right}
 
-        cqi_left: Union[G_MCS, E_MCS] = max_throughput['cqi-left']
+        mcs_left: Union[G_MCS, E_MCS] = max_throughput['mcs-left']
         idx: int = 1
-        for cqi in array[1:]:
+        for mcs in array[1:]:
             idx += 1
-            if cqi.value < cqi_left.value:
-                cqi_left = cqi
-            throughput_left: float = cqi_left.value * idx
-            cqi_right, throughput_right = self.subarray(array[idx:])
+            if mcs.value < mcs_left.value:
+                mcs_left = mcs
+            throughput_left: float = mcs_left.value * idx
+            mcs_right, throughput_right = self.subarray(array[idx:])
             throughput = throughput_left + throughput_right
             if throughput >= max_throughput['throughput']:
                 max_throughput['idx'] = idx
-                max_throughput['cqi-left'] = cqi_left
-                max_throughput['cqi-right'] = cqi_right
+                max_throughput['mcs-left'] = mcs_left
+                max_throughput['mcs-right'] = mcs_right
                 max_throughput['throughput'] = throughput
-        if not max_throughput['cqi-right'] or max_throughput['cqi-left'].value >= max_throughput['cqi-right'].value:
-            # if the input list len == 1 OR right half has lower MCS
+        if not max_throughput['mcs-right'] or max_throughput['mcs-left'].value >= max_throughput['mcs-right'].value:
+            # if (the input list len == 1 OR not cutting) OR right half has lower MCS
             # remove right half
             assert max_throughput['idx'] <= idx
-            return max_throughput['idx'], idx, max_throughput['cqi-left'], max_throughput['cqi-right']
+            return max_throughput['idx'], idx, max_throughput['mcs-left'], max_throughput['mcs-right']
         else:
             # remove left half
-            assert 0 <= max_throughput['idx']
-            return 0, max_throughput['idx'], max_throughput['cqi-right'], max_throughput['cqi-left']
+            assert 0 <= max_throughput['idx'] < idx
+            assert max_throughput['mcs-right'] != max_throughput['mcs-left']
+            return 0, max_throughput['idx'], max_throughput['mcs-right'], max_throughput['mcs-left']
 
     @staticmethod
     def subarray(subarray: List[Union[G_MCS, E_MCS]]) -> Tuple[Union[None, G_MCS, E_MCS], float]:
         if not subarray:
             return None, 0.0
-        min_cqi: Union[G_MCS, E_MCS] = subarray[0]
-        for m in subarray:
-            min_cqi = m if m.value < min_cqi.value else min_cqi
-        throughput: float = min_cqi.value * len(subarray)
-        return min_cqi, throughput
+        min_mcs: Union[G_MCS, E_MCS] = min(subarray, key=lambda m: m.value)
+        throughput: float = min_mcs.value * len(subarray)
+        return min_mcs, throughput
