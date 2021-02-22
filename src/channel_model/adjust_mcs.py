@@ -18,6 +18,7 @@ class AdjustMCS(Undo):
     def __init__(self):
         super().__init__()
 
+    @Undo.undo_func_decorator
     def remove_worst_rb(self, ue: Union[UserEquipment, GUserEquipment, DUserEquipment, EUserEquipment],
                         allow_lower_mcs: bool = True, allow_lower_than_cqi0: bool = True,
                         channel_model: ChannelModel = None) -> bool:
@@ -92,7 +93,7 @@ class AdjustMCS(Undo):
 
             if tmp_ue_throughput > ue.request_data_rate:
                 # Officially remove the RB
-                self.append_undo([lambda b=worst_rb: b.undo(), lambda b=worst_rb: b.purge_undo()])
+                self.append_undo(lambda b=worst_rb: b.undo(), lambda b=worst_rb: b.purge_undo())
                 worst_rb.remove()
                 continue
             elif ue_throughput >= ue.request_data_rate:
@@ -101,21 +102,18 @@ class AdjustMCS(Undo):
                 for nb_info in ['gnb_info', 'enb_info']:
                     if hasattr(ue, nb_info):
                         ue_nb_info: Union[GNBInfo, ENBInfo] = getattr(ue, nb_info)
-                        origin_mcs: Optional[G_MCS, E_MCS] = ue_nb_info.mcs
+                        self.append_undo(lambda n_i=ue_nb_info, origin=ue_nb_info.mcs: setattr(n_i, 'mcs', origin))
                         if ue_nb_info.rb:
                             ue_nb_info.mcs = ue_nb_info.rb[-1].mcs
                         else:
                             ue_nb_info.mcs = None
-                        self.append_undo([lambda n_i=ue_nb_info, m=origin_mcs: setattr(n_i, 'mcs', m)])
 
                 # update throughput
-                origin_throughput: float = ue.throughput
+                self.append_undo(lambda origin=ue.throughput: setattr(ue, 'throughput', origin))
                 ue.update_throughput()
-                self.append_undo([lambda: setattr(ue, 'throughput', origin_throughput)])
 
-                origin_recalc: bool = ue.is_to_recalculate_mcs
+                self.append_undo(lambda origin=ue.is_to_recalculate_mcs: setattr(ue, 'is_to_recalculate_mcs', origin))
                 ue.is_to_recalculate_mcs = False
-                self.append_undo([lambda: setattr(ue, 'is_to_recalculate_mcs', origin_recalc)])
                 return True
             elif not allow_lower_mcs:
                 # the temporarily moved UE has negative effected to this UE
@@ -132,11 +130,12 @@ class AdjustMCS(Undo):
             else:
                 # add a new RB
                 # Happens when allocating new UE
-                rb: Union[ResourceBlock, bool] = self.add_one_rb(ue, channel_model)
+                rb: Union[ResourceBlock, bool] = self.add_one_rb(ue, channel_model, undo=True)
                 if rb is False:
                     return False
 
-    def add_one_rb(self, ue: UserEquipment, channel_model: ChannelModel) -> Union[ResourceBlock, bool]:
+    def add_one_rb(self, ue: UserEquipment, channel_model: ChannelModel, undo: bool = False) -> Union[ResourceBlock, bool]:
+        self.assert_undo_function() if undo else None
         # the RB in highest frequency and latest time in a frame
         last_rb_gnb: Optional[ResourceBlock] = None
         last_rb_enb: Optional[ResourceBlock] = None
@@ -164,14 +163,14 @@ class AdjustMCS(Undo):
 
         # allocate a RB in the space
         new_rb: Optional[ResourceBlock] = last_rb.layer.allocate_resource_block(next_rb[0], next_rb[1], ue)
-        self.append_undo([lambda l=last_rb.layer: l.undo(), lambda l=last_rb.layer: l.purge_undo()])
+        self.append_undo(lambda l=last_rb.layer: l.undo(), lambda l=last_rb.layer: l.purge_undo()) if undo else None
         if new_rb is None:  # allocation failed
             return False
 
         # the SINR of the new RB
         assert channel_model is not None, "Channel model isn't passed in to add a new RB."
         channel_model.sinr_rb(new_rb)
-        self.append_undo([lambda: channel_model.undo(), lambda: channel_model.purge_undo()])
+        self.append_undo(lambda: channel_model.undo(), lambda: channel_model.purge_undo()) if undo else None
         (ue.gnb_info if new_rb.layer.nodeb.nb_type == NodeBType.G else ue.enb_info).rb.sort(key=lambda x: x.mcs.value,
                                                                                             reverse=True)
         return new_rb
@@ -283,7 +282,15 @@ class AdjustMCS(Undo):
                     current_mcs: Union[G_MCS, E_MCS] = rb.mcs
                     break
 
-    def due_cutting(self, ue: DUserEquipment, ue_nb_info: Union[GNBInfo, ENBInfo], channel_model: ChannelModel) -> bool:
+    def due_cutting(self, ue: DUserEquipment, ue_nb_info: Union[GNBInfo, ENBInfo], channel_model: ChannelModel):
+        cut: bool = self._due_cutting(ue, ue_nb_info, channel_model)
+        if cut:
+            self.purge_undo()
+        else:
+            self.undo()
+
+    @Undo.undo_func_decorator
+    def _due_cutting(self, ue: DUserEquipment, ue_nb_info: Union[GNBInfo, ENBInfo], channel_model: ChannelModel) -> bool:
         """
         Cut part of the RBs in a BS to another BS.
         To improve resource efficiency by using fewer RBs.
@@ -303,7 +310,7 @@ class AdjustMCS(Undo):
             if rm_from == rm_to:
                 # if the MCS can not be improved
                 # no cutting
-                return True
+                return False
             assert new_mcs and lower_mcs and new_mcs != lower_mcs, f'Should not do RB cutting. Error in MaxSubarray? new_mcs:{new_mcs} lower_mcs:{lower_mcs}'
 
             # if the MCS of the other BS is lower than the old(current) MCS of this BS, don't cut RBs.
@@ -313,14 +320,14 @@ class AdjustMCS(Undo):
             if mcs_of_another_bs is not None and lower_mcs.efficiency > mcs_of_another_bs.efficiency:
                 # if (the dUE was allocated to another BS) and (the other BS has bad MCS)
                 # don't cut
-                return True
+                return False
 
             # remove the RBs that makes MCS worst
             for _ in range(rm_to - rm_from):
                 self.append_undo(
-                    [lambda rb=ue_nb_info.rb[rm_from]: rb.undo(), lambda rb=ue_nb_info.rb[rm_from]: rb.purge_undo()])
+                    lambda rb=ue_nb_info.rb[rm_from]: rb.undo(), lambda rb=ue_nb_info.rb[rm_from]: rb.purge_undo())
                 ue_nb_info.rb[rm_from].remove()
-            self.append_undo([lambda origin=ue_nb_info.mcs: setattr(ue_nb_info, 'mcs', origin)])
+            self.append_undo(lambda origin=ue_nb_info.mcs: setattr(ue_nb_info, 'mcs', origin))
             ue_nb_info.update_mcs()
 
             if ue.calc_throughput() >= ue.request_data_rate:
@@ -331,8 +338,9 @@ class AdjustMCS(Undo):
                 #   throughput = CQI 2 * 6 = 203.175
                 # but the ue.request_data_rate is 160.
                 # Eventually, the UE only need ONE RB of CQI 11.
-                is_success: bool = self.remove_worst_rb(ue, allow_lower_mcs=False)
-                self.append_undo([lambda: self.undo(), lambda: self.purge_undo()])
+                adjust_mcs: AdjustMCS = AdjustMCS()
+                is_success: bool = adjust_mcs.remove_worst_rb(ue, allow_lower_mcs=False)
+                self.append_undo(lambda a_m=adjust_mcs: a_m.undo(), lambda a_m=adjust_mcs: a_m.purge_undo())
                 if not is_success:
                     raise AssertionError
                 continue
@@ -343,11 +351,7 @@ class AdjustMCS(Undo):
             # add new RBs
             allocate_ue = AllocateUE(ue, tuple(spaces), channel_model)
             is_succeed: bool = allocate_ue.allocate()
-            self.append_undo([lambda: allocate_ue.undo(), lambda: allocate_ue.purge_undo()])
-            # TODO: if the another BSs' MCS is lower after cut(in other word, the total num of RBs increase), undo.
+            self.append_undo(lambda a_u=allocate_ue: a_u.undo(), lambda a_u=allocate_ue: a_u.purge_undo())
+            # TODO: if another BSs' MCS is lower after cut(in other word, the total num of RBs increase), undo.
 
-            if not is_succeed:
-                self.undo()
-            else:
-                self.purge_undo()
-            return True
+            return is_succeed

@@ -31,7 +31,6 @@ class Intuitive(Undo):
         self.eue_fail: List[EUserEquipment] = []
 
         self.channel_model: ChannelModel = ChannelModel(cochannel_index)
-        self.adjust_mcs = AdjustMCS()
 
     def algorithm(self):
         # Do gNB allocation first, then eNB.
@@ -56,19 +55,19 @@ class Intuitive(Undo):
             ue: UserEquipment = ue_to_allocate.pop()
             is_allocated: bool = False
             if len(spaces) > 0:
+                self.start_func_undo()
                 # allocate new ue
                 allocate_ue: AllocateUE = AllocateUE(ue, spaces, self.channel_model)
                 is_allocated: bool = allocate_ue.allocate()
-                self.append_undo([lambda a_u=allocate_ue: a_u.undo(), lambda a_u=allocate_ue: a_u.purge_undo()])
+                self.append_undo(lambda a_u=allocate_ue: a_u.undo(), lambda a_u=allocate_ue: a_u.purge_undo())
 
                 # the effected UEs
                 if is_allocated:
                     has_positive_effect: bool = self.adjust_mcs_allocated_ues(
                         [ue] + self.gue_allocated + self.due_allocated + self.eue_allocated, allow_lower_mcs=False)
-                    self.append_undo([lambda: self.channel_model.undo(), lambda: self.channel_model.purge_undo()])
-                    self.append_undo([lambda: self.adjust_mcs.undo(), lambda: self.adjust_mcs.purge_undo()])
                     if not has_positive_effect:
                         is_allocated: bool = False
+                self.end_func_undo()
 
                 if is_allocated:
                     spaces: Tuple[Space] = self.update_empty_space(nb)
@@ -107,13 +106,17 @@ class Intuitive(Undo):
         return tuple(tmp_spaces)
 
     def adjust_mcs_allocated_ues(self, allocated_ue: List[UserEquipment], allow_lower_mcs) -> bool:
+        self.assert_undo_function()
         while True:
             is_all_adjusted: bool = True
             for ue in allocated_ue:
                 if ue.is_to_recalculate_mcs:
                     is_all_adjusted: bool = False
                     self.channel_model.sinr_ue(ue)
-                    has_positive_effect: bool = self.adjust_mcs.remove_worst_rb(ue, allow_lower_mcs)
+                    self.append_undo(lambda: self.channel_model.undo(), lambda: self.channel_model.purge_undo())
+                    adjust_mcs: AdjustMCS = AdjustMCS()
+                    has_positive_effect: bool = adjust_mcs.remove_worst_rb(ue, allow_lower_mcs)
+                    self.append_undo(lambda a_m=adjust_mcs: a_m.undo(), lambda a_m=adjust_mcs: a_m.purge_undo())
                     if not has_positive_effect:
                         # the mcs of the ue is lowered down by another UE.
                         return False

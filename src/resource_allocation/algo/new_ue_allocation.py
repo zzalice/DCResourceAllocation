@@ -36,6 +36,7 @@ class AllocateUE(Undo):
 
         return is_succeed
 
+    @Undo.undo_func_decorator
     def _allocate(self) -> bool:
         assert self.ue.calc_throughput() < self.ue.request_data_rate
         nb_info: Union[GNBInfo, ENBInfo] = (
@@ -70,7 +71,7 @@ class AllocateUE(Undo):
 
             # allocate a new RB
             rb: Optional[ResourceBlock] = space.layer.allocate_resource_block(bu_i, bu_j, self.ue)
-            self.append_undo([lambda l=space.layer: l.undo(), lambda l=space.layer: l.purge_undo()])
+            self.append_undo(lambda l=space.layer: l.undo(), lambda l=space.layer: l.purge_undo())
             if not rb:
                 # overlapped with itself
                 continue
@@ -82,10 +83,10 @@ class AllocateUE(Undo):
 
             # check if the allocated RBs fulfill request data rate
             if self.ue.calc_throughput() >= self.ue.request_data_rate:
-                self.append_undo([lambda origin=nb_info.mcs: setattr(nb_info, 'mcs', origin)])
-                self.append_undo([lambda origin=self.ue.throughput: setattr(self.ue, 'throughput', origin)])
+                self.append_undo(lambda origin=nb_info.mcs: setattr(nb_info, 'mcs', origin))
+                self.append_undo(lambda origin=self.ue.throughput: setattr(self.ue, 'throughput', origin))
                 self.append_undo(
-                    [lambda origin=self.ue.is_to_recalculate_mcs: setattr(self.ue, 'is_to_recalculate_mcs', origin)])
+                    lambda origin=self.ue.is_to_recalculate_mcs: setattr(self.ue, 'is_to_recalculate_mcs', origin))
 
                 nb_info.update_mcs()
                 self.ue.update_throughput()

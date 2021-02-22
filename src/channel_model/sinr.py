@@ -18,6 +18,7 @@ class ChannelModel(Undo):
         self.cochannel_index: Dict = cochannel_index
         self.channel_bs: Tuple[List[Coordinate], ...] = self.gen_channel_interference()
 
+    @Undo.undo_func_decorator
     def sinr_ue(self, ue: UserEquipment):
         """
         Update the SINR for every RBs in the UE,
@@ -25,21 +26,25 @@ class ChannelModel(Undo):
         """
         if hasattr(ue, 'gnb_info'):
             for rb in ue.gnb_info.rb:
-                self.sinr_rb(rb)
+                self._sinr_rb(rb)
         if hasattr(ue, 'enb_info'):
             for rb in ue.enb_info.rb:
-                self.sinr_rb(rb)
+                self._sinr_rb(rb)
 
+    @Undo.undo_func_decorator
     def sinr_rb(self, rb: ResourceBlock):
+        self._sinr_rb(rb)
+
+    def _sinr_rb(self, rb: ResourceBlock):
+        self.assert_undo_function()
         tmp_sinr_rb: float = float('inf')
         for bu_i in range(rb.position[0], rb.position[1] + 1):
             for bu_j in range(rb.position[2], rb.position[3] + 1):
                 self._sinr_bu(rb.layer.bu[bu_i][bu_j])
                 if tmp_sinr_rb > rb.layer.bu[bu_i][bu_j].sinr:
                     tmp_sinr_rb: float = rb.layer.bu[bu_i][bu_j].sinr
-        origin_sinr: float = rb.sinr
+        self.append_undo(lambda origin=rb.sinr: setattr(rb, 'sinr', origin))
         rb.sinr = tmp_sinr_rb
-        self.append_undo([lambda: setattr(rb, 'sinr', origin_sinr)])
         # print(f'RB SINR: {rb.sinr}')
 
     def _sinr_bu(self, bu: BaseUnit):
@@ -48,6 +53,7 @@ class ChannelModel(Undo):
         :param bu: The BU to calculate its' SINR.
         :return: SINR in dB
         """
+        self.assert_undo_function()
         if not bu.is_to_recalculate_sinr:
             return True
         # print(f'rb({bu.relative_i},{bu.relative_j})')
@@ -88,11 +94,10 @@ class ChannelModel(Undo):
                 # print(f'interference_ini: {10 * math.log10(interference_ini)}')
         interference_channel: float = self.channel_interference(bu)
 
-        origin_sinr: float = bu.sinr
+        self.append_undo(lambda origin=bu.sinr: setattr(bu, 'sinr', origin))
         sinr = power_rx / (
             interference_noma + interference_ini + interference_cross + interference_channel + self.awgn_noise)  # ratio
         bu.sinr = 10 * math.log10(sinr)  # ratio to dB
-        self.append_undo([lambda: setattr(bu, 'sinr', origin_sinr)])
         # print(f'BU SINR: {bu.sinr}')
         bu.is_to_recalculate_sinr = False
 

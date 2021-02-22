@@ -25,21 +25,21 @@ class Undo:
         _execute.undo_lambdas = (lambda: _execute(0), lambda: _execute(1))
         self._func_stack[-1].append(_execute.undo_lambdas)
 
-    def start_of_func_undo(self):
+    def start_func_undo(self):
         assert self._end_of_func, "The last function undo isn't closed."
         self._end_of_func: bool = False
         self._func_stack.append([])
 
-    def end_of_func_undo(self):
+    def end_func_undo(self):
         assert not self._end_of_func, "The start undo function isn't called."
         self._end_of_func: bool = True
 
     @staticmethod
     def undo_func_decorator(func: callable) -> callable:
         def wrap(*args, **kwargs) -> Any:
-            args[0].start_of_func_undo()
+            args[0].start_func_undo()
             val = func(*args, **kwargs)
-            args[0].end_of_func_undo()
+            args[0].end_func_undo()
             return val
         return wrap
 

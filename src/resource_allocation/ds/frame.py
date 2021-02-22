@@ -69,6 +69,15 @@ class Layer(Undo):
             assert offset_j % LTEResourceBlock.E.time == 0, "The RB in LTE frame should be aligned by slot."
 
         # main
+        result: Optional[ResourceBlock] = self._allocate_resource_block(offset_i, offset_j, ue)
+
+        # restore RB type
+        ue.numerology_in_use = tmp_numerology
+
+        return result
+
+    @Undo.undo_func_decorator
+    def _allocate_resource_block(self, offset_i: int, offset_j: int, ue: UserEquipment) -> Optional[ResourceBlock]:
         nb_info: Union[GNBInfo, ENBInfo] = ue.gnb_info if self.nodeb.nb_type == NodeBType.G else ue.enb_info
 
         resource_block: ResourceBlock = ResourceBlock(self, offset_i, offset_j, ue)
@@ -76,16 +85,12 @@ class Layer(Undo):
             for j in range(ue.numerology_in_use.time):
                 bu: BaseUnit = self.bu[offset_i + i][offset_j + j]
                 if ue in bu.overlapped_ue:  # The new RB will overlap with the UE itself
-                    ue.numerology_in_use = tmp_numerology  # restore RB type
                     return None
 
                 bu.set_up(resource_block)
-                self.append_undo([lambda b=bu: b.undo(), lambda b=bu: b.purge_undo()])
+                self.append_undo(lambda b=bu: b.undo(), lambda b=bu: b.purge_undo())
         nb_info.rb.append(resource_block)
-        self.append_undo([lambda: nb_info.rb.remove(resource_block)])
-
-        # restore RB type
-        ue.numerology_in_use = tmp_numerology
+        self.append_undo(lambda: nb_info.rb.remove(resource_block))     # TODO error
         return resource_block
 
     def allocate_zone(self, zone: Zone) -> bool:
@@ -166,21 +171,23 @@ class BaseUnit(Undo):
                 overlapped_bu.append(layer.bu[self.absolute_i][self.absolute_j])
         self._overlapped_bu: Tuple[BaseUnit, ...] = tuple(overlapped_bu)
 
+    @Undo.undo_func_decorator
     def set_up(self, resource_block: ResourceBlock):
         # relative position of this BU withing a RB
         assert not self.is_used, f'BU({self.absolute_i}, {self.absolute_j}) in {self.layer.nodeb.nb_type} layer {self.layer.layer_index} is used by UE {self.within_rb.ue.uuid.hex[:4]}(uuid)'
-        self.append_undo([lambda rb=self._within_rb: setattr(self, "_within_rb", rb)])
+        self.append_undo(lambda rb=self._within_rb: setattr(self, "_within_rb", rb))
         self._within_rb: ResourceBlock = resource_block
         self._is_to_recalculate_sinr: bool = True
 
         self._effect_others()
         self.layer.bu_status_cache_is_valid = False
 
+    @Undo.undo_func_decorator
     def clear_up(self):
         assert self.is_used
-        self.append_undo([lambda rb=self._within_rb: setattr(self, "_within_rb", rb)])
+        self.append_undo(lambda rb=self._within_rb: setattr(self, "_within_rb", rb))
         self._within_rb = None
-        self.append_undo([lambda i=self.sinr: setattr(self, "sinr", i)])
+        self.append_undo(lambda i=self.sinr: setattr(self, "sinr", i))
         self.sinr: float = float('-inf')
         self._is_to_recalculate_sinr: bool = False
 
@@ -188,12 +195,13 @@ class BaseUnit(Undo):
         self.layer.bu_status_cache_is_valid = False
 
     def _effect_others(self):
+        self.assert_undo_function()
         for ue in self.overlapped_ue:
-            self.append_undo([lambda u=ue, calc=ue.is_to_recalculate_mcs: setattr(u, "is_to_recalculate_mcs", calc)])
+            self.append_undo(lambda u=ue, origin=ue.is_to_recalculate_mcs: setattr(u, "is_to_recalculate_mcs", origin))
             ue.is_to_recalculate_mcs = True
         for bu in self.overlapped_bu:
-            self.append_undo([lambda b=bu, calc=bu._is_to_recalculate_sinr: setattr(b, "_is_to_recalculate_sinr", calc)])
-            self.append_undo([lambda b=bu, cache=bu._lapped_cache_is_valid: setattr(b, "_lapped_cache_is_valid", cache)])
+            self.append_undo(lambda b=bu, origin=bu._is_to_recalculate_sinr: setattr(b, "_is_to_recalculate_sinr", origin))
+            self.append_undo(lambda b=bu, origin=bu._lapped_cache_is_valid: setattr(b, "_lapped_cache_is_valid", origin))
             bu._is_to_recalculate_sinr = True
             bu._lapped_cache_is_valid = False
 

@@ -20,7 +20,6 @@ class Phase3(Undo):
         self.gnb: GNodeB = gnb
         self.enb: ENodeB = enb
         self.channel_model: ChannelModel = channel_model
-        self.adjust_mcs = AdjustMCS()
 
     def phase2_ue_adjust_mcs(self, nb_type: NodeBType, zones: List[List[Zone]]):
         """
@@ -36,8 +35,8 @@ class Phase3(Undo):
         for zone in zones[layer_index]:
             for ue in zone.ue_list:
                 self.channel_model.sinr_ue(ue)
-                self.adjust_mcs.from_highest_mcs(ue, ue.gnb_info.rb if nb_type == NodeBType.G else ue.enb_info.rb,
-                                                 self.channel_model)
+                AdjustMCS().from_highest_mcs(ue, ue.gnb_info.rb if nb_type == NodeBType.G else ue.enb_info.rb,
+                                             self.channel_model)
                 if nb_type == NodeBType.G:
                     self.marking_occupied_position(ue.gnb_info.rb, position)
 
@@ -48,18 +47,8 @@ class Phase3(Undo):
                 for ue in zone.ue_list:
                     assert ue.gnb_info, "The UE isn't allocated to gNB."
                     self.channel_model.sinr_ue(ue)
-                    self.adjust_mcs.from_lapped_rb(ue, position[ue.numerology_in_use], self.channel_model)
+                    AdjustMCS().from_lapped_rb(ue, position[ue.numerology_in_use], self.channel_model)
                     self.marking_occupied_position(ue.gnb_info.rb, position)
-
-        # purge undo
-        # TODO: some lambda isn't cleared. Might be in RBs. 把RB和BU的Undo都加入Layer, adjust_mcs, 或channelModel的purge stack
-        for layer in (self.gnb if nb_type == NodeBType.G else self.enb).frame.layer:
-            layer.purge_undo()
-            for i in range(layer.FREQ):
-                for j in range(layer.TIME):
-                    layer.bu[i][j].purge_undo()
-        self.channel_model.purge_undo()
-        self.adjust_mcs.purge_undo()
 
     @staticmethod
     def marking_occupied_position(rb_list: List[ResourceBlock], position: Dict[Numerology, LappingPositionList]):
@@ -83,21 +72,20 @@ class Phase3(Undo):
             ue_allocated.append(ue)
             is_allocated: bool = False
             for space in spaces:
+                self.start_func_undo()
                 # allocate new ue
                 allocate_ue: AllocateUE = AllocateUE(ue, (space,), self.channel_model)
                 is_allocated: bool = allocate_ue.allocate()
-                self.append_undo([lambda a_u=allocate_ue: a_u.undo(), lambda a_u=allocate_ue: a_u.purge_undo()])
+                self.append_undo(lambda a_u=allocate_ue: a_u.undo(), lambda a_u=allocate_ue: a_u.purge_undo())
 
                 if is_allocated and ue.ue_type == UEType.D:
-                    self.adjust_mcs.due_cutting(ue, ue.gnb_info if nb_type == NodeBType.G else ue.enb_info,
-                                                self.channel_model)
-                    self.append_undo([lambda: self.adjust_mcs.undo(), lambda: self.adjust_mcs.purge_undo()])
+                    AdjustMCS().due_cutting(ue, ue.gnb_info if nb_type == NodeBType.G else ue.enb_info,
+                                            self.channel_model)
 
                 # the effected UEs
                 if is_allocated:
                     is_allocated: bool = self.adjust_mcs_allocated_ues(ue_allocated)
-                    self.append_undo([lambda: self.channel_model.undo(), lambda: self.channel_model.purge_undo()])
-                    self.append_undo([lambda: self.adjust_mcs.undo(), lambda: self.adjust_mcs.purge_undo()])
+                self.end_func_undo()
 
                 if is_allocated:
                     spaces: List[Space] = self.update_empty_space(nb)
@@ -105,10 +93,12 @@ class Phase3(Undo):
                     break
                 else:
                     self.undo()
+                self.assert_is_empty(spaces, ue, is_allocated)
             if not is_allocated:
                 ue_allocated.remove(ue)
 
     def adjust_mcs_allocated_ues(self, ue_allocated: List[UserEquipment]) -> bool:
+        self.assert_undo_function()
         while True:
             is_all_adjusted: bool = True
             for ue in ue_allocated:
@@ -116,8 +106,11 @@ class Phase3(Undo):
                     assert ue.is_allocated
                     is_all_adjusted: bool = False
                     self.channel_model.sinr_ue(ue)
-                    is_fulfilled: bool = self.adjust_mcs.remove_worst_rb(ue, allow_lower_than_cqi0=False,
-                                                                         channel_model=self.channel_model)
+                    self.append_undo(lambda: self.channel_model.undo(), lambda: self.channel_model.purge_undo())
+                    adjust_mcs: AdjustMCS = AdjustMCS()
+                    is_fulfilled: bool = adjust_mcs.remove_worst_rb(ue, allow_lower_than_cqi0=False,
+                                                                    channel_model=self.channel_model)
+                    self.append_undo(lambda a_m=adjust_mcs: a_m.undo(), lambda a_m=adjust_mcs: a_m.purge_undo())
                     if not is_fulfilled:
                         # the mcs of the ue is lowered down by another UE.
                         return False
@@ -130,3 +123,13 @@ class Phase3(Undo):
         spaces.sort(key=lambda s: s.starting_j)  # sort by time
         spaces.sort(key=lambda s: s.starting_i)  # sort by freq
         return spaces
+
+    @staticmethod
+    def assert_is_empty(spaces, this_ue, is_allocated):
+        for space in spaces:
+            for i in range(space.starting_i, space.ending_i + 1):
+                for j in range(space.starting_j, space.ending_j + 1):
+                    if space.layer.bu_status[i][j]:
+                        assert space.layer.bu[i][j].within_rb.ue is this_ue, "Which UE is this???"
+                        assert is_allocated is True, "undo() fail. Space not cleared"
+                        raise AssertionError

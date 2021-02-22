@@ -25,6 +25,7 @@ class ResourceBlock(Undo):
                                                     starting_j, starting_j + self.numerology.time - 1)
         return self.position
 
+    @Undo.undo_func_decorator
     def remove(self):
         """
         Removing the allocated RB in ue and frame will effect
@@ -36,17 +37,17 @@ class ResourceBlock(Undo):
         # Remove this RB in the UE RB list
         if self.layer.nodeb.nb_type == NodeBType.G:
             self.ue.gnb_info.rb.remove(self)
-            self.append_undo([lambda: self.ue.gnb_info.rb.append(self)])
+            self.append_undo(lambda: self.ue.gnb_info.rb.append(self))
         else:
             self.ue.enb_info.rb.remove(self)
-            self.append_undo([lambda: self.ue.enb_info.rb.append(self)])
+            self.append_undo(lambda: self.ue.enb_info.rb.append(self))
 
         # Remove the RB in the layer
         for bu_i in range(self.i_start, self.i_end + 1):
             for bu_j in range(self.j_start, self.j_end + 1):
                 bu: BaseUnit = self.layer.bu[bu_i][bu_j]
                 bu.clear_up()
-                self.append_undo([lambda b=bu: b.undo(), lambda b=bu: b.purge_undo()])
+                self.append_undo(lambda b=bu: b.undo(), lambda b=bu: b.purge_undo())
 
     @property
     def sinr(self) -> float:
