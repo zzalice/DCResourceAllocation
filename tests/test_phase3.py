@@ -377,47 +377,9 @@ def test_allocated_ue_to_space(phase3, gue_moderate_1st, gue_moderate_2nd, due_g
     old_num_rb = len(gue_moderate_1st.gnb_info.rb)
     assert phase3.allocated_ue_to_space(gue_moderate_1st, space_clean, gue_moderate_1st.gnb_info.mcs) is True
     phase3.restore(space_clean)
-    space_restored(space_clean)  # TODO: restore fail.
+    space_restored(space_clean)
     assert len(gue_moderate_1st.gnb_info.rb) == old_num_rb
 
     """ [test]co-channel"""
 
     visualize_file("ab+", "test_allocated_ue_to_space_finish", phase3)
-
-
-def test_calc_weight(phase3, gue_bad):
-    for rb in gue_bad.gnb_info.rb:
-        assert rb.mcs == G_MCS.CQI1_QPSK
-    phase3.adjust_mcs(gue_bad)
-    assert len(gue_bad.gnb_info.rb) == 16
-    old_phase3 = phase3
-
-    space_clean = Space(phase3.gnb.frame.layer[0], 104, 0, 130, 15)  # TODO: restore有成功的話，應該要能用
-    space_random = Space(phase3.gnb.frame.layer[0], 131, 0, 170, 15)
-    space_random_e = Space(phase3.enb.frame.layer[0], 5, 0, 19, 15)
-    weight: Dict[str, Dict[str, float]] = phase3.calc_weight(gue_bad.gnb_info.mcs, [gue_bad],
-                                                             (space_clean, space_random),
-                                                             (space_random_e,))  # TODO: 加回space_clean
-
-    """ [test] restore """
-    assert old_phase3 is phase3
-    assert len(gue_bad.gnb_info.rb) == 16  # TODO: restore fail
-    space_restored(space_clean)
-    space_restored(space_random)
-    space_restored(space_random_e)
-
-    """ [test] calc_num_bu """
-    assert weight[str(gue_bad.uuid)][str(space_random.uuid)] >= 240  # 15*16，gue_bad少15個RB
-    assert weight[str(gue_bad.uuid)].get(str(space_random_e.uuid)) is None
-
-
-def test_fixture(phase3, gnb, gue_bad):
-    phase3.store()
-    assert not phase3.gnb.frame.layer[2].bu[0][0].is_used
-    assert not gnb.frame.layer[2].bu[0][0].is_used
-    phase3.gnb.frame.layer[2].allocate_resource_block(0, 0, gue_bad)
-    assert phase3.gnb.frame.layer[2].bu[0][0].is_used
-    assert not gnb.frame.layer[2].bu[0][0].is_used  # 如果run整個test_phase3.py，會is_used return false
-    phase3.restore()
-    assert not phase3.gnb.frame.layer[2].bu[0][0].is_used
-    assert not gnb.frame.layer[2].bu[0][0].is_used  # restore以後phase 3的gnb和創造phase3的gnb不再相同。call by sharing那類的特性，導致phase3.gnb和gnb不同步
