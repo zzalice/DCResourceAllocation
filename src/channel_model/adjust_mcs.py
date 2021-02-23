@@ -168,7 +168,7 @@ class AdjustMCS(Undo):
             return False
 
         # the SINR of the new RB
-        assert channel_model is not None, "Channel model isn't passed in to add a new RB."
+        assert channel_model is not None, "Channel model isn't passed in."
         channel_model.sinr_rb(new_rb)
         self.append_undo(lambda: channel_model.undo(), lambda: channel_model.purge_undo()) if undo else None
         (ue.gnb_info if new_rb.layer.nodeb.nb_type == NodeBType.G else ue.enb_info).rb.sort(key=lambda x: x.mcs.value,

@@ -130,6 +130,8 @@ class Phase3(Undo):
             for i in range(space.starting_i, space.ending_i + 1):
                 for j in range(space.starting_j, space.ending_j + 1):
                     if space.layer.bu_status[i][j]:
+                        space.layer.bu_status_cache_is_valid = False
+                        assert space.layer.bu_status[i][j], "bu_status_cache_is_valid is True when it should be False."
                         assert space.layer.bu[i][j].within_rb.ue is this_ue, "Which UE is this???"
                         assert is_allocated is True, "undo() fail. Space not cleared"
                         raise AssertionError
