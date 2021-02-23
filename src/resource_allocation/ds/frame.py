@@ -68,8 +68,15 @@ class Layer(Undo):
         if self.nodeb.nb_type == NodeBType.E:
             assert offset_j % LTEResourceBlock.E.time == 0, "The RB in LTE frame should be aligned by slot."
 
+        # check if the new RB will overlap with the UE itself
+        for i in range(ue.numerology_in_use.freq):
+            for j in range(ue.numerology_in_use.time):
+                bu: BaseUnit = self.bu[offset_i + i][offset_j + j]
+                if ue in bu.overlapped_ue:
+                    return None
+
         # main
-        result: Optional[ResourceBlock] = self._allocate_resource_block(offset_i, offset_j, ue)
+        result: ResourceBlock = self._allocate_resource_block(offset_i, offset_j, ue)
 
         # restore RB type
         ue.numerology_in_use = tmp_numerology
@@ -79,14 +86,10 @@ class Layer(Undo):
     @Undo.undo_func_decorator
     def _allocate_resource_block(self, offset_i: int, offset_j: int, ue: UserEquipment) -> Optional[ResourceBlock]:
         nb_info: Union[GNBInfo, ENBInfo] = ue.gnb_info if self.nodeb.nb_type == NodeBType.G else ue.enb_info
-
         resource_block: ResourceBlock = ResourceBlock(self, offset_i, offset_j, ue)
         for i in range(ue.numerology_in_use.freq):
             for j in range(ue.numerology_in_use.time):
                 bu: BaseUnit = self.bu[offset_i + i][offset_j + j]
-                if ue in bu.overlapped_ue:  # The new RB will overlap with the UE itself
-                    return None
-
                 bu.set_up(resource_block)
                 self.append_undo(lambda b=bu: b.undo(), lambda b=bu: b.purge_undo())
         nb_info.rb.append(resource_block)
