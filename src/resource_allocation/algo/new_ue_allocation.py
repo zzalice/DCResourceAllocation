@@ -77,6 +77,7 @@ class AllocateUE(Undo):
                 continue
 
             self.channel_model.sinr_rb(rb)
+            self.append_undo(lambda: self.channel_model.undo(), lambda: self.channel_model.purge_undo())
             if rb.mcs is (G_MCS if nb_info.nb_type == NodeBType.G else E_MCS).CQI0:
                 # SINR out of range
                 return False  # TODO: [refactor] 可以只刪掉這個rb，繼續試下一個位子(非is_to_next_space=True)
