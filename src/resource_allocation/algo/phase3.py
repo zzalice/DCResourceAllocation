@@ -73,6 +73,9 @@ class Phase3(Undo):
             is_allocated: bool = False
             for space in spaces:
                 self.start_func_undo()
+                # from tests.assertion import check_undo_copy
+                # copy_ue = check_undo_copy(ue_allocated)
+
                 # allocate new ue
                 allocate_ue: AllocateUE = AllocateUE(ue, (space,), self.channel_model)
                 is_allocated: bool = allocate_ue.allocate()
@@ -93,7 +96,10 @@ class Phase3(Undo):
                     break
                 else:
                     self.undo()
-                self.assert_is_empty(spaces, ue, is_allocated)
+                    # from tests.assertion import check_undo_compare
+                    # check_undo_compare(ue_allocated, copy_ue)
+                # from tests.assertion import assert_is_empty
+                # assert_is_empty(spaces, ue, is_allocated)
             if not is_allocated:
                 ue_allocated.remove(ue)
 
@@ -123,15 +129,3 @@ class Phase3(Undo):
         spaces.sort(key=lambda s: s.starting_j)  # sort by time
         spaces.sort(key=lambda s: s.starting_i)  # sort by freq
         return spaces
-
-    @staticmethod
-    def assert_is_empty(spaces, this_ue, is_allocated):
-        for space in spaces:
-            for i in range(space.starting_i, space.ending_i + 1):
-                for j in range(space.starting_j, space.ending_j + 1):
-                    if space.layer.bu_status[i][j]:
-                        space.layer.bu_status_cache_is_valid = False
-                        assert space.layer.bu_status[i][j], "bu_status_cache_is_valid is True when it should be False."
-                        assert space.layer.bu[i][j].within_rb.ue is this_ue, "Which UE is this???"
-                        assert is_allocated is True, "undo() fail. Space not cleared"
-                        raise AssertionError

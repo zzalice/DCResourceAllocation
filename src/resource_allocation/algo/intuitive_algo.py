@@ -56,6 +56,9 @@ class Intuitive(Undo):
             is_allocated: bool = False
             if len(spaces) > 0:
                 self.start_func_undo()
+                # from tests.assertion import check_undo_copy
+                # copy_ue = check_undo_copy([ue] + self.gue_allocated + self.due_allocated + self.eue_allocated)
+
                 # allocate new ue
                 allocate_ue: AllocateUE = AllocateUE(ue, spaces, self.channel_model)
                 is_allocated: bool = allocate_ue.allocate()
@@ -74,7 +77,11 @@ class Intuitive(Undo):
                     self.purge_undo()
                 else:
                     self.undo()
-                # self.assert_is_empty(spaces, ue, is_allocated)
+                    # from tests.assertion import check_undo_compare
+                    # check_undo_compare([ue] + self.gue_allocated + self.due_allocated + self.eue_allocated, copy_ue)
+
+                # from tests.assertion import assert_is_empty
+                # assert_is_empty(spaces, ue, is_allocated)
 
             if ue.ue_type == UEType.G:
                 (self.gue_allocated if is_allocated else self.gue_fail).append(ue)
@@ -122,13 +129,3 @@ class Intuitive(Undo):
                         return False
             if is_all_adjusted:
                 return True
-
-    @staticmethod
-    def assert_is_empty(spaces, this_ue, is_allocated):
-        for space in spaces:
-            for i in range(space.starting_i, space.ending_i + 1):
-                for j in range(space.starting_j, space.ending_j + 1):
-                    if space.layer.bu_status[i][j]:
-                        assert space.layer.bu[i][j].within_rb.ue is this_ue, "Which UE is this???"
-                        assert is_allocated is True, "undo() fail. Space not cleared"
-                        raise AssertionError
