@@ -307,11 +307,11 @@ class AdjustMCS(Undo):
             ue_nb_info.rb.sort(key=lambda x: x.i_start)  # sort by freq
             ue_nb_info.rb.sort(key=lambda x: x.layer.layer_index)  # sort by layer
             rm_from, rm_to, new_mcs, lower_mcs = MaxSubarray().max_subarray([rb.mcs for rb in ue_nb_info.rb])
-            if rm_from == rm_to:
+            if rm_from == rm_to == -1 and new_mcs is None and lower_mcs is None:
                 # if the MCS can not be improved
                 # no cutting
                 return False
-            assert new_mcs and lower_mcs and new_mcs != lower_mcs, f'Should not do RB cutting. Error in MaxSubarray? new_mcs:{new_mcs} lower_mcs:{lower_mcs}'
+            assert new_mcs and lower_mcs and new_mcs != lower_mcs, f'Should not do RB cutting. Error in MaxSubarray?'
 
             # if the MCS of the other BS is lower than the old(current) MCS of this BS, don't cut RBs.
             another_nb_info: Union[GNBInfo, ENBInfo] = ue.gnb_info if ue_nb_info.nb_type == NodeBType.E else ue.enb_info

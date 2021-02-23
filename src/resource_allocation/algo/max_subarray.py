@@ -1,4 +1,4 @@
-from typing import Dict, List, Tuple, Union
+from typing import Dict, List, Optional, Tuple, Union
 
 from src.resource_allocation.ds.util_enum import E_MCS, G_MCS
 
@@ -41,7 +41,7 @@ class MaxSubarray:
     """
 
     def max_subarray(self, array: List[Union[G_MCS, E_MCS]]) -> Tuple[
-                                                                int, int, Union[G_MCS, E_MCS], Union[G_MCS, E_MCS]]:
+                     int, int, Optional[Union[G_MCS, E_MCS]], Optional[Union[G_MCS, E_MCS]]]:
         """
         To cut part of the allocated RB to the other BS for dUE.
         :param array: The MCS of the RBs of ONE UE in ONE BS.
@@ -70,16 +70,24 @@ class MaxSubarray:
                 max_throughput['mcs-left'] = mcs_left
                 max_throughput['mcs-right'] = mcs_right
                 max_throughput['throughput'] = throughput
-        if not max_throughput['mcs-right'] or max_throughput['mcs-left'].value >= max_throughput['mcs-right'].value:
-            # if (the input list len == 1 OR not cutting) OR right half has lower MCS
-            # remove right half
-            assert max_throughput['idx'] <= idx
-            return max_throughput['idx'], idx, max_throughput['mcs-left'], max_throughput['mcs-right']
-        else:
+        if max_throughput['mcs-right'] is None:
+            # if (the input list len == 1) OR (the cut is at the end of the MCS list, a.k.a. not cutting)
+            return -1, -1, None, None
+        elif max_throughput['mcs-left'].value < max_throughput['mcs-right'].value:
             # remove left half
             assert 0 <= max_throughput['idx'] < idx
             assert max_throughput['mcs-right'] != max_throughput['mcs-left']
             return 0, max_throughput['idx'], max_throughput['mcs-right'], max_throughput['mcs-left']
+        elif max_throughput['mcs-left'].value > max_throughput['mcs-right'].value:
+            # if right half has lower MCS
+            # remove right half
+            assert 0 < max_throughput['idx'] < idx
+            return max_throughput['idx'], idx, max_throughput['mcs-left'], max_throughput['mcs-right']
+        elif max_throughput['mcs-left'] == max_throughput['mcs-right']:
+            # no cut may increase resource efficiency
+            return -1, -1, None, None
+        else:
+            raise ValueError(f'Input:{array} Max throughput:{max_throughput}')
 
     @staticmethod
     def subarray(subarray: List[Union[G_MCS, E_MCS]]) -> Tuple[Union[None, G_MCS, E_MCS], float]:
