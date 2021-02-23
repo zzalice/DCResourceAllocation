@@ -90,7 +90,7 @@ class Layer(Undo):
                 bu.set_up(resource_block)
                 self.append_undo(lambda b=bu: b.undo(), lambda b=bu: b.purge_undo())
         nb_info.rb.append(resource_block)
-        self.append_undo(lambda: nb_info.rb.remove(resource_block))     # TODO error
+        self.append_undo(lambda: nb_info.rb.remove(resource_block))  # TODO error
         return resource_block
 
     def allocate_zone(self, zone: Zone) -> bool:
@@ -177,9 +177,11 @@ class BaseUnit(Undo):
         assert not self.is_used, f'BU({self.absolute_i}, {self.absolute_j}) in {self.layer.nodeb.nb_type} layer {self.layer.layer_index} is used by UE {self.within_rb.ue.uuid.hex[:4]}(uuid)'
         self.append_undo(lambda rb=self._within_rb: setattr(self, "_within_rb", rb))
         self._within_rb: ResourceBlock = resource_block
+        self.append_undo(lambda origin=self._is_to_recalculate_sinr: setattr(self, '_is_to_recalculate_sinr', origin))
         self._is_to_recalculate_sinr: bool = True
 
         self._effect_others()
+        self.append_undo(lambda: setattr(self.layer, 'bu_status_cache_is_valid', False))
         self.layer.bu_status_cache_is_valid = False
 
     @Undo.undo_func_decorator
@@ -189,9 +191,11 @@ class BaseUnit(Undo):
         self._within_rb = None
         self.append_undo(lambda i=self.sinr: setattr(self, "sinr", i))
         self.sinr: float = float('-inf')
+        self.append_undo(lambda origin=self._is_to_recalculate_sinr: setattr(self, '_is_to_recalculate_sinr', origin))
         self._is_to_recalculate_sinr: bool = False
 
         self._effect_others()
+        self.append_undo(lambda: setattr(self.layer, 'bu_status_cache_is_valid', False))
         self.layer.bu_status_cache_is_valid = False
 
     def _effect_others(self):
@@ -200,10 +204,11 @@ class BaseUnit(Undo):
             self.append_undo(lambda u=ue, origin=ue.is_to_recalculate_mcs: setattr(u, "is_to_recalculate_mcs", origin))
             ue.is_to_recalculate_mcs = True
         for bu in self.overlapped_bu:
-            self.append_undo(lambda b=bu, origin=bu._is_to_recalculate_sinr: setattr(b, "_is_to_recalculate_sinr", origin))
-            self.append_undo(lambda b=bu, origin=bu._lapped_cache_is_valid: setattr(b, "_lapped_cache_is_valid", origin))
+            self.append_undo(
+                lambda b=bu, origin=bu._is_to_recalculate_sinr: setattr(b, "_is_to_recalculate_sinr", origin))
+            self.append_undo(lambda b=bu: setattr(b, "overlapped_cache_is_valid", False))
             bu._is_to_recalculate_sinr = True
-            bu._lapped_cache_is_valid = False
+            bu.overlapped_cache_is_valid = False
 
     @property
     def overlapped_bu(self) -> Tuple[BaseUnit, ...]:
@@ -211,13 +216,13 @@ class BaseUnit(Undo):
 
     @property
     def overlapped_rb(self) -> Tuple[ResourceBlock]:
-        if not self._lapped_cache_is_valid:
+        if not self.overlapped_cache_is_valid:
             self._overlapped_element()
         return self._overlapped_rb
 
     @property
     def overlapped_ue(self) -> Tuple[UserEquipment]:
-        if not self._lapped_cache_is_valid:
+        if not self.overlapped_cache_is_valid:
             self._overlapped_element()
         return self._overlapped_ue
 
@@ -232,6 +237,15 @@ class BaseUnit(Undo):
         self._overlapped_rb: Tuple[ResourceBlock, ...] = tuple(overlapped_rb)
         self._overlapped_ue: Tuple[UserEquipment, ...] = tuple(overlapped_ue)
         self._lapped_cache_is_valid: bool = True
+
+    @property
+    def overlapped_cache_is_valid(self) -> bool:
+        return self._lapped_cache_is_valid
+
+    @overlapped_cache_is_valid.setter
+    def overlapped_cache_is_valid(self, value: bool):
+        assert not value, "Only _overlapped_element() can change the status to True."
+        self._lapped_cache_is_valid: bool = value
 
     def set_cochannel(self, nodeb: Union[ENodeB, GNodeB], absolute_i: int):
         self._is_cochannel: bool = True
