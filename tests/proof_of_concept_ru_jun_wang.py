@@ -2,6 +2,7 @@ import pickle
 from datetime import datetime
 
 from src.resource_allocation.algo.ru_jun_wang.wangphase1 import WangPhase1
+from src.resource_allocation.algo.ru_jun_wang.wangphase2 import WangPhase2
 from utils.frame_visualizer.pickle_generator import visualize_phase_uncategorized_ue
 
 if __name__ == '__main__':
@@ -19,6 +20,9 @@ if __name__ == '__main__':
     g_zone_merged = g_phase1.merge_zone(g_zone_narrow, row_limit=False)
     g_zone_wide, g_zone_narrow = g_phase1.categorize_zone(g_zone_wide, g_zone_merged)
     g_zone_allocated, g_zone_unallocated = g_phase1.allocate_zone_to_layer(g_zone_wide)
+
+    g_phase2: WangPhase2 = WangPhase2(g_nb, g_zone_allocated)
+    g_phase2.calc_total_freq_space()
 
     if visualize_the_algo:
         visualize_phase_uncategorized_ue(visualization_file_path, "wb",
