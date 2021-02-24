@@ -13,9 +13,9 @@ from utils.frame_visualizer.pickle_generator import visualize_phase_uncategorize
 if __name__ == '__main__':
     visualize_the_algo: bool = True
     visualization_file_path = "../utils/frame_visualizer/vis_" + datetime.today().strftime('%Y%m%d') + ".P"
-    data_set_file_path = "../src/resource_allocation/simulation/data/" + "data_generator" + ".P"
+    data_set_file_path = "data_generator"
 
-    with open(data_set_file_path, "rb") as file:
+    with open("../src/resource_allocation/simulation/data/" + data_set_file_path + ".P", "rb") as file:
         g_nb, e_nb, cochannel_index, channel_model, g_ue_list, d_ue_list, e_ue_list = pickle.load(file)
 
     # noinspection PyTypeChecker

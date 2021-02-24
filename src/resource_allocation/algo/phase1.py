@@ -43,13 +43,13 @@ class Phase1:
         return tuple(zone_fit), tuple(sorted(zone_undersized, key=lambda x: x.last_row_duration, reverse=True))
 
     @staticmethod
-    def merge_zone(zone_undersized: Tuple[Zone, ...]) -> Tuple[Zone, ...]:
+    def merge_zone(zone_undersized: Tuple[Zone, ...], row_limit: bool = True) -> Tuple[Zone, ...]:
         zone_merged: List[Zone] = list()
 
         for original_zone in zone_undersized:
             is_merged: bool = False
             for zone in filter(lambda x: x.numerology == original_zone.numerology, zone_merged):
-                if is_merged := zone.merge(original_zone):
+                if is_merged := zone.merge(original_zone, row_limit=row_limit):
                     break
             if not is_merged:
                 zone_merged.append(original_zone)
@@ -62,6 +62,5 @@ class Phase1:
         zone_narrow: List[Zone] = list()
 
         for zone in zone_merged:
-            assert zone.zone_freq == zone.numerology.freq
             (zone_wide if zone.last_row_duration >= zone.zone_time / 2 else zone_narrow).append(zone)
         return tuple(zone_wide), tuple(zone_narrow)
