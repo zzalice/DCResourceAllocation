@@ -11,6 +11,9 @@ if TYPE_CHECKING:
 
 
 class ResourceBlock(Undo):
+    def __repr__(self):
+        return f'U{self.ue.uuid.hex[:4]} R{str(id(self))[:4]} M{self.mcs.name[3:5]}'
+
     def __init__(self, layer: Layer, starting_i: int, starting_j: int, ue: UserEquipment):
         super().__init__()
         self.layer: Layer = layer
@@ -26,7 +29,7 @@ class ResourceBlock(Undo):
         return self.position
 
     @Undo.undo_func_decorator
-    def remove(self):
+    def remove_rb(self):
         """
         Removing the allocated RB in ue and frame will effect
         UE throughput, system throughput, and the UEs that has overlapped RB with this RB and

@@ -94,7 +94,7 @@ class AdjustMCS(Undo):
             if tmp_ue_throughput > ue.request_data_rate:
                 # Officially remove the RB
                 self.append_undo(lambda b=worst_rb: b.undo(), lambda b=worst_rb: b.purge_undo())
-                worst_rb.remove()
+                worst_rb.remove_rb()
                 continue
             elif ue_throughput >= ue.request_data_rate:
                 # Update the UE
@@ -122,7 +122,7 @@ class AdjustMCS(Undo):
                 if allow_lower_than_cqi0:
                     # if SINR is out of range, kick out this UE.
                     # Happens only in the MCS adjust for the first time in my Algo, so doesn't have to undo.
-                    ue.remove()
+                    ue.remove_ue()
                     return True
                 else:
                     # Happens when allocating new UE
@@ -248,14 +248,14 @@ class AdjustMCS(Undo):
         i: int = 1
         while True:
             if current_mcs.efficiency == 0.0:  # CQI 0
-                return 0 if precalculate else ue.remove()
+                return 0 if precalculate else ue.remove_ue()
 
             if i == current_mcs.calc_required_rb_count(ue.request_data_rate):
                 # The current RBs can fulfill QoS
                 if not precalculate:
                     # Remove the extra RBs
                     while len(rb_list) > i:
-                        rb_list[-1].remove()  # call the remove method in rb.py
+                        rb_list[-1].remove_rb()  # call the remove method in rb.py
                         if nb_info.rb is not rb_list:
                             # if rb_list is a combination of lists, not "the" nb_info in ue.
                             # else the RB will be removed from rb_list at the remove() in rb.py

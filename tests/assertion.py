@@ -38,27 +38,26 @@ def check_undo_copy(allocated_ue: List[UserEquipment]) -> List[CopyUE]:
 
 def check_undo_compare(allocated_ue: List[UserEquipment], copy_ue: List[CopyUE]):
     print("------------------in check_undo_compare")
-    try:
-        for ue in allocated_ue:
-            copy_ue.sort(key=lambda x: x.uuid != ue.uuid)
-            if copy_ue[0].uuid != ue.uuid:
-                raise AssertionError("ue not found")
+    for ue in allocated_ue:
+        copy_ue.sort(key=lambda x: x.uuid != ue.uuid)
+        if copy_ue[0].uuid != ue.uuid:
+            raise AssertionError("ue not found")
 
-            assert copy_ue[0].throughput == ue.throughput
-            assert copy_ue[0].is_allocated == ue.is_allocated
-            assert copy_ue[0].is_to_recalculate_mcs == ue.is_to_recalculate_mcs
-            for i in ['gnb_info', 'enb_info']:
-                if hasattr(ue, i):
-                    ue_nb_info: Union[GNBInfo, ENBInfo] = getattr(ue, i)
-                    aue0_nb_info: CopyNBInfo = getattr(copy_ue[0], i)
-                    assert aue0_nb_info.mcs == ue_nb_info.mcs
-                    assert len(aue0_nb_info.rb) == len(ue_nb_info.rb)
-                    for rb in ue_nb_info.rb:
-                        aue0_nb_info.rb.sort(key=lambda x: x.i_start != rb.i_start)
-                        aue0_nb_info.rb.sort(key=lambda x: x.j_start != rb.j_start)
-                        assert aue0_nb_info.rb[0].sinr == rb.sinr
-    except AssertionError:
-        print('undo fail!', locals())
+        assert copy_ue[0].throughput == ue.throughput
+        assert copy_ue[0].is_allocated == ue.is_allocated
+        assert copy_ue[0].is_to_recalculate_mcs == ue.is_to_recalculate_mcs
+        for i in ['gnb_info', 'enb_info']:
+            if hasattr(ue, i):
+                ue_nb_info: Union[GNBInfo, ENBInfo] = getattr(ue, i)
+                aue0_nb_info: CopyNBInfo = getattr(copy_ue[0], i)
+                assert aue0_nb_info.mcs == ue_nb_info.mcs
+                assert len(aue0_nb_info.rb) == len(ue_nb_info.rb)
+                for rb in ue_nb_info.rb:
+                    aue0_nb_info.rb.sort(key=lambda x: x.i_start != rb.i_start)
+                    aue0_nb_info.rb.sort(key=lambda x: x.j_start != rb.j_start)
+                    assert aue0_nb_info.rb[0].sinr == rb.sinr
+    # except AssertionError:
+    #     print('undo fail!', locals())
 
 
 def assert_is_empty(spaces, this_ue, is_allocated):

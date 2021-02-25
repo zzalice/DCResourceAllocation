@@ -42,19 +42,19 @@ class UserEquipment:
             self.gnb_info.nb = g_nb
             assert self.coordinate.distance_gnb <= g_nb.radius
 
-    def remove(self):
+    def remove_ue(self):
         self.throughput: float = 0.0
 
         # empty the allocated RBs & MCS
         if hasattr(self, 'enb_info'):
             self.enb_info.mcs = None
             while self.enb_info.rb:
-                self.enb_info.rb[0].remove()
+                self.enb_info.rb[0].remove_rb()
             assert not self.enb_info.rb, "The RB remove failed."
         if hasattr(self, 'gnb_info'):
             self.gnb_info.mcs = None
             while self.gnb_info.rb:
-                self.gnb_info.rb[0].remove()
+                self.gnb_info.rb[0].remove_rb()
             assert not self.gnb_info.rb, "The RB remove failed."
         self.is_to_recalculate_mcs = False
 
