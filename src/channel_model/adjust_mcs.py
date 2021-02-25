@@ -290,7 +290,8 @@ class AdjustMCS(Undo):
             self.undo()
 
     @Undo.undo_func_decorator
-    def _due_cutting(self, ue: DUserEquipment, ue_nb_info: Union[GNBInfo, ENBInfo], channel_model: ChannelModel) -> bool:
+    def _due_cutting(self, ue: DUserEquipment, ue_nb_info: Union[GNBInfo, ENBInfo],
+                     channel_model: ChannelModel) -> bool:
         """
         Cut part of the RBs in a BS to another BS.
         To improve resource efficiency by using fewer RBs.
@@ -317,16 +318,19 @@ class AdjustMCS(Undo):
             another_nb_info: Union[GNBInfo, ENBInfo] = ue.gnb_info if ue_nb_info.nb_type == NodeBType.E else ue.enb_info
             mcs_of_another_bs: Optional[G_MCS, E_MCS] = another_nb_info.mcs
             assert another_nb_info.rb if mcs_of_another_bs is not None else not another_nb_info.rb, "The MCS in NBInfo isn't up-to-date."
-            if mcs_of_another_bs is not None and lower_mcs.efficiency > mcs_of_another_bs.efficiency:
+            if mcs_of_another_bs is not None and lower_mcs.efficiency >= mcs_of_another_bs.efficiency:
                 # if (the dUE was allocated to another BS) and (the other BS has bad MCS)
                 # don't cut
                 return False
 
             # remove the RBs that makes MCS worst
+            from_l_or_r: int = 0 if rm_from == 0 else -1  # remove left half when rm_to == 0 else right
+            assert rm_to > rm_from, 'MaxSubarray error.'
             for _ in range(rm_to - rm_from):
-                self.append_undo(
-                    lambda rb=ue_nb_info.rb[rm_from]: rb.undo(), lambda rb=ue_nb_info.rb[rm_from]: rb.purge_undo())
-                ue_nb_info.rb[rm_from].remove()
+                self.append_undo(lambda rb=ue_nb_info.rb[from_l_or_r]: rb.undo(),
+                                 lambda rb=ue_nb_info.rb[from_l_or_r]: rb.purge_undo())
+                ue_nb_info.rb[from_l_or_r].remove_rb()
+                # FIXME: remove half is it correct now?
             self.append_undo(lambda origin=ue_nb_info.mcs: setattr(ue_nb_info, 'mcs', origin))
             ue_nb_info.update_mcs()
 
