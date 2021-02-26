@@ -57,6 +57,7 @@ class Layer(Undo):
         self._cache_is_valid: bool = False  # valid bit (for _available_block)
         self._bu_status: Tuple[Tuple[bool, ...], ...] = tuple()
 
+    @Undo.undo_func_decorator
     def allocate_resource_block(self, offset_i: int, offset_j: int, ue: UserEquipment) -> Optional[ResourceBlock]:
         # RB type
         tmp_numerology: Numerology = ue.numerology_in_use
@@ -83,7 +84,6 @@ class Layer(Undo):
 
         return result
 
-    @Undo.undo_func_decorator
     def _allocate_resource_block(self, offset_i: int, offset_j: int, ue: UserEquipment) -> Optional[ResourceBlock]:
         nb_info: Union[GNBInfo, ENBInfo] = ue.gnb_info if self.nodeb.nb_type == NodeBType.G else ue.enb_info
         resource_block: ResourceBlock = ResourceBlock(self, offset_i, offset_j, ue)

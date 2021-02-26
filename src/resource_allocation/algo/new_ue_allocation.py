@@ -25,6 +25,7 @@ class AllocateUE(Undo):
         self.spaces: List[Space] = list(spaces)
         self.channel_model: ChannelModel = channel_model
 
+    @Undo.undo_func_decorator
     def allocate(self) -> bool:
         tmp_numerology: Numerology = self.ue.numerology_in_use
         if self.spaces[0].layer.nodeb.nb_type == NodeBType.E and self.ue.ue_type == UEType.D:
@@ -36,7 +37,6 @@ class AllocateUE(Undo):
 
         return is_succeed
 
-    @Undo.undo_func_decorator
     def _allocate(self) -> bool:
         assert self.ue.calc_throughput() < self.ue.request_data_rate
         nb_info: Union[GNBInfo, ENBInfo] = (

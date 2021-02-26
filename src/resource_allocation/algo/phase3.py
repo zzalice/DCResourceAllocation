@@ -2,6 +2,7 @@ from typing import Dict, List, Tuple, Union
 
 from src.channel_model.adjust_mcs import AdjustMCS
 from src.channel_model.sinr import ChannelModel
+from src.resource_allocation.algo.dual_connection import DualConnection
 from src.resource_allocation.algo.new_ue_allocation import AllocateUE
 from src.resource_allocation.ds.eutran import ENodeB
 from src.resource_allocation.ds.ngran import GNodeB
@@ -72,9 +73,9 @@ class Phase3(Undo):
             ue_allocated.append(ue)
             is_allocated: bool = False
             for space in spaces:
-                self.start_func_undo()
                 # from tests.assertion import check_undo_copy
                 # copy_ue = check_undo_copy(ue_allocated)
+                self.start_func_undo()
 
                 # allocate new ue
                 allocate_ue: AllocateUE = AllocateUE(ue, (space,), self.channel_model)
@@ -82,8 +83,10 @@ class Phase3(Undo):
                 self.append_undo(lambda a_u=allocate_ue: a_u.undo(), lambda a_u=allocate_ue: a_u.purge_undo())
 
                 if is_allocated and ue.ue_type == UEType.D:
-                    AdjustMCS().due_cutting(ue, ue.gnb_info if nb_type == NodeBType.G else ue.enb_info,
-                                            self.channel_model)
+                    dc: DualConnection = DualConnection(ue, self.channel_model)
+                    is_cut: bool = dc.cutting(ue.gnb_info if nb_type == NodeBType.G else ue.enb_info)
+                    if is_cut:
+                        self.append_undo(lambda d=dc: d.undo(), lambda d=dc: d.purge_undo())
 
                 # the effected UEs
                 if is_allocated:
