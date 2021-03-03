@@ -200,7 +200,7 @@ class ChannelModel(Undo):
         return pow(10, noise_power / 10)  # dBm to mW
 
     def noise(self, noise_variance: int) -> float:
-        seed: int = 0 - randint(1, 100)
+        seed: int = 0 - randint(1, 100)     # TODO: use random.seed or whatever to generate stable output
         slevel: float = 0.0
         runiform: List[float] = [0.0, 0.0]
         while slevel < 1.0:

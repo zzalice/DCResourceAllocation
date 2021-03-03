@@ -37,7 +37,6 @@ def check_undo_copy(allocated_ue: List[UserEquipment]) -> List[CopyUE]:
 
 
 def check_undo_compare(allocated_ue: List[UserEquipment], copy_ue: List[CopyUE]):
-    print("------------------in check_undo_compare")
     for ue in allocated_ue:
         copy_ue.sort(key=lambda x: x.uuid != ue.uuid)
         if copy_ue[0].uuid != ue.uuid:

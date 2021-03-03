@@ -93,7 +93,7 @@ class Layer(Undo):
                 bu.set_up(resource_block)
                 self.append_undo(lambda b=bu: b.undo(), lambda b=bu: b.purge_undo())
         nb_info.rb.append(resource_block)
-        self.append_undo(lambda: nb_info.rb.remove(resource_block))  # TODO error
+        self.append_undo(lambda: nb_info.rb.remove(resource_block))
         return resource_block
 
     def allocate_zone(self, zone: Zone) -> bool:
