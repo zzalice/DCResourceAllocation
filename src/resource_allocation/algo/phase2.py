@@ -47,7 +47,7 @@ class Phase2:
         zone_groups: List[ZoneGroup] = sorted(zone_groups, key=lambda x: x.bin[0].zone[0].zone_freq, reverse=True)
         zone_groups: List[ZoneGroup] = sorted(zone_groups, key=lambda x: x.priority, reverse=False)
 
-        zone_allocated: List[List[Zone]] = [[], [], []]
+        zone_allocated: List[List[Zone]] = [[] for _ in range(self.nodeb.frame.max_layer)]
         zone_unallocated: List[Zone] = []
         for zone_group in zone_groups:
             if self.nodeb.frame.layer[0].available_bandwidth >= zone_group.bin[0].capacity:
