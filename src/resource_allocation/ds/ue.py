@@ -63,13 +63,15 @@ class UserEquipment:
         if hasattr(self, 'gnb_info'):
             if self.gnb_info.mcs:
                 assert self.gnb_info.rb, "There is MCS but no RB(s)"
-                assert (self.gnb_info.mcs.value <= rb.mcs.value for rb in self.gnb_info.rb)
+                for rb in self.gnb_info.rb:
+                    assert self.gnb_info.mcs.value <= rb.mcs.value
             else:
                 assert self.gnb_info.mcs is None and not self.gnb_info.rb, "The MCS is not up-to-date."
         if hasattr(self, 'enb_info'):
             if self.enb_info.mcs:
                 assert self.enb_info.rb, "There is MCS but no RB(s)"
-                assert (self.enb_info.mcs.value <= rb.mcs.value for rb in self.enb_info.rb)
+                for rb in self.enb_info.rb:
+                    assert self.enb_info.mcs.value <= rb.mcs.value
             else:
                 assert self.enb_info.mcs is None and not self.enb_info.rb, "The MCS is not up-to-date."
 
