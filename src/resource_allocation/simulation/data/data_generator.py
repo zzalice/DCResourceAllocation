@@ -11,6 +11,7 @@ from src.resource_allocation.ds.ngran import DUserEquipment, GNodeB, GUserEquipm
 from src.resource_allocation.ds.noma import setup_noma
 from src.resource_allocation.ds.util_enum import LTEResourceBlock, Numerology, UEType
 from src.resource_allocation.ds.util_type import CandidateSet, Coordinate
+from src.resource_allocation.simulation.data.util_type import HotSpot, UECoordinate
 
 
 @dataclasses.dataclass
@@ -31,22 +32,25 @@ if __name__ == '__main__':
     EUE_COUNT = GUE_COUNT = DUE_COUNT = 300
 
     e_nb: ENodeB = ENodeB(coordinate=Coordinate(0.0, 0.0), radius=0.5)
-    g_nb: GNodeB = GNodeB(coordinate=Coordinate(0.4, 0.0), radius=0.1)
+    g_nb: GNodeB = GNodeB(coordinate=Coordinate(0.5, 0.0), radius=0.1)
     setup_noma([g_nb])
     cochannel_index: Dict = cochannel(e_nb, g_nb)
     channel_model: ChannelModel = ChannelModel(cochannel_index)
 
     # sample code to generate random profiles (the last tuple `distance_range.e_random` ONLY exists in dUE)
     sec_to_frame: int = 1000 // (e_nb.frame.frame_time // 8)
-    qos_lower_bound_bps: int = 10_000  # QoS range: 10,000-3,00,000 bps
-    qos_higher_bound_bps: int = 3_00_000
+    qos_lower_bound_bps: int = 16_000  # QoS range: 16,000-512,000 bps
+    qos_higher_bound_bps: int = 512_000
 
     e_profiles: UEProfiles = UEProfiles(
         EUE_COUNT,
         tuple(random.randrange(qos_lower_bound_bps // sec_to_frame, qos_higher_bound_bps // sec_to_frame + 1, 10_000 // sec_to_frame) for _ in
               range(EUE_COUNT)),
         LTEResourceBlock.gen_candidate_set() * EUE_COUNT,  # dummy (unused)
-        tuple(Coordinate.random_gen_coordinate(UEType.E, e_nb, g_nb) for _ in range(EUE_COUNT))
+        UECoordinate(UEType.E, EUE_COUNT, e_nb, g_nb, (
+            HotSpot(Coordinate(-0.1, 0.0), 0.05, 100),
+            HotSpot(Coordinate(-0.25, 0.0), 0.05, 100),
+            HotSpot(Coordinate(-0.4, 0.0), 0.05, 100))).generate()
     )
 
     g_profiles: UEProfiles = UEProfiles(
@@ -54,7 +58,9 @@ if __name__ == '__main__':
         tuple(random.randrange(qos_lower_bound_bps // sec_to_frame, qos_higher_bound_bps // sec_to_frame + 1, 10_000 // sec_to_frame) for _ in
               range(GUE_COUNT)),
         tuple(Numerology.gen_candidate_set(random_pick=True) for _ in range(GUE_COUNT)),
-        tuple(Coordinate.random_gen_coordinate(UEType.G, e_nb, g_nb) for _ in range(GUE_COUNT))
+        UECoordinate(UEType.G, GUE_COUNT, e_nb, g_nb, (
+            HotSpot(Coordinate(0.55, 0.0), 0.04, 100),
+            HotSpot(Coordinate(0.55, 0.005), 0.03, 100))).generate()
     )
 
     d_profiles: UEProfiles = UEProfiles(
@@ -62,7 +68,7 @@ if __name__ == '__main__':
         tuple(random.randrange(qos_lower_bound_bps // sec_to_frame, qos_higher_bound_bps // sec_to_frame + 1, 10_000 // sec_to_frame) for _ in
               range(DUE_COUNT)),
         tuple(Numerology.gen_candidate_set(random_pick=True) for _ in range(DUE_COUNT)),
-        tuple(Coordinate.random_gen_coordinate(UEType.D, e_nb, g_nb) for _ in range(DUE_COUNT))
+        UECoordinate(UEType.D, DUE_COUNT, e_nb, g_nb).generate()
     )
 
     e_ue_list: Tuple[EUserEquipment] = tuple(

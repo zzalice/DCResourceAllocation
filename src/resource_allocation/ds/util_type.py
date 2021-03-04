@@ -6,12 +6,11 @@ import random
 from _ast import List
 from typing import NewType, Optional, Tuple, TYPE_CHECKING, Union
 
-from .util_enum import _Numerology, NodeBType, Numerology, UEType
+from .util_enum import _Numerology, NodeBType, Numerology
 
 if TYPE_CHECKING:
-    from .eutran import ENodeB
-    from .ngran import GNodeB
     from .nodeb import NodeB
+    from ..simulation.data.util_type import HotSpot
 
 CandidateSet = NewType('CandidateSet', Tuple[_Numerology, ...])
 
@@ -36,22 +35,21 @@ class Coordinate:
         return distance
 
     @staticmethod
-    def random_gen_coordinate(ue_type: UEType, e_nb: ENodeB, g_nb: GNodeB) -> Coordinate:
-        nb_first: NodeB = g_nb if ue_type == UEType.G else e_nb
-        nb_second: Optional[NodeB] = g_nb if ue_type == UEType.D else None
-
-        tmp_x: float = random.uniform(nb_first.coordinate.x - nb_first.radius, nb_first.coordinate.x + nb_first.radius)
-        tmp_y_range: float = math.sqrt(nb_first.radius ** 2 - (tmp_x - nb_first.coordinate.x) ** 2)
-        tmp_y: float = random.uniform(nb_first.coordinate.y - tmp_y_range, nb_first.coordinate.y + tmp_y_range)
-        assert (nb_first.coordinate.x - tmp_x) ** 2 + (nb_first.coordinate.y - tmp_y) ** 2 <= nb_first.radius ** 2
+    def random_gen_coordinate(in_area: Tuple[Union[NodeB, HotSpot], ...],
+                              not_in_area: Tuple[Union[NodeB, HotSpot], ...] = ()) -> Coordinate:
+        tmp_x: float = random.uniform(in_area[0].coordinate.x - in_area[0].radius,
+                                      in_area[0].coordinate.x + in_area[0].radius)
+        tmp_y_range: float = math.sqrt(in_area[0].radius ** 2 - (tmp_x - in_area[0].coordinate.x) ** 2)
+        tmp_y: float = random.uniform(in_area[0].coordinate.y - tmp_y_range, in_area[0].coordinate.y + tmp_y_range)
+        assert (in_area[0].coordinate.x - tmp_x) ** 2 + (in_area[0].coordinate.y - tmp_y) ** 2 <= in_area[0].radius ** 2
         tmp_coordinate: Coordinate = Coordinate(tmp_x, tmp_y)
 
-        if nb_second is not None:
-            assert Coordinate.calc_distance(nb_first.coordinate, nb_second.coordinate) < (
-                    nb_first.radius + nb_second.radius)
-            while ((nb_second.coordinate.x - tmp_coordinate.x) ** 2 + (nb_second.coordinate.y - tmp_coordinate.y) ** 2
-                   > nb_second.radius ** 2):
-                tmp_coordinate = Coordinate.random_gen_coordinate(ue_type, e_nb, g_nb)
+        for area in in_area[1:]:
+            while Coordinate.calc_distance(area.coordinate, tmp_coordinate) > area.radius:
+                tmp_coordinate = Coordinate.random_gen_coordinate(in_area, not_in_area)
+        for area in not_in_area:
+            while Coordinate.calc_distance(area.coordinate, tmp_coordinate) < area.radius:
+                tmp_coordinate = Coordinate.random_gen_coordinate(in_area, not_in_area)
 
         return tmp_coordinate
 
