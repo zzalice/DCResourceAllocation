@@ -29,6 +29,6 @@ if __name__ == '__main__':
 
     if visualize_the_algo:
         visualize_phase_uncategorized_ue(visualization_file_path, "wb",
-                                         "Phase1", g_nb, e_nb, g_ue_list, d_ue_list, e_ue_list)
+                                         "Phase1", g_nb, e_nb, g_ue_list, d_ue_list, e_ue_list, is_assert=False)
 
     # TODO 先調整完gNB再分配eNB

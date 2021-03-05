@@ -37,7 +37,7 @@ if __name__ == '__main__':
     g_zone_allocated, g_zone_unallocated = g_phase2.allocate_zone_group(g_zone_groups)
     g_zone_allocated: List[List[Zone]] = g_phase2.allocate_zone_to_layer(g_nb.nb_type, g_zone_allocated,
                                                                          g_zone_unallocated)
-    _, d_ue_list_unallocated = divide_ue(d_ue_list, assert_throughput=False)
+    _, d_ue_list_unallocated = divide_ue(d_ue_list, is_assert=False)
 
     # noinspection PyTypeChecker
     e_phase1: Phase1 = Phase1(d_ue_list_unallocated + e_ue_list)
@@ -50,7 +50,7 @@ if __name__ == '__main__':
 
     if visualize_the_algo:
         visualize_phase_uncategorized_ue(visualization_file_path, "wb",
-                                         "Phase2", g_nb, e_nb, g_ue_list, d_ue_list, e_ue_list)
+                                         "Phase2", g_nb, e_nb, g_ue_list, d_ue_list, e_ue_list, is_assert=False)
 
     phase3: Phase3 = Phase3(channel_model, g_nb, e_nb)
     phase3.phase2_ue_adjust_mcs(NodeBType.E, e_zone_allocated)
