@@ -4,6 +4,7 @@ from datetime import datetime
 from tokenize import String
 from typing import Dict, List, Tuple, Union
 
+from src.resource_allocation.algo.utils import bpframe_to_mbps
 from src.resource_allocation.ds.eutran import EUserEquipment
 from src.resource_allocation.ds.frame import Frame, Layer
 from src.resource_allocation.ds.ngran import DUserEquipment, GUserEquipment
@@ -140,7 +141,7 @@ class FrameRenderer:
 
             # ue
             self.body.append(
-                f'<div>system throughput: {round((system_throughput[_s] / 1000_000) * (1000 // (g_frame[_s].frame_time // 8)), 5)} Mbps</div>')
+                f'<div>system throughput: {round(bpframe_to_mbps(system_throughput[_s], g_frame[_s].frame_time), 5)} Mbps</div>')
             self.gen_ue_list(g_ue_list[_s]['allocated'], "allocated", g_frame[_s].frame_time)
             self.gen_ue_list(d_ue_list[_s]['allocated'], "allocated", g_frame[_s].frame_time)
             self.gen_ue_list(e_ue_list[_s]['allocated'], "allocated", g_frame[_s].frame_time)

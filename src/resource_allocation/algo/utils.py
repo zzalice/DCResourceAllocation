@@ -28,3 +28,18 @@ def calc_system_throughput(ue_allocated: Tuple[UserEquipment], is_assert: bool =
             assert_throughput(ue)
         system_throughput += ue.throughput
     return system_throughput  # bit per frame
+
+
+def calc_system_throughput_uncategorized_ue(ue_list: Tuple[UserEquipment, ...]) -> float:
+    allocated_ue: Tuple[UserEquipment, ...] = divide_ue(ue_list)[0]
+    return calc_system_throughput(allocated_ue, is_assert=False)  # bit per frame
+
+
+def bpframe_to_mbps(throughput: float, frame_time: int) -> float:
+    """
+    Unit converter.
+    :param throughput: Bit per frame.
+    :param frame_time: Number of BU in time domain.
+    :return: Mbps
+    """
+    return (throughput / 1000_000) * (1000 // (frame_time // 8))    # Mbps
