@@ -1,5 +1,6 @@
 import os
 import pickle
+import sys
 from datetime import datetime
 from typing import List, Tuple
 
@@ -7,18 +8,20 @@ from src.resource_allocation.algo.phase1 import Phase1
 from src.resource_allocation.algo.phase2 import Phase2
 from src.resource_allocation.algo.phase3 import Phase3
 from src.resource_allocation.algo.utils import divide_ue
+from src.resource_allocation.ds.eutran import ENodeB, EUserEquipment
+from src.resource_allocation.ds.ngran import DUserEquipment, GNodeB, GUserEquipment
 from src.resource_allocation.ds.util_enum import NodeBType
 from src.resource_allocation.ds.zone import Zone, ZoneGroup
 from utils.pickle_generator import visualize_phase_uncategorized_ue
 
-if __name__ == '__main__':
-    visualize_the_algo: bool = True
 
+def dc_resource_allocation(data_set, visualize_the_algo: bool = False) -> Tuple[
+    GNodeB, ENodeB, List[DUserEquipment], List[GUserEquipment], List[EUserEquipment]]:
     dirname = os.path.dirname(__file__)
     file_name_vis = "vis_" + datetime.today().strftime('%Y%m%d') + ".P"
     visualization_file_path = os.path.join(dirname, 'utils/frame_visualizer', file_name_vis)
 
-    data_set_file_path = os.path.join(dirname, 'src/simulation/data', 'data_generator.P')
+    data_set_file_path = os.path.join(dirname, 'src/simulation/data', data_set + '.P')
     with open(data_set_file_path, "rb") as file:
         g_nb, e_nb, cochannel_index, channel_model, g_ue_list, d_ue_list, e_ue_list = pickle.load(file)
 
@@ -74,3 +77,12 @@ if __name__ == '__main__':
     if visualize_the_algo:
         visualize_phase_uncategorized_ue(visualization_file_path, "ab+",
                                          "Phase3_newUE", g_nb, e_nb, g_ue_list, d_ue_list, e_ue_list)
+
+    return g_nb, e_nb, d_ue_list, g_ue_list, e_ue_list
+
+
+if __name__ == '__main__':
+    file_path: str = 'data_generator'
+    if len(sys.argv) == 2:
+        file_path: str = sys.argv[1]
+    dc_resource_allocation(data_set=file_path, visualize_the_algo=True)
