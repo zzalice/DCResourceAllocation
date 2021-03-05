@@ -58,12 +58,15 @@ class DualConnection(Undo):
             spaces: List[Space] = [space for layer in another_nb_info.nb.frame.layer for space in empty_space(layer)]
 
             # add new RBs
-            allocate_ue = AllocateUE(self.ue, tuple(spaces), self.channel_model)
-            is_succeed: bool = allocate_ue.allocate()
-            self.append_undo(lambda a_u=allocate_ue: a_u.undo(), lambda a_u=allocate_ue: a_u.purge_undo())
-            if is_succeed:
-                self.adjust_mcs()   # The new RB(s) from the other BS has high MCS which will fulfill QoS on it's own.
-            # TODO: if another BSs' MCS is lower after cut(in other word, the total num of RBs increase), undo.
+            if spaces:
+                allocate_ue = AllocateUE(self.ue, tuple(spaces), self.channel_model)
+                is_succeed: bool = allocate_ue.allocate()
+                self.append_undo(lambda a_u=allocate_ue: a_u.undo(), lambda a_u=allocate_ue: a_u.purge_undo())
+                if is_succeed:
+                    self.adjust_mcs()   # The new RB(s) from the other BS has high MCS which will fulfill QoS on it's own.
+                # TODO: if another BSs' MCS is lower after cut(in other word, the total num of RBs increase), undo.
+            else:
+                is_succeed: bool = False
 
             return is_succeed
 
