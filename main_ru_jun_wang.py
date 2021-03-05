@@ -1,16 +1,19 @@
+import os
 import pickle
 from datetime import datetime
 
 from src.resource_allocation.algo.ru_jun_wang.wangphase1 import WangPhase1
 from src.resource_allocation.algo.ru_jun_wang.wangphase2 import WangPhase2
-from utils.frame_visualizer.pickle_generator import visualize_phase_uncategorized_ue
+from utils.pickle_generator import visualize_phase_uncategorized_ue
 
 if __name__ == '__main__':
     visualize_the_algo: bool = True
-    visualization_file_path = "../utils/frame_visualizer/vis_wang_" + datetime.today().strftime('%Y%m%d') + ".P"
-    data_set_file_path = "data_generator"
+    dirname = os.path.dirname(__file__)
+    file_name_vis = "vis_wang_" + datetime.today().strftime('%Y%m%d') + ".P"
+    visualization_file_path = os.path.join(dirname, 'utils/frame_visualizer', file_name_vis)
 
-    with open("../src/resource_allocation/simulation/data/" + data_set_file_path + ".P", "rb") as file:
+    data_set_file_path = os.path.join(dirname, 'src/simulation/data', 'data_generator.P')
+    with open(data_set_file_path, "rb") as file:
         g_nb, e_nb, cochannel_index, channel_model, g_ue_list, d_ue_list, e_ue_list = pickle.load(file)
 
     g_phase1: WangPhase1 = WangPhase1(g_nb, g_ue_list + d_ue_list)

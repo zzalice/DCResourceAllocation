@@ -10,7 +10,7 @@ from .util_enum import _Numerology, NodeBType, Numerology
 
 if TYPE_CHECKING:
     from .nodeb import NodeB
-    from ..simulation.data.util_type import HotSpot
+    from src.simulation.data import HotSpot
 
 CandidateSet = NewType('CandidateSet', Tuple[_Numerology, ...])
 

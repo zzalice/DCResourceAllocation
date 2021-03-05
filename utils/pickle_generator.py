@@ -1,7 +1,7 @@
 import pickle
 from typing import Tuple
 
-from src.resource_allocation.algo.assistance import calc_system_throughput, divide_ue
+from src.resource_allocation.algo.utils import calc_system_throughput, divide_ue
 from src.resource_allocation.ds.eutran import ENodeB, EUserEquipment
 from src.resource_allocation.ds.ngran import DUserEquipment, GNodeB, GUserEquipment
 

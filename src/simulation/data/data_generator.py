@@ -1,4 +1,3 @@
-import dataclasses
 import pickle
 import random
 from pathlib import Path
@@ -10,23 +9,8 @@ from src.resource_allocation.ds.eutran import ENodeB, EUserEquipment
 from src.resource_allocation.ds.ngran import DUserEquipment, GNodeB, GUserEquipment
 from src.resource_allocation.ds.noma import setup_noma
 from src.resource_allocation.ds.util_enum import LTEResourceBlock, Numerology, UEType
-from src.resource_allocation.ds.util_type import CandidateSet, Coordinate
-from src.resource_allocation.simulation.data.util_type import HotSpot, UECoordinate
-
-
-@dataclasses.dataclass
-class UEProfiles:
-    count: int
-    request_data_rate_list: Tuple[int, ...]
-    candidate_set_list: Tuple[CandidateSet, ...]
-    coordinate_list: Tuple[Coordinate, ...]
-
-    def __iter__(self):
-        single_data = dataclasses.make_dataclass('UEProfile', (
-            ('request_data_rate', int), ('candidate_set', CandidateSet), ('coordinate', Coordinate)))
-        for i in range(self.count):
-            yield single_data(self.request_data_rate_list[i], self.candidate_set_list[i], self.coordinate_list[i])
-
+from src.resource_allocation.ds.util_type import Coordinate
+from src.simulation.data.util_type import HotSpot, UECoordinate, UEProfiles
 
 if __name__ == '__main__':
     EUE_COUNT = GUE_COUNT = DUE_COUNT = 300
