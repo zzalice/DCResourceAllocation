@@ -10,6 +10,8 @@ python_version = "3.8"
 termcolor = "*"
 mock = "*"
 dill = "*"
+numpy = "*"
+matplotlib = "*"
 
 [dev-packages]
 pytest = "*"

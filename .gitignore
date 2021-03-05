@@ -168,6 +168,10 @@ Network Trash Folder
 Temporary Items
 .apdisk
 
+
+*.png
+*.json
+
 ### for test case rendering
 *.html
 *.P
