@@ -1,3 +1,9 @@
+import os
+import sys
+
+cur_path = os.path.abspath(os.path.dirname(__file__))
+sys.path.insert(0, cur_path + "/../../..")
+
 import pickle
 import random
 from pathlib import Path
@@ -28,7 +34,8 @@ if __name__ == '__main__':
 
     e_profiles: UEProfiles = UEProfiles(
         EUE_COUNT,
-        tuple(random.randrange(qos_lower_bound_bps // sec_to_frame, qos_higher_bound_bps // sec_to_frame + 1, 10_000 // sec_to_frame) for _ in
+        tuple(random.randrange(qos_lower_bound_bps // sec_to_frame, qos_higher_bound_bps // sec_to_frame + 1,
+                               10_000 // sec_to_frame) for _ in
               range(EUE_COUNT)),
         LTEResourceBlock.gen_candidate_set() * EUE_COUNT,  # dummy (unused)
         UECoordinate(UEType.E, EUE_COUNT, e_nb, g_nb, (
@@ -39,7 +46,8 @@ if __name__ == '__main__':
 
     g_profiles: UEProfiles = UEProfiles(
         GUE_COUNT,
-        tuple(random.randrange(qos_lower_bound_bps // sec_to_frame, qos_higher_bound_bps // sec_to_frame + 1, 10_000 // sec_to_frame) for _ in
+        tuple(random.randrange(qos_lower_bound_bps // sec_to_frame, qos_higher_bound_bps // sec_to_frame + 1,
+                               10_000 // sec_to_frame) for _ in
               range(GUE_COUNT)),
         tuple(Numerology.gen_candidate_set(random_pick=True) for _ in range(GUE_COUNT)),
         UECoordinate(UEType.G, GUE_COUNT, e_nb, g_nb, (
@@ -49,7 +57,8 @@ if __name__ == '__main__':
 
     d_profiles: UEProfiles = UEProfiles(
         DUE_COUNT,
-        tuple(random.randrange(qos_lower_bound_bps // sec_to_frame, qos_higher_bound_bps // sec_to_frame + 1, 10_000 // sec_to_frame) for _ in
+        tuple(random.randrange(qos_lower_bound_bps // sec_to_frame, qos_higher_bound_bps // sec_to_frame + 1,
+                               10_000 // sec_to_frame) for _ in
               range(DUE_COUNT)),
         tuple(Numerology.gen_candidate_set(random_pick=True) for _ in range(DUE_COUNT)),
         UECoordinate(UEType.D, DUE_COUNT, e_nb, g_nb).generate()
