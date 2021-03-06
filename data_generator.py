@@ -1,12 +1,5 @@
-import os
-import sys
-
-cur_path = os.path.abspath(os.path.dirname(__file__))
-sys.path.insert(0, cur_path + "/../../..")
-
 import pickle
 import random
-from pathlib import Path
 from typing import Dict, Tuple
 
 from src.channel_model.sinr import ChannelModel
@@ -81,5 +74,5 @@ if __name__ == '__main__':
     for d_ue in d_ue_list:
         d_ue.numerology_in_use = d_ue.candidate_set[-1]
 
-    with open(Path(__file__).stem + ".P", "wb") as file_of_frame_and_ue:
+    with open('src/simulation/data/data_generator.P', "wb") as file_of_frame_and_ue:
         pickle.dump([g_nb, e_nb, cochannel_index, channel_model, g_ue_list, d_ue_list, e_ue_list], file_of_frame_and_ue)

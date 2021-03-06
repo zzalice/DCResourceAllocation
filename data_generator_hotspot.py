@@ -1,9 +1,4 @@
 import os
-import sys
-
-cur_path = os.path.abspath(os.path.dirname(__file__))
-sys.path.insert(0, cur_path + "/../../../..")
-
 import pickle
 import random
 from typing import Dict, Tuple
@@ -20,10 +15,11 @@ from src.simulation.data.util_type import HotSpot, UECoordinate, UEProfiles
 if __name__ == '__main__':
     times: int = 100
     max_layer: int = 1
-    output_file_path: str = f'{str(max_layer)}layer'
-    dir_name: str = os.path.join(os.path.dirname(__file__), output_file_path)
-    if not os.path.exists(dir_name):
-        os.makedirs(dir_name)
+    data_file_path: str = 'hotspot'
+
+    output_file_path: str = f'src/simulation/data/{data_file_path}/{str(max_layer)}layer'
+    if not os.path.exists(output_file_path):
+        os.makedirs(output_file_path)
 
     for i in range(times):
         EUE_COUNT = GUE_COUNT = DUE_COUNT = 300
@@ -88,5 +84,5 @@ if __name__ == '__main__':
         for d_ue in d_ue_list:
             d_ue.numerology_in_use = d_ue.candidate_set[-1]
 
-        with open(os.path.join(dir_name, str(i) + '.P'), "wb") as file_of_frame_and_ue:
+        with open(os.path.join(output_file_path, str(i) + '.P'), "wb") as file_of_frame_and_ue:
             pickle.dump([g_nb, e_nb, cochannel_index, channel_model, g_ue_list, d_ue_list, e_ue_list], file_of_frame_and_ue)
