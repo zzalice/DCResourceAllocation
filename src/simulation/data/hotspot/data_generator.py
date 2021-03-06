@@ -13,8 +13,8 @@ from src.resource_allocation.ds.util_type import Coordinate
 from src.simulation.data.util_type import HotSpot, UECoordinate, UEProfiles
 
 if __name__ == '__main__':
-    times: int = 10
-    max_layer: int = 3
+    times: int = 100
+    max_layer: int = 1
     output_file_path: str = f'{str(max_layer)}layer'
     dir_name: str = os.path.join(os.path.dirname(__file__), output_file_path)
     if not os.path.exists(dir_name):

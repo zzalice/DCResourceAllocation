@@ -1,3 +1,4 @@
+import pickle
 from typing import Any, Dict, List, Tuple
 
 from main import dc_resource_allocation
@@ -8,15 +9,18 @@ from src.resource_allocation.ds.ngran import DUserEquipment, GNodeB, GUserEquipm
 from src.simulation.graph.util_graph import line_chart
 
 if __name__ == '__main__':
-    time: int = 3
+    time: int = 20
     max_layers: List[int] = [1, 2, 3]
     result: Dict[str, List[Tuple[GNodeB, ENodeB, List[DUserEquipment], List[GUserEquipment], List[EUserEquipment]]]] = {
         'DC-RA': [], 'Intuitive': []}
     avg_system_throughput: Dict[str, List[Any]] = {'DC-RA': [0.0 for _ in range(len(max_layers))],
                                                    'Intuitive': [0.0 for _ in range(len(max_layers))]}
+    file_path: str = 'hotspot/'
     for l in range(len(max_layers)):
-        data_set_file_path: str = f'hotspot/{max_layers[l]}layer/'
+        print(f'l: {max_layers[l]}')
+        data_set_file_path: str = file_path + f'{max_layers[l]}layer/'
         for i in range(time):
+            print(f'i:{i}')
             result['DC-RA'].append(dc_resource_allocation(data_set_file_path + str(i)))
             result['Intuitive'].append(intuitive_resource_allocation(data_set_file_path + str(i)))
 
@@ -31,4 +35,8 @@ if __name__ == '__main__':
             avg_system_throughput[data][l] = bpframe_to_mbps(avg_system_throughput[data][l],
                                                              result[data][-1][0].frame.frame_time)
 
-    line_chart('', 'The number of gNB layer', max_layers, 'System throughput(Mbps)', avg_system_throughput, 'system_throughput')
+    line_chart('', 'The number of gNB layer', max_layers, 'System throughput(Mbps)', avg_system_throughput,
+               'sys_rate_' + str(time) + 'time')
+
+    with open(file_path + 'graph_generator.P', 'wb') as f:
+        pickle.dump(result, f)
