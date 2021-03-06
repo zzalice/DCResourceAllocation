@@ -12,7 +12,7 @@ import time
 if __name__ == '__main__':
     times: int = 50
     max_layers: List[int] = [1, 2, 3]
-    file_path: str = 'hotspot'
+    file_path: str = 'hotspot_large_radius'
 
     result: Dict[str, List[Tuple[GNodeB, ENodeB, List[DUserEquipment], List[GUserEquipment], List[EUserEquipment]]]] = {
         'DC-RA': [], 'Intuitive': []}
