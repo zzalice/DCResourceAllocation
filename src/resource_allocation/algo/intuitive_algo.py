@@ -54,13 +54,13 @@ class Intuitive(Undo):
         while ue_to_allocate:
             ue: UserEquipment = ue_to_allocate.pop()
             is_allocated: bool = False
-            if len(spaces) > 0:
+            for space in spaces:
                 self.start_func_undo()
                 # from tests.assertion import check_undo_copy
                 # copy_ue = check_undo_copy([ue] + self.gue_allocated + self.due_allocated + self.eue_allocated)
 
                 # allocate new ue
-                allocate_ue: AllocateUE = AllocateUE(ue, spaces, self.channel_model)
+                allocate_ue: AllocateUE = AllocateUE(ue, (space,), self.channel_model)
                 is_allocated: bool = allocate_ue.allocate()
                 self.append_undo(lambda a_u=allocate_ue: a_u.undo(), lambda a_u=allocate_ue: a_u.purge_undo())
 
@@ -75,6 +75,7 @@ class Intuitive(Undo):
                 if is_allocated:
                     spaces: Tuple[Space] = self.update_empty_space(nb)
                     self.purge_undo()
+                    break
                 else:
                     self.undo()
                     # from tests.assertion import check_undo_compare
