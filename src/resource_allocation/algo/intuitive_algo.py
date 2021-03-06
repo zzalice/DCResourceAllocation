@@ -96,20 +96,14 @@ class Intuitive(Undo):
     def update_empty_space(nb: Union[GNodeB, ENodeB]) -> Tuple[Space]:
         tmp_spaces: List[Space] = []
         for layer in nb.frame.layer:
-            do_extend: bool = True
             new_spaces: Tuple[Space] = empty_space(layer)
+            tmp_spaces.extend(new_spaces)
 
-            # skip the layer if there is a complete layer in tmp_space already
-            if len(new_spaces) == 1:
-                for space in tmp_spaces:
-                    if (new_spaces[0].starting_i == space.starting_i == 0) and (
-                            new_spaces[0].starting_j == space.starting_j == 0) and (
-                            new_spaces[0].ending_i == space.ending_i == nb.frame.frame_freq - 1) and (
-                            new_spaces[0].ending_j == space.ending_j == nb.frame.frame_time - 1):
-                        do_extend: bool = False
-                        break
-            if do_extend:
-                tmp_spaces.extend(new_spaces)
+            # break if there is a complete layer in tmp_space
+            if len(new_spaces) == 1 and (
+                    new_spaces[0].width == nb.frame.frame_time and new_spaces[0].height == nb.frame.frame_freq):
+                break
+
         return tuple(tmp_spaces)
 
     def adjust_mcs_allocated_ues(self, allocated_ue: List[UserEquipment], allow_lower_mcs) -> bool:
