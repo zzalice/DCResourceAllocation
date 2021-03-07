@@ -52,7 +52,6 @@ class DataGenerator:
         self.cochannel_bandwidth: int = cochannel_bandwidth
 
     def generate_data(self):
-        self.gen_txt_parameter()
         for i in range(self.times):
             e_nb: ENodeB = ENodeB(coordinate=Coordinate(self.enb_coordinate[0], self.enb_coordinate[1]),
                                   radius=self.enb_radius, power_tx=self.enb_tx_power, frame_freq=self.enb_freq,
@@ -114,6 +113,8 @@ class DataGenerator:
             with open(f'{self.output_file_path}/{str(i)}.P', "wb") as file_of_frame_and_ue:
                 pickle.dump([g_nb, e_nb, cochannel_index, channel_model, g_ue_list, d_ue_list, e_ue_list],
                             file_of_frame_and_ue)
+
+        self.gen_txt_parameter()
 
     def gen_txt_parameter(self):
         with open(f'{self.output_file_path}/parameter.txt', 'w') as file:
