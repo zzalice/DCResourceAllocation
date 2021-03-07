@@ -5,7 +5,7 @@ import matplotlib.pyplot as plt
 
 
 def line_chart(title: str, x_label: str, scale_x: List[Any], y_label: str, scale_y: Dict[str, List[Any]],
-               output_file: str):
+               output_folder: str, parameter: Dict):
     # https://newaurora.pixnet.net/blog/post/227933636-python-使用matplotlib畫折線圖%28line-chart%29
     marker = ['o', 's', '^', 'd', 'x']
     color = ['r', 'b', 'g', 'c', 'm', 'y']
@@ -18,10 +18,12 @@ def line_chart(title: str, x_label: str, scale_x: List[Any], y_label: str, scale
     plt.xlabel(x_label)
     plt.ylabel(y_label)
     plt.legend(loc="best")
-    plt.savefig(output_file + '.png')
+
+    file_name: str = f'{x_label}_{y_label}'
+    plt.savefig(f'{output_folder}/{file_name}.png')
     plt.show()
-    with open(output_file + '.json', 'w') as file:
-        json.dump([title, x_label, scale_x, y_label, scale_y, output_file], file)
+    with open(f'{output_folder}/{file_name}.json', 'w') as file:
+        json.dump([title, x_label, scale_x, y_label, scale_y, output_folder, parameter], file)
 
 
 if __name__ == '__main__':

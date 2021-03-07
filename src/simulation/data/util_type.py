@@ -18,35 +18,35 @@ class HotSpot:
 
 class UECoordinate:
     def __init__(self, ue_type: UEType, count: int, e_nb: ENodeB, g_nb: GNodeB,
-                 hot_spots: Tuple[Tuple[float, float, float, int]] = ()):
+                 hotspots: Tuple[Tuple[float, float, float, int]] = ()):
         assert Coordinate.calc_distance(e_nb.coordinate, g_nb.coordinate) < (e_nb.radius + g_nb.radius)
 
         self.ue_type: UEType = ue_type
         self.count: int = count
-        self.hot_spots: Tuple[HotSpot, ...] = tuple([HotSpot(Coordinate(i[0], i[1]), i[2], i[3]) for i in hot_spots])
+        self.hotspots: Tuple[HotSpot, ...] = tuple([HotSpot(Coordinate(i[0], i[1]), i[2], i[3]) for i in hotspots])
 
         if ue_type == UEType.E:
-            for hot_spot in self.hot_spots:
+            for hotspot in self.hotspots:
                 assert Coordinate.calc_distance(e_nb.coordinate,
-                                                hot_spot.coordinate) + hot_spot.radius <= e_nb.radius, "The hot spot area isn't in the area of BS."
+                                                hotspot.coordinate) + hotspot.radius <= e_nb.radius, "The hot spot area isn't in the area of BS."
                 assert Coordinate.calc_distance(g_nb.coordinate,
-                                                hot_spot.coordinate) - hot_spot.radius > g_nb.radius, "A single connection UE shouldn't be in the area of another BS."
+                                                hotspot.coordinate) - hotspot.radius > g_nb.radius, "A single connection UE shouldn't be in the area of another BS."
             self.main_nb: ENodeB = e_nb
             self.second_nb: GNodeB = g_nb
         elif ue_type == UEType.G:
-            for hot_spot in self.hot_spots:
+            for hotspot in self.hotspots:
                 assert Coordinate.calc_distance(g_nb.coordinate,
-                                                hot_spot.coordinate) + hot_spot.radius <= g_nb.radius, "The hot spot area isn't in the area of BS."
+                                                hotspot.coordinate) + hotspot.radius <= g_nb.radius, "The hot spot area isn't in the area of BS."
                 assert Coordinate.calc_distance(e_nb.coordinate,
-                                                hot_spot.coordinate) - hot_spot.radius > e_nb.radius, "A single connection UE shouldn't be in the area of another BS."
+                                                hotspot.coordinate) - hotspot.radius > e_nb.radius, "A single connection UE shouldn't be in the area of another BS."
             self.main_nb: GNodeB = g_nb
             self.second_nb: ENodeB = e_nb
         elif ue_type == UEType.D:
-            for hot_spot in self.hot_spots:
-                assert (Coordinate.calc_distance(e_nb.coordinate, hot_spot.coordinate) + hot_spot.radius <= e_nb.radius
+            for hotspot in self.hotspots:
+                assert (Coordinate.calc_distance(e_nb.coordinate, hotspot.coordinate) + hotspot.radius <= e_nb.radius
                         ) and (
                                Coordinate.calc_distance(g_nb.coordinate,
-                                                        hot_spot.coordinate) + hot_spot.radius <= g_nb.radius
+                                                        hotspot.coordinate) + hotspot.radius <= g_nb.radius
                        ), "The hot spot area isn't in the overlapped area of BSs."
             self.main_nb: ENodeB = e_nb
             self.second_nb: GNodeB = g_nb
@@ -55,19 +55,19 @@ class UECoordinate:
 
     def generate(self) -> Tuple[Coordinate, ...]:
         coordinates: List[Coordinate] = []
-        count_not_in_hot_spot: int = self.count
-        for hot_spot in self.hot_spots:
-            count_not_in_hot_spot -= hot_spot.count
-            assert count_not_in_hot_spot > -1, "The number of UEs in hot spots are more than expected amount."
-            for _ in range(hot_spot.count):
-                coordinates.append(Coordinate.random_gen_coordinate((hot_spot,)))
+        count_not_in_hotspot: int = self.count
+        for hotspot in self.hotspots:
+            count_not_in_hotspot -= hotspot.count
+            assert count_not_in_hotspot > -1, "The number of UEs in hot spots are more than expected amount."
+            for _ in range(hotspot.count):
+                coordinates.append(Coordinate.random_gen_coordinate((hotspot,)))
         if self.ue_type == UEType.D:
-            for _ in range(count_not_in_hot_spot):
-                coordinates.append(Coordinate.random_gen_coordinate((self.main_nb, self.second_nb), self.hot_spots))
+            for _ in range(count_not_in_hotspot):
+                coordinates.append(Coordinate.random_gen_coordinate((self.main_nb, self.second_nb), self.hotspots))
         else:
-            for _ in range(count_not_in_hot_spot):
+            for _ in range(count_not_in_hotspot):
                 coordinates.append(
-                    Coordinate.random_gen_coordinate((self.main_nb,), self.hot_spots + (self.second_nb,)))
+                    Coordinate.random_gen_coordinate((self.main_nb,), self.hotspots + (self.second_nb,)))
 
         return tuple(coordinates)
 
