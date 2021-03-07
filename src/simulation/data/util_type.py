@@ -17,34 +17,41 @@ class HotSpot:
 
 
 class UECoordinate:
-    def __init__(self, ue_type: UEType, count: int, e_nb: ENodeB, g_nb: GNodeB, hot_spots: Tuple[HotSpot, ...] = ()):
+    def __init__(self, ue_type: UEType, count: int, e_nb: ENodeB, g_nb: GNodeB,
+                 hot_spots: Tuple[Tuple[float, float, float, int]] = ()):
         assert Coordinate.calc_distance(e_nb.coordinate, g_nb.coordinate) < (e_nb.radius + g_nb.radius)
+
+        self.ue_type: UEType = ue_type
+        self.count: int = count
+        self.hot_spots: Tuple[HotSpot, ...] = tuple([HotSpot(Coordinate(i[0], i[1]), i[2], i[3]) for i in hot_spots])
+
         if ue_type == UEType.E:
-            for hot_spot in hot_spots:
-                assert Coordinate.calc_distance(e_nb.coordinate, hot_spot.coordinate) + hot_spot.radius <= e_nb.radius, "The hot spot area isn't in the area of BS."
-                assert Coordinate.calc_distance(g_nb.coordinate, hot_spot.coordinate) - hot_spot.radius > g_nb.radius, "A single connection UE shouldn't be in the area of another BS."
+            for hot_spot in self.hot_spots:
+                assert Coordinate.calc_distance(e_nb.coordinate,
+                                                hot_spot.coordinate) + hot_spot.radius <= e_nb.radius, "The hot spot area isn't in the area of BS."
+                assert Coordinate.calc_distance(g_nb.coordinate,
+                                                hot_spot.coordinate) - hot_spot.radius > g_nb.radius, "A single connection UE shouldn't be in the area of another BS."
             self.main_nb: ENodeB = e_nb
             self.second_nb: GNodeB = g_nb
         elif ue_type == UEType.G:
-            for hot_spot in hot_spots:
-                assert Coordinate.calc_distance(g_nb.coordinate, hot_spot.coordinate) + hot_spot.radius <= g_nb.radius, "The hot spot area isn't in the area of BS."
-                assert Coordinate.calc_distance(e_nb.coordinate, hot_spot.coordinate) - hot_spot.radius > e_nb.radius, "A single connection UE shouldn't be in the area of another BS."
+            for hot_spot in self.hot_spots:
+                assert Coordinate.calc_distance(g_nb.coordinate,
+                                                hot_spot.coordinate) + hot_spot.radius <= g_nb.radius, "The hot spot area isn't in the area of BS."
+                assert Coordinate.calc_distance(e_nb.coordinate,
+                                                hot_spot.coordinate) - hot_spot.radius > e_nb.radius, "A single connection UE shouldn't be in the area of another BS."
             self.main_nb: GNodeB = g_nb
             self.second_nb: ENodeB = e_nb
         elif ue_type == UEType.D:
-            for hot_spot in hot_spots:
+            for hot_spot in self.hot_spots:
                 assert (Coordinate.calc_distance(e_nb.coordinate, hot_spot.coordinate) + hot_spot.radius <= e_nb.radius
                         ) and (
-                        Coordinate.calc_distance(g_nb.coordinate, hot_spot.coordinate) + hot_spot.radius <= g_nb.radius
-                        ), "The hot spot area isn't in the overlapped area of BSs."
+                               Coordinate.calc_distance(g_nb.coordinate,
+                                                        hot_spot.coordinate) + hot_spot.radius <= g_nb.radius
+                       ), "The hot spot area isn't in the overlapped area of BSs."
             self.main_nb: ENodeB = e_nb
             self.second_nb: GNodeB = g_nb
         else:
             raise AssertionError
-
-        self.ue_type: UEType = ue_type
-        self.count: int = count
-        self.hot_spots: Tuple[HotSpot, ...] = hot_spots
 
     def generate(self) -> Tuple[Coordinate, ...]:
         coordinates: List[Coordinate] = []

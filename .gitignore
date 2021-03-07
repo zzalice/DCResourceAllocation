@@ -171,6 +171,7 @@ Temporary Items
 
 *.png
 *.json
+*.txt
 
 ### for test case rendering
 *.html

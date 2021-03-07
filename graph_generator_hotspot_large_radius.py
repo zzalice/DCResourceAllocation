@@ -6,7 +6,7 @@ from main_intuitive import intuitive_resource_allocation
 from src.resource_allocation.algo.utils import bpframe_to_mbps, calc_system_throughput_uncategorized_ue
 from src.resource_allocation.ds.eutran import ENodeB, EUserEquipment
 from src.resource_allocation.ds.ngran import DUserEquipment, GNodeB, GUserEquipment
-from src.simulation.data.util_graph import line_chart
+from src.simulation.util_graph import line_chart
 import time
 
 if __name__ == '__main__':
