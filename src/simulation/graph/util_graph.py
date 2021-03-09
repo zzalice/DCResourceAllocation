@@ -1,4 +1,5 @@
 import json
+import os
 from typing import Any, Dict, List, Tuple
 
 import matplotlib.pyplot as plt
@@ -28,7 +29,7 @@ def line_chart(title: str, x_label: str, scale_x: List[Any], y_label: str, scale
 
 
 def bar_chart(title: str, x_label: str, x_tick_labels: List[Any], y_label: str, data: Dict[str, List[int]],
-              output_folder: str, parameter: Dict):
+              output_file_path: str, parameter: Dict):
     # https://matplotlib.org/stable/gallery/lines_bars_and_markers/barchart.html
     # https://pylibraries.com/matplotlib/tutorials/grouped-bar-charts-with-matplotlib-pyplot/#Triple-grouped-bar-chart
     x = np.arange(len(x_tick_labels))  # the label locations
@@ -52,11 +53,12 @@ def bar_chart(title: str, x_label: str, x_tick_labels: List[Any], y_label: str, 
 
     fig.tight_layout()
 
-    file_name: str = f'{x_label}_{y_label}'
-    plt.savefig(f'{output_folder}/{file_name}.png')
+    # if not os.path.exists(output_folder):
+    #     os.makedirs(output_folder)
+    plt.savefig(f'{output_file_path}.png')
     plt.show()
-    with open(f'{output_folder}/{file_name}.json', 'w') as file:
-        json.dump([title, x_label, x_tick_labels, y_label, data, output_folder, parameter], file)
+    with open(f'{output_file_path}.json', 'w') as file:
+        json.dump([title, x_label, x_tick_labels, y_label, data, output_file_path, parameter], file)
 
 
 def bar_chart_auto_label(rects, ax):

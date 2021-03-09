@@ -23,3 +23,7 @@ class DUserEquipment(UserEquipment):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
         self.ue_type: UEType = UEType.D
+
+    @property
+    def cross_nb(self) -> bool:
+        return True if len(self.enb_info.rb) > 0 and len(self.gnb_info.rb) > 0 else False
