@@ -9,7 +9,7 @@ from main_intuitive import intuitive_resource_allocation
 from src.resource_allocation.algo.utils import bpframe_to_mbps, calc_system_throughput_uncategorized_ue
 from src.resource_allocation.ds.eutran import ENodeB, EUserEquipment
 from src.resource_allocation.ds.ngran import DUserEquipment, GNodeB, GUserEquipment
-from src.simulation.graph.util_graph import bar_chart, line_chart
+from src.simulation.graph.util_graph import bar_chart, line_chart, scatter_chart
 
 
 class GraphGenerator:
@@ -92,6 +92,54 @@ class GraphGenerator:
 
         bar_chart('Frame used', 'The number of layer in a gNB', x_labels, 'Percentage(%)', averaged_data,
                   self.output_file_path, self._parameter())
+
+    def gen_deployment(self, data_file_path: str):
+        with open(data_file_path, 'rb') as f:
+            pickle.load(f)  # TODO: new a empty pickle
+            while True:
+                try:
+                    output_data: Dict[str, Any] = self.read_data(pickle.load(f))
+                    for algo in output_data['algo']:
+                        x = []
+                        y = []
+                        color = []
+                        gnb: GNodeB = output_data['iter'][algo][0][0]
+                        gnb_radius = gnb.radius
+                        gnb_coordinate = (gnb.coordinate.x, gnb.coordinate.y)
+                        enb: ENodeB = output_data['iter'][algo][0][1]
+                        enb_radius = enb.radius
+                        enb_coordinate = (enb.coordinate.x, enb.coordinate.y)
+                        x.extend([gnb_coordinate[0], enb_coordinate[0]])
+                        y.extend([gnb_coordinate[1], enb_coordinate[1]])
+                        color.extend(['r'] * 2)
+                        for data in output_data['iter'][algo]:
+                            assert data[0].radius == gnb_radius and data[1].radius == enb_radius
+                            assert (data[0].coordinate.x, data[0].coordinate.y) == gnb_coordinate and (
+                                    (data[1].coordinate.x, data[1].coordinate.y) == enb_coordinate)
+                            due: List[DUserEquipment] = data[2]
+                            gue: List[GUserEquipment] = data[3]
+                            eue: List[EUserEquipment] = data[4]
+                            x, y, color = self._ue_deployment([due, gue, eue], x, y, color)
+
+                        assert len(x) == len(y) == len(color)
+                        scatter_chart(f'The deployment of {output_data["max_layer"]} gNBs, eNBs, and UEs({algo})', x, y,
+                                      color, (-enb_radius, gnb_coordinate[0] + gnb_radius), (-enb_radius, enb_radius),
+                                      f'{self.output_file_path}/deployment_{output_data["max_layer"]}_{algo}',
+                                      self._parameter())  # TODO: x_lim, y_lim不要寫死
+                except EOFError:
+                    break
+
+    @staticmethod
+    def _ue_deployment(all_ue: List[Union[List[DUserEquipment], List[GUserEquipment], List[EUserEquipment]]],
+                       x: List[float], y: List[float], color: List[str]) -> Tuple[List[float], List[float], List[str]]:
+        c = ['b', 'g', 'm']
+        for i, ue_list in enumerate(all_ue):
+            for ue in ue_list:
+                if ue.is_allocated:
+                    x.append(ue.coordinate.x)
+                    y.append(ue.coordinate.y)
+                    color.append(c[i])
+        return x, y, color
 
     def _run_algo(self, data_set_file_path: str, pickle_file_path: str, result_information: str):
         result: Dict[str, Dict[
