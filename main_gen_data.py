@@ -27,15 +27,17 @@ if __name__ == '__main__':
         para = {'times': 500,
                 'output_file_path': folder_name,
                 'qos_range': [16_000, 512_000],
-                'eue_num': 300,
-                'eue_hotspots': ((-0.15, 0.0, 0.15, 75), (-0.45, 0.0, 0.15, 75), (-0.75, 0.0, 0.15, 75)),
-                'gue_num': 300,
+                'eue_num': 200,     # eue:gue:due_num = 62:10:14 when radius are 0.5 and 0.3
+                'eue_hotspots': (),
+                'gue_num': 32,
                 'gue_hotspots': (),
-                'due_num': 300,
-                'due_hotspots': ((0.46, 0.0, 0.15, 100),),
-                'enb_coordinate': (0.0, 0.0), 'enb_radius': 1, 'enb_tx_power': 46, 'enb_freq': 100, 'enb_time': 8,
-                'gnb_coordinate': (0.8, 0.0), 'gnb_radius': 0.5, 'gnb_tx_power': 30, 'gnb_freq': 216, 'gnb_time': 8,
+                'due_num': 45,
+                'due_hotspots': (),
+
+                'enb_coordinate': (0.0, 0.0), 'enb_radius': 0.5, 'enb_tx_power': 46, 'enb_freq': 100, 'enb_time': 80,
+                'gnb_coordinate': (0.5, 0.0), 'gnb_radius': 0.3, 'gnb_tx_power': 30, 'gnb_freq': 216, 'gnb_time': 80,
                 'gnb_layer': i,
+
                 'cochannel_bandwidth': 25}  # <--- change i in para
 
         if not os.path.exists(f'src/simulation/data/{para["output_file_path"]}'):
