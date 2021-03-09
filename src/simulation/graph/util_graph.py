@@ -1,5 +1,5 @@
 import json
-from typing import Any, Dict, List
+from typing import Any, Dict, List, Tuple
 
 import matplotlib.pyplot as plt
 import numpy as np
@@ -68,6 +68,21 @@ def bar_chart_auto_label(rects, ax):
                     xytext=(0, 3),  # 3 points vertical offset
                     textcoords="offset points",
                     ha='center', va='bottom')
+
+
+def scatter_chart(title, x, y, color, x_lim: Tuple[float, float], y_lim: Tuple[float, float],
+                  output_file: str, parameter: Dict):
+    # https://www.pythonpool.com/matplotlib-circle/
+    # https://matplotlib.org/stable/gallery/shapes_and_collections/scatter.html
+    plt.scatter(x, y, c=color)
+    plt.xlim(x_lim[0], x_lim[1])
+    plt.ylim(y_lim[0], y_lim[1])
+
+    plt.title(title)
+    plt.savefig(f'{output_file}.png')
+    plt.show()
+    with open(f'{output_file}.json', 'w') as file:
+        json.dump([title, x, y, color, x_lim, y_lim, output_file, parameter], file)
 
 
 if __name__ == '__main__':
