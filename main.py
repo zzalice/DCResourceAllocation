@@ -23,11 +23,11 @@ def dc_resource_allocation(data_set, visualize_the_algo: bool = False) -> Tuple[
 
     data_set_file_path = os.path.join(dirname, 'src/simulation/data', data_set + '.P')
     with open(data_set_file_path, "rb") as file:
-        g_nb, e_nb, cochannel_index, channel_model, g_ue_list, d_ue_list, e_ue_list = pickle.load(file)
+        g_nb, e_nb, cochannel_index, channel_model, g_ue_list, d_ue_list, e_ue_list, inr_discount = pickle.load(file)
 
     # noinspection PyTypeChecker
     g_phase1: Phase1 = Phase1(d_ue_list + g_ue_list)
-    g_phase1.calc_inr(0.5)
+    g_phase1.calc_inr(inr_discount)
     g_phase1.select_init_numerology()
     g_zone_fit, g_zone_undersized = g_phase1.form_zones(g_nb)
     g_zone_merged: Tuple[Zone, ...] = g_phase1.merge_zone(g_zone_undersized)
@@ -82,7 +82,7 @@ def dc_resource_allocation(data_set, visualize_the_algo: bool = False) -> Tuple[
 
 
 if __name__ == '__main__':
-    file_path: str = 'data_generator'
+    file_path: str = 'test/1layer/0'
     if len(sys.argv) == 2:
         file_path: str = sys.argv[1]
     dc_resource_allocation(data_set=file_path, visualize_the_algo=True)

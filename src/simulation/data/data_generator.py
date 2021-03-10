@@ -21,7 +21,7 @@ class DataGenerator:
                  due_num: int, due_hotspots: Tuple[Tuple[float, float, float, int]],
                  enb_coordinate: Tuple[int, int], enb_radius: float, enb_tx_power: int, enb_freq: int, enb_time: int,
                  gnb_coordinate: Tuple[int, int], gnb_radius: float, gnb_tx_power: int, gnb_freq: int, gnb_time: int,
-                 gnb_layer: int,
+                 gnb_layer: int, inr_discount: float,
                  cochannel_bandwidth: int):
         assert times > 0
         self.times: int = times
@@ -48,6 +48,8 @@ class DataGenerator:
         self.gnb_time: int = gnb_time
         assert gnb_layer > 0
         self.gnb_layer: int = gnb_layer
+        assert 0.0 < inr_discount <= 1.0
+        self.inr_discount: float = inr_discount
         assert cochannel_bandwidth >= 0
         self.cochannel_bandwidth: int = cochannel_bandwidth
 
@@ -111,8 +113,9 @@ class DataGenerator:
                 d_ue.numerology_in_use = d_ue.candidate_set[-1]
 
             with open(f'{self.output_file_path}/{str(i)}.P', "wb") as file_of_frame_and_ue:
-                pickle.dump([g_nb, e_nb, cochannel_index, channel_model, g_ue_list, d_ue_list, e_ue_list],
-                            file_of_frame_and_ue)
+                pickle.dump(
+                    [g_nb, e_nb, cochannel_index, channel_model, g_ue_list, d_ue_list, e_ue_list, self.inr_discount],
+                    file_of_frame_and_ue)
 
         self.gen_txt_parameter()
 
@@ -130,7 +133,8 @@ class DataGenerator:
                 f'coordinate: {self.gnb_coordinate}\n' +
                 f'frame, freq(in BU): {self.gnb_freq}\n' +
                 f'frame, time(in BU): {self.gnb_time}\n' +
-                f'tx power: {self.gnb_tx_power}\n\n' +
+                f'tx power: {self.gnb_tx_power}\n' +
+                f'inr discount: {self.inr_discount}\n\n' +
 
                 f'eNB-------\n' +
                 f'radius: {self.enb_radius}\n' +

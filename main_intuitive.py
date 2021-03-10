@@ -18,7 +18,7 @@ def intuitive_resource_allocation(data_set, visualize_the_algo: bool = False) ->
 
     data_set_file_path = os.path.join(dirname, 'src/simulation/data', data_set + '.P')
     with open(data_set_file_path, "rb") as file:
-        g_nb, e_nb, cochannel_index, channel_model, g_ue_list, d_ue_list, e_ue_list = pickle.load(file)
+        g_nb, e_nb, cochannel_index, channel_model, g_ue_list, d_ue_list, e_ue_list, _ = pickle.load(file)
 
     intuitive: Intuitive = Intuitive(g_nb, e_nb, cochannel_index, g_ue_list, d_ue_list, e_ue_list)
     intuitive.algorithm()
@@ -33,7 +33,7 @@ def intuitive_resource_allocation(data_set, visualize_the_algo: bool = False) ->
 
 
 if __name__ == '__main__':
-    file_path: str = 'data_generator'
+    file_path: str = 'test/1layer/0'
     if len(sys.argv) == 2:
         file_path: str = sys.argv[1]
     intuitive_resource_allocation(data_set=file_path, visualize_the_algo=True)
