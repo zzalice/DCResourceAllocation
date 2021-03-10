@@ -6,8 +6,8 @@ from .util_type import CandidateSet, Coordinate
 
 class ENodeB(NodeB):
     def __init__(self, coordinate: Coordinate, radius: float = 0.5, power_tx: int = 46,
-                 frame_freq: int = 100, frame_time: int = 8, frame_max_layer: int = 1):
-        # default: 0.5km, 46 dBm, 20MHz * 1ms * 1layers
+                 frame_freq: int = 100, frame_time: int = 80, frame_max_layer: int = 1):
+        # default: 0.5km, 46 dBm, 20MHz * 10ms * 1layers
         super().__init__(coordinate, radius, power_tx, frame_freq, frame_time, frame_max_layer)
         self.nb_type: NodeBType = NodeBType.E
 
