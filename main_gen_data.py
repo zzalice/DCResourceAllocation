@@ -37,7 +37,7 @@ if __name__ == '__main__':
 
                 'enb_coordinate': (0.0, 0.0), 'enb_radius': 0.5, 'enb_tx_power': 46, 'enb_freq': 200, 'enb_time': 80,
                 'gnb_coordinate': (0.5, 0.0), 'gnb_radius': 0.3, 'gnb_tx_power': 30, 'gnb_freq': 216, 'gnb_time': 80,
-                'gnb_layer': i, 'inr_discount': 0.1,
+                'gnb_layer': i, 'inr_discount': 0.5,
 
                 'cochannel_bandwidth': 25}  # <--- change i in para
 
