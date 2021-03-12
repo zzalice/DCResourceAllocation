@@ -226,6 +226,7 @@ class GraphGenerator:
         result: Dict[str, Dict[
             str, List[Tuple[GNodeB, ENodeB, List[DUserEquipment], List[GUserEquipment], List[EUserEquipment]]]]] = {
             result_information: {'DC-RA': [], 'Intuitive': []}}  # TODO: refactor, raw_data_output/input
+
         for i in range(self.times):
             print(f'i:{i}')
 
