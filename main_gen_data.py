@@ -25,7 +25,7 @@ if __name__ == '__main__':
     for i in num_of_layer:  # <--- change
         folder_name: str = f'large_radius/{i}layer'  # <--- change
 
-        para = {'iteration': 500,
+        para = {'iteration': 100,
                 'output_file_path': folder_name,
                 'qos_range': [16_000, 512_000],
                 'eue_num': 930,  # eue:gue:due_num = 62:10:14 when radius are 0.5 and 0.3
