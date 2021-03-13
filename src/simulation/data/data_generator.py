@@ -1,6 +1,7 @@
 import os
 import pickle
 import random
+from datetime import datetime
 from typing import Dict, Tuple
 
 from src.channel_model.sinr import ChannelModel
@@ -14,7 +15,7 @@ from src.simulation.data.util_type import UECoordinate, UEProfiles
 
 
 class DataGenerator:
-    def __init__(self, times: int, output_file_path: str,
+    def __init__(self, iteration: int, output_file_path: str,
                  qos_range: Tuple[int, int],
                  eue_num: int, eue_hotspots: Tuple[Tuple[float, float, float, int]],
                  gue_num: int, gue_hotspots: Tuple[Tuple[float, float, float, int]],
@@ -23,9 +24,11 @@ class DataGenerator:
                  gnb_coordinate: Tuple[int, int], gnb_radius: float, gnb_tx_power: int, gnb_freq: int, gnb_time: int,
                  gnb_layer: int, inr_discount: float,
                  cochannel_bandwidth: int):
-        assert times > 0
-        self.times: int = times
-        self.output_file_path: str = f'{os.path.dirname(__file__)}/{output_file_path}'
+        assert iteration > 0
+        self.iteration: int = iteration
+        self.output_file_path: str = f'{os.path.dirname(__file__)}/{datetime.today().strftime("%m%d-%H%M%S")}{output_file_path}'
+        if not os.path.exists(self.output_file_path):
+            os.makedirs(self.output_file_path)
         assert qos_range[0] <= qos_range[1]
         self.qos_range: Tuple[int, int] = qos_range
         assert eue_num >= 0 and gue_num >= 0 and due_num >= 0
@@ -54,7 +57,7 @@ class DataGenerator:
         self.cochannel_bandwidth: int = cochannel_bandwidth
 
     def generate_data(self):
-        for i in range(self.times):
+        for i in range(self.iteration):
             e_nb: ENodeB = ENodeB(coordinate=Coordinate(self.enb_coordinate[0], self.enb_coordinate[1]),
                                   radius=self.enb_radius, power_tx=self.enb_tx_power, frame_freq=self.enb_freq,
                                   frame_time=self.enb_time)
