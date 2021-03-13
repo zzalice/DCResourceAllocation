@@ -5,7 +5,7 @@ from src.simulation.data.data_generator import DataGenerator
 
 
 def main(parameter: Dict):
-    DataGenerator(times=parameter['times'], output_file_path=parameter['output_file_path'],
+    DataGenerator(iteration=parameter['iteration'], output_file_path=parameter['output_file_path'],
                   qos_range=parameter['qos_range'],
                   eue_num=parameter['eue_num'], eue_hotspots=parameter['eue_hotspots'],
                   gue_num=parameter['gue_num'], gue_hotspots=parameter['gue_hotspots'],
@@ -23,10 +23,8 @@ def main(parameter: Dict):
 if __name__ == '__main__':
     num_of_layer = [1, 2, 3]  # <--- change
     for i in num_of_layer:  # <--- change
-        folder_name: str = f'large_radius/{i}layer'  # <--- change
-
-        para = {'times': 500,
-                'output_file_path': folder_name,
+        para = {'iteration': 100,
+                'output_file_path': f'large_radius/{i}layer',  # <--- change
                 'qos_range': [16_000, 512_000],
                 'eue_num': 930,  # eue:gue:due_num = 62:10:14 when radius are 0.5 and 0.3
                 'eue_hotspots': (),
@@ -40,8 +38,5 @@ if __name__ == '__main__':
                 'gnb_layer': i, 'inr_discount': 0.5,
 
                 'cochannel_bandwidth': 25}  # <--- change i in para
-
-        if not os.path.exists(f'src/simulation/data/{para["output_file_path"]}'):
-            os.makedirs(f'src/simulation/data/{para["output_file_path"]}')
 
         main(para)
