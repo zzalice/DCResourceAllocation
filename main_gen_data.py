@@ -22,7 +22,8 @@ def main(parameter: Dict):
 
 if __name__ == '__main__':
     num_of_layer = [1, 2, 3]  # <--- change
-    output_folder: str = f'{datetime.today().strftime("%m%d-%H%M%S")}large_radius'   # <--- change
+    date: str = datetime.today().strftime("%m%d-%H%M%S")
+    output_folder: str = f'{date}large_radius'   # <--- change
     for i in num_of_layer:
         para = {'iteration': 100,
                 'output_file_path': f'{output_folder}/{i}layer',
@@ -38,6 +39,6 @@ if __name__ == '__main__':
                 'gnb_coordinate': (0.5, 0.0), 'gnb_radius': 0.3, 'gnb_tx_power': 30, 'gnb_freq': 216, 'gnb_time': 80,
                 'gnb_layer': i, 'inr_discount': 0.5,
 
-                'cochannel_bandwidth': 25}  # <--- change i in para
+                'cochannel_bandwidth': 25}
 
         main(para)
