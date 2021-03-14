@@ -1,4 +1,4 @@
-import os
+from datetime import datetime
 from typing import Dict
 
 from src.simulation.data.data_generator import DataGenerator
@@ -22,9 +22,10 @@ def main(parameter: Dict):
 
 if __name__ == '__main__':
     num_of_layer = [1, 2, 3]  # <--- change
-    for i in num_of_layer:  # <--- change
+    output_folder: str = f'{datetime.today().strftime("%m%d-%H%M%S")}large_radius'   # <--- change
+    for i in num_of_layer:
         para = {'iteration': 100,
-                'output_file_path': f'large_radius/{i}layer',  # <--- change
+                'output_file_path': f'{output_folder}/{i}layer',
                 'qos_range': [16_000, 512_000],
                 'eue_num': 930,  # eue:gue:due_num = 62:10:14 when radius are 0.5 and 0.3
                 'eue_hotspots': (),

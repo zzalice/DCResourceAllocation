@@ -1,7 +1,6 @@
 import os
 import pickle
 import random
-from datetime import datetime
 from typing import Dict, Tuple
 
 from src.channel_model.sinr import ChannelModel
@@ -26,7 +25,7 @@ class DataGenerator:
                  cochannel_bandwidth: int):
         assert iteration > 0
         self.iteration: int = iteration
-        self.output_file_path: str = f'{os.path.dirname(__file__)}/{datetime.today().strftime("%m%d-%H%M%S")}{output_file_path}'
+        self.output_file_path: str = f'{os.path.dirname(__file__)}/{output_file_path}'
         if not os.path.exists(self.output_file_path):
             os.makedirs(self.output_file_path)
         assert qos_range[0] <= qos_range[1]
