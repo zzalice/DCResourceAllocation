@@ -1,11 +1,8 @@
 import math
 import os
 import pickle
-import time
 from typing import Any, Dict, List, Tuple, Union
 
-from main import dc_resource_allocation
-from main_intuitive import intuitive_resource_allocation
 from src.resource_allocation.algo.utils import bpframe_to_mbps, calc_system_throughput_uncategorized_ue
 from src.resource_allocation.ds.eutran import ENodeB, EUserEquipment
 from src.resource_allocation.ds.ngran import DUserEquipment, GNodeB, GUserEquipment
@@ -14,53 +11,76 @@ from src.simulation.graph.util_graph import bar_chart, line_chart, scatter_chart
 
 
 class GraphGenerator:
-    def __init__(self, times: int, folder: str):
-        assert times > 0
-        self.times: int = times  # TODO: shouldn't be a input value. len(output_data['iter'][algo])
-        self.folder: str = folder
-        if isinstance(folder, str):
-            self.output_file_path: str = f'{os.path.dirname(__file__)}/{folder}'
-            if not os.path.exists(self.output_file_path):
-                os.makedirs(self.output_file_path)
-        elif isinstance(folder, list):
-            self.output_file_path = []
-            for i, f in enumerate(folder):
-                self.output_file_path.append(f'{os.path.dirname(__file__)}/{f}')
-                if not os.path.exists(self.output_file_path[i]):
-                    os.makedirs(self.output_file_path[i])
+    def __init__(self, folder_result: Tuple[str], graph_type: str, *args, **kwargs):
+        self.output_file_path: List[str] = []
+        for f in folder_result:
+            self.output_file_path.append(f'{os.path.dirname(__file__)}/{f}')
 
-    def gen_sys_throughput_layer(self, layers: List[int]):
-        pickle_file_path: str = f'{self.output_file_path}/dcra_intuitive.P'
-        with open(pickle_file_path, 'wb') as f:
-            pickle.dump('new file', f)  # TODO: new a empty pickle
-        program_start_time = time.time()
+        # parameters for graph generating usage
+        self.collect_data = {}
+        self.count_iter = {}
+        self.frame_time: int = -1
 
-        avg_system_throughput: Dict[str, List[Any]] = {'DC-RA': [0.0 for _ in range(len(layers))],
-                                                       'Intuitive': [0.0 for _ in range(len(layers))]}
-        for i in range(len(layers)):
-            print(f'l: {layers[i]}')
-            data_description: str = f'{layers[i]}layer'
-            result: Dict[str, Dict[str, List[Tuple[GNodeB, ENodeB, List[DUserEquipment], List[GUserEquipment], List[
-                EUserEquipment]]]]
-            ] = self._run_algo(f'{self.folder}/{layers[i]}layer/', pickle_file_path, data_description)
+        # main
+        for file_path in self.output_file_path:
+            file_result: str = f'{file_path}/result_iter_layer.P'
+            with open(file_result, 'rb') as f:
+                information: Dict = pickle.load(f)
+                while True:
+                    try:
+                        algo_result: Dict[
+                            str, Dict[str, Tuple[GNodeB, ENodeB, List[DUserEquipment], List[GUserEquipment], List[
+                                EUserEquipment]]]] = pickle.load(f)
+                        if graph_type == 'sys throughput - layer':
+                            self.collect_sys_throughput_layer(kwargs['iteration'], algo_result)
+                    except EOFError:
+                        if graph_type == 'sys throughput - layer':
+                            self.gen_sys_throughput_layer(kwargs['iteration'], kwargs['layers'], file_path)
+                        break
 
-            # sum system throughput
-            for j in range(self.times):
-                for data in avg_system_throughput:
-                    avg_system_throughput[data][i] += calc_system_throughput_uncategorized_ue(
-                        result[data_description][data][j][2] + result[data_description][data][j][3] +
-                        result[data_description][data][j][4])
+    def collect_sys_throughput_layer(self, iteration: int, result: Dict[str, Dict[str, Tuple[GNodeB, ENodeB, List[
+                                                    DUserEquipment], List[GUserEquipment], List[EUserEquipment]]]]):
+        #                                                               layer     algo
+        # collect: Dict[str, Dict[str, Tuple[gNB, enb, List[dUE], List[gUE], List[eUE]]]]
+        #               layer     algo
+        self.frame_time: int = next(iter(next(iter(result.values())).values()))[0].frame.frame_time
 
-            # avg system throughput
-            for data in avg_system_throughput:
-                avg_system_throughput[data][i] /= self.times
-                avg_system_throughput[data][i] = bpframe_to_mbps(avg_system_throughput[data][i],
-                                                                 result[data_description][data][-1][0].frame.frame_time)
+        for layer in result:
+            l: int = int(layer.replace('layer', ''))
+            try:
+                if self.count_iter[l] >= iteration:
+                    return True
+                else:
+                    self.count_iter[l] += 1
+            except KeyError:
+                self.count_iter[l] = 1
+                self.collect_data[l] = {}
+
+            for algo in result[layer]:
+                try:
+                    self.collect_data[l][algo] += calc_system_throughput_uncategorized_ue(
+                        result[layer][algo][2] + result[layer][algo][3] + result[layer][algo][4])
+                except KeyError:
+                    self.collect_data[l][algo] = calc_system_throughput_uncategorized_ue(
+                        result[layer][algo][2] + result[layer][algo][3] + result[layer][algo][4])
+        return True
+
+    def gen_sys_throughput_layer(self, iteration: int, layers: List[int], output_file_path: str):
+        for i in range(len(layers) - 1):
+            assert layers[i] < layers[i + 1], 'Not in order.'
+        avg_system_throughput: Dict[str, List[float]] = {algo: [] for algo in next(iter(self.collect_data.values()))}
+        #                           algo      avg throughput of each layer
+
+        for layer in layers:
+            for algo in self.collect_data[layer]:
+                assert self.count_iter[layer] == iteration
+                self.collect_data[layer][algo] /= iteration
+                assert self.frame_time > 0
+                self.collect_data[layer][algo] = bpframe_to_mbps(self.collect_data[layer][algo], self.frame_time)
+                avg_system_throughput[algo].append(self.collect_data[layer][algo])
 
         line_chart('', 'The number of gNB layer', ([str(i) for i in layers]), 'System throughput(Mbps)',
-                   avg_system_throughput, self.output_file_path, self._parameter())
-
-        print("--- %s sec ---" % round((time.time() - program_start_time), 3))
+                   avg_system_throughput, output_file_path, {'iteration': iteration})
 
     def gen_used_percentage(self, data_file_path: str):
         x_labels: List[str] = []
@@ -221,30 +241,6 @@ class GraphGenerator:
             if due.is_allocated:
                 raw_data[variation][max_layer][algo]['due-cross-bs'] += 1 if due.cross_nb else 0
         return raw_data
-
-    def _run_algo(self, data_set_file_path: str, pickle_file_path: str, result_information: str):
-        result: Dict[str, Dict[
-            str, List[Tuple[GNodeB, ENodeB, List[DUserEquipment], List[GUserEquipment], List[EUserEquipment]]]]] = {
-            result_information: {'DC-RA': [], 'Intuitive': []}}  # TODO: refactor, raw_data_output/input
-
-        for i in range(self.times):
-            print(f'i:{i}')
-
-            start_time = time.time()
-            result[result_information]['DC-RA'].append(dc_resource_allocation(data_set_file_path + str(i)))
-            print("--- %s sec DC-RA ---" % round((time.time() - start_time), 3))
-
-            start_time = time.time()
-            result[result_information]['Intuitive'].append(
-                intuitive_resource_allocation(data_set_file_path + str(i)))
-            print("--- %s sec Intui ---" % round((time.time() - start_time), 3))
-
-        with open(pickle_file_path, 'ab+') as f:
-            pickle.dump(result, f)
-        return result
-
-    def _parameter(self) -> Dict:
-        return {'times': self.times}
 
     @staticmethod
     def read_data(pickle_data: Dict[str, Dict[str, List[
