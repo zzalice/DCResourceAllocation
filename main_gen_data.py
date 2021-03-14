@@ -21,14 +21,16 @@ def main(parameter: Dict):
 
 
 if __name__ == '__main__':
-    num_of_layer = [1, 2, 3]  # <--- change
+    num_of_layer = [1, 2, 3, 4, 5]  # <--- change
     date: str = datetime.today().strftime("%m%d-%H%M%S")
     output_folder: str = f'{date}large_radius'   # <--- change
     for i in num_of_layer:
         para = {'iteration': 100,
                 'output_file_path': f'{output_folder}/{i}layer',
                 'qos_range': [16_000, 512_000],
-                'eue_num': 930,  # eue:gue:due_num = 62:10:14 when radius are 0.5 and 0.3
+                # eue:gue:due_num = 62:10:14 when radius are 0.5 and 0.3
+                # eue:gue:due_num = 6:2:3    when radius are 0.5 and 0.4
+                'eue_num': 930,
                 'eue_hotspots': (),
                 'gue_num': 150,
                 'gue_hotspots': (),

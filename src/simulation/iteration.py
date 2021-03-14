@@ -1,6 +1,7 @@
 import os
 import pickle
 import time
+from datetime import datetime
 from typing import Dict, List, Tuple
 
 from main import dc_resource_allocation
@@ -11,9 +12,11 @@ from src.resource_allocation.ds.ngran import DUserEquipment, GNodeB, GUserEquipm
 
 class IterateAlgo:
     def iter_layer(self, iteration: int, layers: List[int], folder_data: str) -> bool:
-        folder_graph: str = f'{os.path.dirname(__file__)}/graph/{folder_data}/'
-        file_result: str = f'{folder_graph}result_iter_layer.P'
+        folder_graph: str = f'{os.path.dirname(__file__)}/graph/{folder_data}'
         self._new_directory(folder_graph)
+
+        date: str = datetime.today().strftime("%m%d-%H%M%S")
+        file_result: str = f'{folder_graph}/{date}result_iter_layer.P'
         with open(file_result, 'wb') as f:
             pickle.dump({'iteration': iteration, 'layers': layers, 'data folder': folder_data}, f)
 
