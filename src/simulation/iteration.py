@@ -1,3 +1,4 @@
+import json
 import os
 import pickle
 import time
@@ -12,13 +13,17 @@ from src.resource_allocation.ds.util_enum import E_MCS, G_MCS
 
 class IterateAlgo:
     def iter_layer(self, iteration: int, layers: List[int], folder_data: str) -> bool:
-        folder_graph: str = f'{os.path.dirname(__file__)}/graph/{folder_data}'
+        parameter = {'iteration': iteration, 'layers': layers, 'data folder': folder_data,
+                     'gNB MCS': [G_MCS.get_worst().name, G_MCS.get_best().name],
+                     'eNB MCS': [E_MCS.get_worst().name, E_MCS.get_best().name]}
+
+        folder_graph: str = f'{os.path.dirname(__file__)}/graph/{folder_data}/gNB{parameter["gNB MCS"][0]}{parameter["gNB MCS"][1]}_eNB{parameter["eNB MCS"][0]}{parameter["eNB MCS"][1]}'
         self._new_directory(folder_graph)
+        self.gen_txt_parameter(parameter, folder_graph)
 
         file_result: str = f'{folder_graph}/result.P'
         with open(file_result, 'wb') as f:
-            pickle.dump({'iteration': iteration, 'layers': layers, 'data folder': folder_data,
-                         'gNB MCS': [G_MCS.get_worst, G_MCS.get_best], 'eNB MCS': [E_MCS.get_worst, E_MCS.get_best]}, f)
+            pickle.dump(parameter, f)
 
         program_start_time = time.time()
         for l in layers:
@@ -50,3 +55,8 @@ class IterateAlgo:
     def _new_directory(path):
         if not os.path.exists(path):
             os.makedirs(path)
+
+    @staticmethod
+    def gen_txt_parameter(parameter, output_file_path: str):
+        with open(f'{output_file_path}/parameter.txt', 'w') as f:
+            json.dump(parameter, f)
