@@ -2,6 +2,10 @@ from src.simulation.graph.graph_generator import GraphGenerator
 from src.simulation.iteration import IterateAlgo
 
 if __name__ == '__main__':
+    """
+    MCS parameter can be set in resource_allocation/ds/util_enum.py
+    and record in IterateAlgo output pickle.
+    """
     # IterateAlgo().iter_layer(folder_data='0315-094335small', iteration=10, layers=[1, 2, 3, 4, 5])
 
     # GraphGenerator(folder_result=('0315-094335small',), iteration=10, layers=[2, 3, 4], graph_type='sys throughput - layer')

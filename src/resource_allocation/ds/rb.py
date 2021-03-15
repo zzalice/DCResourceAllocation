@@ -3,7 +3,7 @@ from __future__ import annotations
 from typing import Optional, Tuple, TYPE_CHECKING, Union
 
 from .undo import Undo
-from .util_enum import E_MCS, G_MCS, NodeBType, Numerology, SINRtoMCS
+from .util_enum import E_MCS, G_MCS, NodeBType, Numerology
 
 if TYPE_CHECKING:
     from .frame import BaseUnit, Layer
@@ -59,7 +59,8 @@ class ResourceBlock(Undo):
     @sinr.setter
     def sinr(self, sinr: float):
         self._sinr: float = sinr
-        self._mcs: Union[E_MCS, G_MCS] = SINRtoMCS.sinr_to_mcs(self.sinr, self.layer.nodeb.nb_type)
+        self._mcs: Union[E_MCS, G_MCS] = (G_MCS if self.layer.nodeb.nb_type == NodeBType.G else E_MCS).sinr_to_mcs(
+            self.sinr)
 
     @property
     def mcs(self) -> Union[E_MCS, G_MCS]:

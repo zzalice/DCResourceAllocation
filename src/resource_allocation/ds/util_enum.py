@@ -105,25 +105,40 @@ class E_MCS(_MCS):
     ref: [Resource Allocation for Multi-Carrier Cellular Networks](https://ieeexplore.ieee.org/abstract/document/8376971)
     """
     CQI0 = 0.0
-    CQI1_QPSK = 12.796875  # bit per 0.5ms(RB)
-    CQI2_QPSK = 19.6875
-    CQI3_QPSK = 31.6640625
-    CQI4_QPSK = 50.53125
-    CQI5_QPSK = 73.6640625
-    CQI6_QPSK = 98.765625
-    CQI7_16QAM = 124.03125
-    CQI8_16QAM = 160.78125
-    CQI9_16QAM = 202.125
-    CQI10_64QAM = 229.359375
-    CQI11_64QAM = 279.0703125
-    CQI12_64QAM = 327.796875
-    CQI13_64QAM = 379.96875
-    CQI14_64QAM = 429.6796875
-    CQI15_64QAM = 466.59375
+    CQI1 = 12.796875  # bit per 0.5ms(RB)
+    CQI2 = 19.6875
+    CQI3 = 31.6640625
+    CQI4 = 50.53125
+    CQI5 = 73.6640625
+    CQI6 = 98.765625
+    CQI7 = 124.03125
+    CQI8 = 160.78125
+    CQI9 = 202.125
+    CQI10 = 229.359375
+    CQI11 = 279.0703125
+    CQI12 = 327.796875
+    CQI13 = 379.96875
+    CQI14 = 429.6796875
+    CQI15 = 466.59375
 
     @staticmethod
     def get_worst() -> E_MCS:
-        return E_MCS.CQI1_QPSK
+        return E_MCS.CQI1  # <-- change
+
+    @staticmethod
+    def get_best() -> E_MCS:
+        return E_MCS.CQI15  # <-- change
+
+    @staticmethod
+    def sinr_to_mcs(sinr: float) -> E_MCS:
+        worst_mcs: E_MCS = E_MCS.get_worst()
+        best_mcs: E_MCS = E_MCS.get_best()
+        if sinr < getattr(_SINRtoMCS, worst_mcs.name):
+            return E_MCS.CQI0
+        elif sinr > getattr(_SINRtoMCS, best_mcs.name):
+            return best_mcs
+        else:
+            return _SINRtoMCS.sinr_to_mcs(sinr, NodeBType.E)
 
     @property
     def efficiency(self) -> float:
@@ -141,82 +156,97 @@ class G_MCS(_MCS):
          [5G NR Throughput calculator](https://5g-tools.com/5g-nr-throughput-calculator/)
     """
     CQI0 = 0.0
-    CQI1_QPSK = 22.010625  # bit per ms(RB)
-    CQI2_QPSK = 33.8625
-    CQI3_QPSK = 54.4621875
-    CQI4_QPSK = 86.91375
-    CQI5_QPSK = 126.7021875
-    CQI6_QPSK = 169.876875
-    CQI7_16QAM = 213.33375
-    CQI8_16QAM = 276.54375
-    CQI9_16QAM = 347.655
-    CQI10_64QAM = 394.498125
-    CQI11_64QAM = 480.0009375
-    CQI12_64QAM = 563.810625
-    CQI13_64QAM = 653.54625
-    CQI14_64QAM = 739.0490625
-    CQI15_64QAM = 802.54125
+    CQI1 = 22.010625  # bit per ms(RB)
+    CQI2 = 33.8625
+    CQI3 = 54.4621875
+    CQI4 = 86.91375
+    CQI5 = 126.7021875
+    CQI6 = 169.876875
+    CQI7 = 213.33375
+    CQI8 = 276.54375
+    CQI9 = 347.655
+    CQI10 = 394.498125
+    CQI11 = 480.0009375
+    CQI12 = 563.810625
+    CQI13 = 653.54625
+    CQI14 = 739.0490625
+    CQI15 = 802.54125
 
     @staticmethod
     def get_worst() -> G_MCS:
-        return G_MCS.CQI1_QPSK
+        return G_MCS.CQI1  # <-- change
+
+    @staticmethod
+    def get_best() -> G_MCS:
+        return G_MCS.CQI15  # <-- change
+
+    @staticmethod
+    def sinr_to_mcs(sinr: float) -> G_MCS:
+        worst_mcs: G_MCS = G_MCS.get_worst()
+        best_mcs: G_MCS = G_MCS.get_best()
+        if sinr < getattr(_SINRtoMCS, worst_mcs.name):
+            return G_MCS.CQI0
+        elif sinr > getattr(_SINRtoMCS, best_mcs.name):
+            return best_mcs
+        else:
+            return _SINRtoMCS.sinr_to_mcs(sinr, NodeBType.G)
 
     @property
     def efficiency(self) -> float:
         return self.value / 8
 
 
-class SINRtoMCS:
+class _SINRtoMCS:
     """
     ref: https://www.mathworks.com/help/5g/ug/5g-nr-cqi-reporting.html
     """
-    CQI1_QPSK = -1.889  # SINR in dB
-    CQI2_QPSK = -0.817
-    CQI3_QPSK = 0.954
-    CQI4_QPSK = 2.948
-    CQI5_QPSK = 4.899
-    CQI6_QPSK = 7.39
-    CQI7_16QAM = 8.898
-    CQI8_16QAM = 11.02
-    CQI9_16QAM = 13.3
-    CQI10_64QAM = 14.68
-    CQI11_64QAM = 16.62
-    CQI12_64QAM = 18.91
-    CQI13_64QAM = 21.58
-    CQI14_64QAM = 24.88
-    CQI15_64QAM = 29.32
+    CQI1 = -1.889  # SINR in dB
+    CQI2 = -0.817
+    CQI3 = 0.954
+    CQI4 = 2.948
+    CQI5 = 4.899
+    CQI6 = 7.39
+    CQI7 = 8.898
+    CQI8 = 11.02
+    CQI9 = 13.3
+    CQI10 = 14.68
+    CQI11 = 16.62
+    CQI12 = 18.91
+    CQI13 = 21.58
+    CQI14 = 24.88
+    CQI15 = 29.32
 
     @staticmethod
     def sinr_to_mcs(sinr: float, nb_type: NodeBType) -> Union[E_MCS, G_MCS, Boolean]:
-        if sinr < SINRtoMCS.CQI1_QPSK:  # SINR out of range
+        if sinr < _SINRtoMCS.CQI1:  # SINR out of range
             return G_MCS.CQI0 if nb_type == NodeBType.G else E_MCS.CQI0
-        elif SINRtoMCS.CQI1_QPSK <= sinr < SINRtoMCS.CQI2_QPSK:
-            return G_MCS.CQI1_QPSK if nb_type == NodeBType.G else E_MCS.CQI1_QPSK
-        elif SINRtoMCS.CQI2_QPSK <= sinr < SINRtoMCS.CQI3_QPSK:
-            return G_MCS.CQI2_QPSK if nb_type == NodeBType.G else E_MCS.CQI2_QPSK
-        elif SINRtoMCS.CQI3_QPSK <= sinr < SINRtoMCS.CQI4_QPSK:
-            return G_MCS.CQI3_QPSK if nb_type == NodeBType.G else E_MCS.CQI3_QPSK
-        elif SINRtoMCS.CQI4_QPSK <= sinr < SINRtoMCS.CQI5_QPSK:
-            return G_MCS.CQI4_QPSK if nb_type == NodeBType.G else E_MCS.CQI4_QPSK
-        elif SINRtoMCS.CQI5_QPSK <= sinr < SINRtoMCS.CQI6_QPSK:
-            return G_MCS.CQI5_QPSK if nb_type == NodeBType.G else E_MCS.CQI5_QPSK
-        elif SINRtoMCS.CQI6_QPSK <= sinr < SINRtoMCS.CQI7_16QAM:
-            return G_MCS.CQI6_QPSK if nb_type == NodeBType.G else E_MCS.CQI6_QPSK
-        elif SINRtoMCS.CQI7_16QAM <= sinr < SINRtoMCS.CQI8_16QAM:
-            return G_MCS.CQI7_16QAM if nb_type == NodeBType.G else E_MCS.CQI7_16QAM
-        elif SINRtoMCS.CQI8_16QAM <= sinr < SINRtoMCS.CQI9_16QAM:
-            return G_MCS.CQI8_16QAM if nb_type == NodeBType.G else E_MCS.CQI8_16QAM
-        elif SINRtoMCS.CQI9_16QAM <= sinr < SINRtoMCS.CQI10_64QAM:
-            return G_MCS.CQI9_16QAM if nb_type == NodeBType.G else E_MCS.CQI9_16QAM
-        elif SINRtoMCS.CQI10_64QAM <= sinr < SINRtoMCS.CQI11_64QAM:
-            return G_MCS.CQI10_64QAM if nb_type == NodeBType.G else E_MCS.CQI10_64QAM
-        elif SINRtoMCS.CQI11_64QAM <= sinr < SINRtoMCS.CQI12_64QAM:
-            return G_MCS.CQI11_64QAM if nb_type == NodeBType.G else E_MCS.CQI11_64QAM
-        elif SINRtoMCS.CQI12_64QAM <= sinr < SINRtoMCS.CQI13_64QAM:
-            return G_MCS.CQI12_64QAM if nb_type == NodeBType.G else E_MCS.CQI12_64QAM
-        elif SINRtoMCS.CQI13_64QAM <= sinr < SINRtoMCS.CQI14_64QAM:
-            return G_MCS.CQI13_64QAM if nb_type == NodeBType.G else E_MCS.CQI13_64QAM
-        elif SINRtoMCS.CQI14_64QAM <= sinr < SINRtoMCS.CQI15_64QAM:
-            return G_MCS.CQI14_64QAM if nb_type == NodeBType.G else E_MCS.CQI14_64QAM
-        elif SINRtoMCS.CQI15_64QAM <= sinr:
-            return G_MCS.CQI15_64QAM if nb_type == NodeBType.G else E_MCS.CQI15_64QAM
+        elif _SINRtoMCS.CQI1 <= sinr < _SINRtoMCS.CQI2:
+            return G_MCS.CQI1 if nb_type == NodeBType.G else E_MCS.CQI1
+        elif _SINRtoMCS.CQI2 <= sinr < _SINRtoMCS.CQI3:
+            return G_MCS.CQI2 if nb_type == NodeBType.G else E_MCS.CQI2
+        elif _SINRtoMCS.CQI3 <= sinr < _SINRtoMCS.CQI4:
+            return G_MCS.CQI3 if nb_type == NodeBType.G else E_MCS.CQI3
+        elif _SINRtoMCS.CQI4 <= sinr < _SINRtoMCS.CQI5:
+            return G_MCS.CQI4 if nb_type == NodeBType.G else E_MCS.CQI4
+        elif _SINRtoMCS.CQI5 <= sinr < _SINRtoMCS.CQI6:
+            return G_MCS.CQI5 if nb_type == NodeBType.G else E_MCS.CQI5
+        elif _SINRtoMCS.CQI6 <= sinr < _SINRtoMCS.CQI7:
+            return G_MCS.CQI6 if nb_type == NodeBType.G else E_MCS.CQI6
+        elif _SINRtoMCS.CQI7 <= sinr < _SINRtoMCS.CQI8:
+            return G_MCS.CQI7 if nb_type == NodeBType.G else E_MCS.CQI7
+        elif _SINRtoMCS.CQI8 <= sinr < _SINRtoMCS.CQI9:
+            return G_MCS.CQI8 if nb_type == NodeBType.G else E_MCS.CQI8
+        elif _SINRtoMCS.CQI9 <= sinr < _SINRtoMCS.CQI10:
+            return G_MCS.CQI9 if nb_type == NodeBType.G else E_MCS.CQI9
+        elif _SINRtoMCS.CQI10 <= sinr < _SINRtoMCS.CQI11:
+            return G_MCS.CQI10 if nb_type == NodeBType.G else E_MCS.CQI10
+        elif _SINRtoMCS.CQI11 <= sinr < _SINRtoMCS.CQI12:
+            return G_MCS.CQI11 if nb_type == NodeBType.G else E_MCS.CQI11
+        elif _SINRtoMCS.CQI12 <= sinr < _SINRtoMCS.CQI13:
+            return G_MCS.CQI12 if nb_type == NodeBType.G else E_MCS.CQI12
+        elif _SINRtoMCS.CQI13 <= sinr < _SINRtoMCS.CQI14:
+            return G_MCS.CQI13 if nb_type == NodeBType.G else E_MCS.CQI13
+        elif _SINRtoMCS.CQI14 <= sinr < _SINRtoMCS.CQI15:
+            return G_MCS.CQI14 if nb_type == NodeBType.G else E_MCS.CQI14
+        elif _SINRtoMCS.CQI15 <= sinr:
+            return G_MCS.CQI15 if nb_type == NodeBType.G else E_MCS.CQI15
