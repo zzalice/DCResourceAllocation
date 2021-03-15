@@ -96,106 +96,6 @@ class _MCS(Enum):
         raise NotImplementedError
 
 
-# noinspection PyPep8Naming
-class E_MCS(_MCS):
-    """
-    e.g. CQI1_QPSK = 12.796875
-         data rate(Mbps) = ((1 / 0.0005) * (78/1024) * LOG(4,2) * 12 * 7) / 1000
-         data rate(bit per RB) = data rate in Mbps * 0.0005 * 1000
-    ref: [Resource Allocation for Multi-Carrier Cellular Networks](https://ieeexplore.ieee.org/abstract/document/8376971)
-    """
-    CQI0 = 0.0
-    CQI1 = 12.796875  # bit per 0.5ms(RB)
-    CQI2 = 19.6875
-    CQI3 = 31.6640625
-    CQI4 = 50.53125
-    CQI5 = 73.6640625
-    CQI6 = 98.765625
-    CQI7 = 124.03125
-    CQI8 = 160.78125
-    CQI9 = 202.125
-    CQI10 = 229.359375
-    CQI11 = 279.0703125
-    CQI12 = 327.796875
-    CQI13 = 379.96875
-    CQI14 = 429.6796875
-    CQI15 = 466.59375
-
-    @staticmethod
-    def get_worst() -> E_MCS:
-        return E_MCS.CQI1  # <-- change
-
-    @staticmethod
-    def get_best() -> E_MCS:
-        return E_MCS.CQI15  # <-- change
-
-    @staticmethod
-    def sinr_to_mcs(sinr: float) -> E_MCS:
-        worst_mcs: E_MCS = E_MCS.get_worst()
-        best_mcs: E_MCS = E_MCS.get_best()
-        if sinr < getattr(_SINRtoMCS, worst_mcs.name):
-            return E_MCS.CQI0
-        elif sinr > getattr(_SINRtoMCS, best_mcs.name):
-            return best_mcs
-        else:
-            return _SINRtoMCS.sinr_to_mcs(sinr, NodeBType.E)
-
-    @property
-    def efficiency(self) -> float:
-        return self.value / 4
-
-
-# noinspection PyPep8Naming, SpellCheckingInspection
-class G_MCS(_MCS):
-    """
-    e.g. CQI1_QPSK = 22.010625
-         data rate(Mbps) = 10^(-6) * 2 * 1 * (78/1024) * 216 * 12 / [10^(-3)/(14*2^0)] * (1 - 0.14)
-         data rate(bit per RB) = (data rate in Mbps * 1000000) / (1000 * 216)
-    ref: [TS 38.214 Table 5.1.3.1-1, 5.2.2.1-2](https://www.etsi.org/deliver/etsi_ts/138200_138299/138214/15.10.00_60/ts_138214v151000p.pdf)
-         [TS 38.306 4.1.2](https://www.etsi.org/deliver/etsi_ts/138300_138399/138306/15.03.00_60/ts_138306v150300p.pdf)
-         [5G NR Throughput calculator](https://5g-tools.com/5g-nr-throughput-calculator/)
-    """
-    CQI0 = 0.0
-    CQI1 = 22.010625  # bit per ms(RB)
-    CQI2 = 33.8625
-    CQI3 = 54.4621875
-    CQI4 = 86.91375
-    CQI5 = 126.7021875
-    CQI6 = 169.876875
-    CQI7 = 213.33375
-    CQI8 = 276.54375
-    CQI9 = 347.655
-    CQI10 = 394.498125
-    CQI11 = 480.0009375
-    CQI12 = 563.810625
-    CQI13 = 653.54625
-    CQI14 = 739.0490625
-    CQI15 = 802.54125
-
-    @staticmethod
-    def get_worst() -> G_MCS:
-        return G_MCS.CQI1  # <-- change
-
-    @staticmethod
-    def get_best() -> G_MCS:
-        return G_MCS.CQI15  # <-- change
-
-    @staticmethod
-    def sinr_to_mcs(sinr: float) -> G_MCS:
-        worst_mcs: G_MCS = G_MCS.get_worst()
-        best_mcs: G_MCS = G_MCS.get_best()
-        if sinr < getattr(_SINRtoMCS, worst_mcs.name):
-            return G_MCS.CQI0
-        elif sinr > getattr(_SINRtoMCS, best_mcs.name):
-            return best_mcs
-        else:
-            return _SINRtoMCS.sinr_to_mcs(sinr, NodeBType.G)
-
-    @property
-    def efficiency(self) -> float:
-        return self.value / 8
-
-
 class _SINRtoMCS:
     """
     ref: https://www.mathworks.com/help/5g/ug/5g-nr-cqi-reporting.html
@@ -250,3 +150,101 @@ class _SINRtoMCS:
             return G_MCS.CQI14 if nb_type == NodeBType.G else E_MCS.CQI14
         elif _SINRtoMCS.CQI15 <= sinr:
             return G_MCS.CQI15 if nb_type == NodeBType.G else E_MCS.CQI15
+
+
+# noinspection PyPep8Naming
+class E_MCS(_MCS):
+    """
+    e.g. CQI1_QPSK = 12.796875
+         data rate(Mbps) = ((1 / 0.0005) * (78/1024) * LOG(4,2) * 12 * 7) / 1000
+         data rate(bit per RB) = data rate in Mbps * 0.0005 * 1000
+    ref: [Resource Allocation for Multi-Carrier Cellular Networks](https://ieeexplore.ieee.org/abstract/document/8376971)
+    """
+    CQI0 = 0.0
+    CQI1 = 12.796875  # bit per 0.5ms(RB)
+    CQI2 = 19.6875
+    CQI3 = 31.6640625
+    CQI4 = 50.53125
+    CQI5 = 73.6640625
+    CQI6 = 98.765625
+    CQI7 = 124.03125
+    CQI8 = 160.78125
+    CQI9 = 202.125
+    CQI10 = 229.359375
+    CQI11 = 279.0703125
+    CQI12 = 327.796875
+    CQI13 = 379.96875
+    CQI14 = 429.6796875
+    CQI15 = 466.59375
+
+    @property
+    def efficiency(self) -> float:
+        return self.value / 4
+
+    @staticmethod
+    def sinr_to_mcs(sinr: float) -> E_MCS:
+        worst_mcs: E_MCS = E_MCS.get_worst()
+        best_mcs: E_MCS = E_MCS.get_best()
+        if sinr < getattr(_SINRtoMCS, worst_mcs.name):
+            return E_MCS.CQI0
+        elif sinr > getattr(_SINRtoMCS, best_mcs.name):
+            return best_mcs
+        else:
+            return _SINRtoMCS.sinr_to_mcs(sinr, NodeBType.E)
+
+    @staticmethod
+    def get_worst() -> E_MCS:
+        return E_MCS.CQI1  # <-- change
+
+    @staticmethod
+    def get_best() -> E_MCS:
+        return E_MCS.CQI15  # <-- change
+
+
+# noinspection PyPep8Naming, SpellCheckingInspection
+class G_MCS(_MCS):
+    """
+    e.g. CQI1_QPSK = 22.010625
+         data rate(Mbps) = 10^(-6) * 2 * 1 * (78/1024) * 216 * 12 / [10^(-3)/(14*2^0)] * (1 - 0.14)
+         data rate(bit per RB) = (data rate in Mbps * 1000000) / (1000 * 216)
+    ref: [TS 38.214 Table 5.1.3.1-1, 5.2.2.1-2](https://www.etsi.org/deliver/etsi_ts/138200_138299/138214/15.10.00_60/ts_138214v151000p.pdf)
+         [TS 38.306 4.1.2](https://www.etsi.org/deliver/etsi_ts/138300_138399/138306/15.03.00_60/ts_138306v150300p.pdf)
+         [5G NR Throughput calculator](https://5g-tools.com/5g-nr-throughput-calculator/)
+    """
+    CQI0 = 0.0
+    CQI1 = 22.010625  # bit per ms(RB)
+    CQI2 = 33.8625
+    CQI3 = 54.4621875
+    CQI4 = 86.91375
+    CQI5 = 126.7021875
+    CQI6 = 169.876875
+    CQI7 = 213.33375
+    CQI8 = 276.54375
+    CQI9 = 347.655
+    CQI10 = 394.498125
+    CQI11 = 480.0009375
+    CQI12 = 563.810625
+    CQI13 = 653.54625
+    CQI14 = 739.0490625
+    CQI15 = 802.54125
+
+    @property
+    def efficiency(self) -> float:
+        return self.value / 8
+
+    @staticmethod
+    def sinr_to_mcs(sinr: float) -> G_MCS:
+        worst_mcs: G_MCS = G_MCS.get_worst()
+        best_mcs: G_MCS = G_MCS.get_best()
+        if sinr < getattr(_SINRtoMCS, worst_mcs.name):
+            return G_MCS.CQI0
+        elif sinr > getattr(_SINRtoMCS, best_mcs.name):
+            return best_mcs
+        else:
+            return _SINRtoMCS.sinr_to_mcs(sinr, NodeBType.G)
+    def get_worst() -> G_MCS:
+        return G_MCS.CQI1  # <-- change
+
+    @staticmethod
+    def get_best() -> G_MCS:
+        return G_MCS.CQI15  # <-- change
