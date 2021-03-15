@@ -81,7 +81,7 @@ class ChannelModel(Undo):
                 As the reference bellow, this part is done by comparing power and power is related to distance.
                 https://ecewireless.blogspot.com/2020/04/how-to-simulate-ber-capacity-and-outage.html
                 """
-                if overlapped_rb.ue.coordinate.distance_gnb < ue.coordinate.distance_gnb:
+                if overlapped_bu_power_rx < power_rx:
                     interference_noma += overlapped_bu_power_rx
                     # print(f'interference_noma: {10 * math.log10(interference_noma)}')
             # cross-tier interference
@@ -96,7 +96,7 @@ class ChannelModel(Undo):
 
         self.append_undo(lambda origin=bu.sinr: setattr(bu, 'sinr', origin))
         sinr = power_rx / (
-            interference_noma + interference_ini + interference_cross + interference_channel + self.awgn_noise)  # ratio
+                interference_noma + interference_ini + interference_cross + interference_channel + self.awgn_noise)  # ratio
         bu.sinr = 10 * math.log10(sinr)  # ratio to dB
         # print(f'BU SINR: {bu.sinr}')
         bu.is_to_recalculate_sinr = False
@@ -116,7 +116,7 @@ class ChannelModel(Undo):
             dist: float = bs.calc_distance(bs, bu.within_rb.ue.coordinate)
             interference += self.power_rx(NodeBType.E, 46, dist)
         # if interference:
-            # print(f'interference_BSs: {10 * math.log10(interference)}')
+        # print(f'interference_BSs: {10 * math.log10(interference)}')
 
         return interference
 
@@ -159,8 +159,8 @@ class ChannelModel(Undo):
         :param distance: in km. The distance from the BS to the UE.
         :return power_rx: in mW. The receive power from BS of UE.
         """
-        path_loss: float = self._path_loss_marco(distance) if tx_nb_type == NodeBType.E else self._path_loss_mirco(
-            distance)
+        path_loss: float = self._path_loss_marco(
+            distance)  # if tx_nb_type == NodeBType.E else self._path_loss_mirco(distance)
         power_rx: float = power_tx - path_loss - self.noise(8)  # dBm
         return pow(10, power_rx / 10)  # dBm to mW
 
@@ -200,7 +200,7 @@ class ChannelModel(Undo):
         return pow(10, noise_power / 10)  # dBm to mW
 
     def noise(self, noise_variance: int) -> float:
-        seed: int = 0 - randint(1, 100)     # TODO: use random.seed or whatever to generate stable output
+        seed: int = 0 - randint(1, 100)  # TODO: use random.seed or whatever to generate stable output
         slevel: float = 0.0
         runiform: List[float] = [0.0, 0.0]
         while slevel < 1.0:
