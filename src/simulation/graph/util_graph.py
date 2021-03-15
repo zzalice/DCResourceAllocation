@@ -53,11 +53,10 @@ def bar_chart(title: str, x_label: str, x_tick_labels: List[Any], y_label: str, 
 
     fig.tight_layout()
 
-    # if not os.path.exists(output_folder):
-    #     os.makedirs(output_folder)
-    plt.savefig(f'{output_file_path}.png')
+    file_name: str = f'{x_label}_{y_label}'
+    plt.savefig(f'{output_file_path}/{file_name}.png')
     plt.show()
-    with open(f'{output_file_path}.json', 'w') as file:
+    with open(f'{output_file_path}/{file_name}.json', 'w') as file:
         json.dump([title, x_label, x_tick_labels, y_label, data, output_file_path, parameter], file)
 
 

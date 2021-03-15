@@ -15,8 +15,7 @@ class IterateAlgo:
         folder_graph: str = f'{os.path.dirname(__file__)}/graph/{folder_data}'
         self._new_directory(folder_graph)
 
-        date: str = datetime.today().strftime("%m%d-%H%M%S")
-        file_result: str = f'{folder_graph}/{date}result_iter_layer.P'
+        file_result: str = f'{folder_graph}/result.P'
         with open(file_result, 'wb') as f:
             pickle.dump({'iteration': iteration, 'layers': layers, 'data folder': folder_data}, f)
 

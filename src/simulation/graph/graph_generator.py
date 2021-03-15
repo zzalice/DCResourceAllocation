@@ -1,4 +1,3 @@
-import math
 import os
 import pickle
 from typing import Any, Dict, List, Tuple, Union
@@ -11,7 +10,7 @@ from src.simulation.graph.util_graph import bar_chart, line_chart, scatter_chart
 
 
 class GraphGenerator:
-    def __init__(self, folder_result: Tuple[str], graph_type: str, *args, **kwargs):
+    def __init__(self, folder_result: Tuple[str], graph_type: str, **kwargs):
         self.output_file_path: List[str] = []
         for f in folder_result:
             self.output_file_path.append(f'{os.path.dirname(__file__)}/{f}')
@@ -19,43 +18,45 @@ class GraphGenerator:
         # parameters for graph generating usage
         self.collect_data = {}
         self.count_iter = {}
-        self.frame_time: int = -1
+        if graph_type == 'sys throughput - layer':
+            self.frame_time: int = -1
 
         # main
         for file_path in self.output_file_path:
-            file_result: str = f'{file_path}/result_iter_layer.P'
+            file_result: str = f'{file_path}/result.P'
             with open(file_result, 'rb') as f:
                 information: Dict = pickle.load(f)
+                assert kwargs['iteration'] <= information['iteration']
+                for l in kwargs['layers']:
+                    assert l in information['layers']
+
                 while True:
                     try:
-                        algo_result: Dict[
-                            str, Dict[str, Tuple[GNodeB, ENodeB, List[DUserEquipment], List[GUserEquipment], List[
-                                EUserEquipment]]]] = pickle.load(f)
+                        #                 layer     algo
+                        algo_result: Dict[str, Dict[str, Tuple[GNodeB, ENodeB, List[
+                            DUserEquipment], List[GUserEquipment], List[EUserEquipment]]]] = pickle.load(f)
                         if graph_type == 'sys throughput - layer':
                             self.collect_sys_throughput_layer(kwargs['iteration'], algo_result)
+                        elif graph_type == 'used percentage':
+                            self.collect_used_percentage(kwargs['iteration'], algo_result)
                     except EOFError:
                         if graph_type == 'sys throughput - layer':
                             self.gen_sys_throughput_layer(kwargs['iteration'], kwargs['layers'], file_path)
+                        elif graph_type == 'used percentage':
+                            self.gen_used_percentage(kwargs['iteration'], kwargs['layers'], file_path)
                         break
 
+    # ==================================================================================================================
     def collect_sys_throughput_layer(self, iteration: int, result: Dict[str, Dict[str, Tuple[GNodeB, ENodeB, List[
-                                                    DUserEquipment], List[GUserEquipment], List[EUserEquipment]]]]):
+        DUserEquipment], List[GUserEquipment], List[EUserEquipment]]]]):
         #                                                               layer     algo
-        # collect: Dict[str, Dict[str, Tuple[gNB, enb, List[dUE], List[gUE], List[eUE]]]]
-        #               layer     algo
+        # collect_data: Dict[str, Dict[str, float]
+        #                    layer     algo sum of system throughput
         self.frame_time: int = next(iter(next(iter(result.values())).values()))[0].frame.frame_time
 
-        for layer in result:
+        for layer in result:    # only one
             l: int = int(layer.replace('layer', ''))
-            try:
-                if self.count_iter[l] >= iteration:
-                    return True
-                else:
-                    self.count_iter[l] += 1
-            except KeyError:
-                self.count_iter[l] = 1
-                self.collect_data[l] = {}
-
+            self._increase_iter(l, iteration)
             for algo in result[layer]:
                 try:
                     self.collect_data[l][algo] += calc_system_throughput_uncategorized_ue(
@@ -79,55 +80,68 @@ class GraphGenerator:
                 self.collect_data[layer][algo] = bpframe_to_mbps(self.collect_data[layer][algo], self.frame_time)
                 avg_system_throughput[algo].append(self.collect_data[layer][algo])
 
-        line_chart('', 'The number of gNB layer', ([str(i) for i in layers]), 'System throughput(Mbps)',
-                   avg_system_throughput, output_file_path, {'iteration': iteration})
+        line_chart('',
+                   'The number of gNB layer', ([str(i) for i in layers]),
+                   'System throughput(Mbps)', avg_system_throughput,
+                   output_file_path, {'iteration': iteration})
 
-    def gen_used_percentage(self, data_file_path: str):
-        x_labels: List[str] = []
-        averaged_data: Dict[str, List[Union[int, float]]] = dict()
-        with open(data_file_path, 'rb') as f:
-            pickle.load(f)  # TODO: new a empty pickle
-            while True:
+    # ==================================================================================================================
+    def collect_used_percentage(self, iteration: int, result: Dict[str, Dict[str, Tuple[GNodeB, ENodeB, List[
+        DUserEquipment], List[GUserEquipment], List[EUserEquipment]]]]):
+        # collect_data: Dict[str, Dict[str, [int,        int]]
+        #                    layer     algo  used BU     number of BU in gNBs
+        for max_layer_str in result:    # only one
+            l: int = int(max_layer_str.replace('layer', ''))
+            self._increase_iter(l, iteration)
+            for algo in result[max_layer_str]:
+                gnb: GNodeB = result[max_layer_str][algo][0]
+                assert l == gnb.frame.max_layer
+
+                count_used_bu: int = 0
+                for layer in range(gnb.frame.max_layer):
+                    for i in gnb.frame.layer[layer].bu_status:
+                        for j in i:
+                            count_used_bu += 1 if j else 0
+
+                count_bu: int = gnb.frame.frame_time * gnb.frame.frame_freq * gnb.frame.max_layer
                 try:
-                    output_data: Dict[str, Any] = self.read_data(pickle.load(f))
+                    self.collect_data[l][algo][0] += count_used_bu
+                    self.collect_data[l][algo][1] += count_bu
+                except KeyError:
+                    self.collect_data[l][algo] = [count_used_bu, count_bu]
 
-                    x_labels.append(output_data['max_layer'])
-                    for algo in output_data['algo']:
-                        try:
-                            averaged_data[algo]
-                        except KeyError:
-                            averaged_data[algo] = []
-                        percent: float = 0.0
-                        for data in output_data['iter'][algo]:
-                            gnb: GNodeB = data[0]
+    def gen_used_percentage(self, iteration: int, layers: List[int], output_file_path: str):
+        # x_labels: List[str]
+        #                max layer
+        #           e.g. ['1 layer', '2 layer', '3 layer']
+        # percentages: Dict[str, List[float]]
+        #                   algo      percentage
+        #              e.g. {'DC-RA': [0.98, 0.55, 0.32], 'Intuitive': [0.97, 0.44, 0.22]}
+        x_labels: List[str] = []
+        percentages: Dict[str, List[float]] = {}
+        for layer in self.collect_data:
+            if layer in layers:
+                x_labels.append(str(layer) + ' layer')
+                for algo in self.collect_data[layer]:
+                    percent: float = self.collect_data[layer][algo][0] / self.collect_data[layer][algo][1]
+                    assert 0.0 <= percent <= 1.0, 'Error in counting used BU.'
+                    try:
+                        percentages[algo].append(percent)
+                    except KeyError:
+                        percentages[algo] = [percent]
 
-                            # calculate how many percent of BUs are occupied in the gNB, ONE gNB
-                            count_used_bu: int = 0
-                            assert 'layer' in output_data['max_layer'], 'Input data error.'
-                            max_layer: int = int(output_data['max_layer'].replace('layer', ''))
-                            for layer in range(max_layer):
-                                for i in gnb.frame.layer[layer].bu_status:
-                                    for j in i:
-                                        count_used_bu += 1 if j else 0
-                            percent += count_used_bu / (gnb.frame.frame_time * gnb.frame.frame_freq * max_layer)
+        bar_chart('Frame used',
+                  'The number of layer in a gNB', x_labels,
+                  'Percentage(%)', percentages,
+                  output_file_path, {'iteration': iteration})
 
-                        averaged_data[algo].append(round(percent / len(output_data['iter'][algo]), 3))
-                        assert 0.0 <= averaged_data[algo][-1] <= 1.0 \
-                               or math.isclose(averaged_data[algo][-1], 0.0) \
-                               or math.isclose(averaged_data[algo][-1], 1)
-                except EOFError:
-                    break
-        x_label = 'The number of layer in a gNB'
-        y_label = 'Percentage(%)'
-        bar_chart('Frame used', x_label, x_labels, y_label, averaged_data,
-                  f'{self.output_file_path}/{x_label}_{y_label}', self._parameter())
-
+    # ==================================================================================================================
     def gen_deployment(self, data_file_path: str):
         with open(data_file_path, 'rb') as f:
             pickle.load(f)  # TODO: new a empty pickle
             while True:
                 try:
-                    output_data: Dict[str, Any] = self.read_data(pickle.load(f))
+                    output_data: Dict[str, Any] = self._read_data(pickle.load(f))
                     for algo in output_data['algo']:
                         x = []
                         y = []
@@ -170,6 +184,7 @@ class GraphGenerator:
                     color.append(c[i])
         return x, y, color
 
+    # ==================================================================================================================
     def gen_avg_allocated_ue(self, data_file_path: List[str]):
         raw_data: Dict[str, Dict[str, Dict[str, Dict[str, int]]]] = dict()
         #         variation layer     algo       ue       avg_allo_ue
@@ -182,7 +197,7 @@ class GraphGenerator:
                 pickle.load(f)  # TODO: new a empty pickle
                 while True:
                     try:
-                        output_data: Dict[str, Any] = self.read_data(pickle.load(f))
+                        output_data: Dict[str, Any] = self._read_data(pickle.load(f))
                         raw_data[variation][output_data['max_layer']] = dict()
                         for algo in output_data['algo']:
                             raw_data[variation][output_data['max_layer']][algo] = dict()
@@ -216,6 +231,8 @@ class GraphGenerator:
                           output_file_path=f'{os.path.dirname(__file__)}/{folder}/avg_allocated_ue/{algo}_{layer}',
                           parameter=self._parameter())
 
+    # ==================================================================================================================
+
     @staticmethod
     def count_allocated_ue(all_ue: List[Union[List[DUserEquipment], List[GUserEquipment], List[EUserEquipment]]],
                            raw_data: Dict[str, Dict[str, Dict[str, Dict[str, int]]]], variation, max_layer, algo
@@ -242,10 +259,20 @@ class GraphGenerator:
                 raw_data[variation][max_layer][algo]['due-cross-bs'] += 1 if due.cross_nb else 0
         return raw_data
 
+    def _increase_iter(self, key: Union[str, int], iteration: int):
+        try:
+            if self.count_iter[key] >= iteration:
+                return True
+            else:
+                self.count_iter[key] += 1
+        except KeyError:
+            self.count_iter[key] = 1
+            self.collect_data[key] = {}
+
     @staticmethod
-    def read_data(pickle_data: Dict[str, Dict[str, List[
+    def _read_data(pickle_data: Dict[str, Dict[str, List[
         Tuple[GNodeB, ENodeB, List[DUserEquipment], List[GUserEquipment], List[EUserEquipment]]]]]
-                  ) -> Dict[str, Any]:
+                   ) -> Dict[str, Any]:
         tran_data: Dict[str, Any] = dict()
         tran_data['max_layer']: str = next(iter(pickle_data.items()))[0]  # e.g. '1layer'
         tran_data['iter']: Dict[str, List[
