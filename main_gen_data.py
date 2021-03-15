@@ -41,6 +41,8 @@ if __name__ == '__main__':
                 'gnb_coordinate': (0.5, 0.0), 'gnb_radius': 0.3, 'gnb_tx_power': 30, 'gnb_freq': 216, 'gnb_time': 80,
                 'gnb_layer': i, 'inr_discount': 0.5,
 
-                'cochannel_bandwidth': 25}
+                'cochannel_bandwidth': 25
+                # range of MCS: in file resource_allocation/ds/util_enum.py
+                }
 
         main(para)

@@ -1,13 +1,13 @@
 import os
 import pickle
 import time
-from datetime import datetime
 from typing import Dict, List, Tuple
 
 from main import dc_resource_allocation
 from main_intuitive import intuitive_resource_allocation
 from src.resource_allocation.ds.eutran import ENodeB, EUserEquipment
 from src.resource_allocation.ds.ngran import DUserEquipment, GNodeB, GUserEquipment
+from src.resource_allocation.ds.util_enum import E_MCS, G_MCS
 
 
 class IterateAlgo:
@@ -17,7 +17,8 @@ class IterateAlgo:
 
         file_result: str = f'{folder_graph}/result.P'
         with open(file_result, 'wb') as f:
-            pickle.dump({'iteration': iteration, 'layers': layers, 'data folder': folder_data}, f)
+            pickle.dump({'iteration': iteration, 'layers': layers, 'data folder': folder_data,
+                         'gNB MCS': [G_MCS.get_worst, G_MCS.get_best], 'eNB MCS': [E_MCS.get_worst, E_MCS.get_best]}, f)
 
         program_start_time = time.time()
         for l in layers:
@@ -42,7 +43,7 @@ class IterateAlgo:
 
                 with open(file_result, 'ab+') as f:
                     pickle.dump({f'{l}layer': result}, f)
-        print("--- %s min ---" % round((time.time() - program_start_time)/60, 3))
+        print("--- %s min ---" % round((time.time() - program_start_time) / 60, 3))
         return True
 
     @staticmethod

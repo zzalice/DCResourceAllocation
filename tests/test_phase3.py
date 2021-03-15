@@ -194,7 +194,7 @@ def gue_bad(enb, gnb):
             rb.sinr = -1  # CQI 1
     assert len(ue.gnb_info.rb) == 16
     for rb in ue.gnb_info.rb:
-        assert rb.mcs == G_MCS.CQI1_QPSK
+        assert rb.mcs == G_MCS.CQI1
     return ue
 
 
@@ -260,8 +260,8 @@ def test_adjust_mcs(phase3, gue, due_gnb, eue, due_enb, due_cross_bs, gue_out_on
     throughput_range(due_cross_bs)
     assert len(due_cross_bs.gnb_info.rb) == 3
     assert len(due_cross_bs.enb_info.rb) == 2
-    assert due_cross_bs.gnb_info.mcs == G_MCS.CQI6_QPSK
-    assert due_cross_bs.enb_info.mcs == E_MCS.CQI5_QPSK
+    assert due_cross_bs.gnb_info.mcs == G_MCS.CQI6
+    assert due_cross_bs.enb_info.mcs == E_MCS.CQI5
 
     # [test]due_gnb
     phase3.adjust_mcs(due_gnb)
@@ -270,7 +270,7 @@ def test_adjust_mcs(phase3, gue, due_gnb, eue, due_enb, due_cross_bs, gue_out_on
     throughput_range(due_gnb)
     assert len(due_gnb.gnb_info.rb) == 2
     assert len(due_gnb.enb_info.rb) == 0
-    assert due_gnb.gnb_info.mcs == G_MCS.CQI7_16QAM
+    assert due_gnb.gnb_info.mcs == G_MCS.CQI7
     assert due_gnb.enb_info.mcs is None
 
     # [test]eue
@@ -279,7 +279,7 @@ def test_adjust_mcs(phase3, gue, due_gnb, eue, due_enb, due_cross_bs, gue_out_on
     assert SINRtoMCS.sinr_to_mcs(eue.enb_info.rb[-1].sinr, phase3.enb.nb_type) == eue.enb_info.mcs
     throughput_range(eue)
     assert len(eue.enb_info.rb) == 4
-    assert eue.enb_info.mcs == E_MCS.CQI6_QPSK
+    assert eue.enb_info.mcs == E_MCS.CQI6
 
     # [test]due_enb
     phase3.adjust_mcs(due_enb)
@@ -288,7 +288,7 @@ def test_adjust_mcs(phase3, gue, due_gnb, eue, due_enb, due_cross_bs, gue_out_on
     throughput_range(due_enb)
     assert len(due_enb.enb_info.rb) == 4
     assert len(due_enb.gnb_info.rb) == 0
-    assert due_enb.enb_info.mcs == E_MCS.CQI6_QPSK
+    assert due_enb.enb_info.mcs == E_MCS.CQI6
     assert due_enb.gnb_info.mcs is None
 
     # [test]gue_out_one
@@ -298,8 +298,8 @@ def test_adjust_mcs(phase3, gue, due_gnb, eue, due_enb, due_cross_bs, gue_out_on
     assert gue_out_one.is_allocated is True
     assert gue_out_one.is_to_recalculate_mcs is False
     assert len(gue_out_one.gnb_info.rb) == 1
-    assert gue_out_one.gnb_info.mcs == G_MCS.CQI1_QPSK
-    assert gue_out_one.throughput == G_MCS.CQI1_QPSK.value
+    assert gue_out_one.gnb_info.mcs == G_MCS.CQI1
+    assert gue_out_one.throughput == G_MCS.CQI1.value
 
     # [test]gue_out_two
     assert gue_out_two.is_allocated is True
