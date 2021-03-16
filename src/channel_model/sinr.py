@@ -1,6 +1,5 @@
 import math
 import random
-from random import randint
 from typing import Dict, List, Tuple
 
 from src.resource_allocation.ds.frame import BaseUnit
@@ -200,7 +199,8 @@ class ChannelModel(Undo):
         return pow(10, noise_power / 10)  # dBm to mW
 
     def noise(self, noise_variance: int) -> float:
-        seed: int = 0 - randint(1, 100)  # TODO: use random.seed or whatever to generate stable output
+        random.seed('foobar')
+        seed: int = 0 - random.randint(1, 100)
         slevel: float = 0.0
         runiform: List[float] = [0.0, 0.0]
         while slevel < 1.0:
