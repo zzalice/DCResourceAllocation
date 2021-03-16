@@ -28,7 +28,7 @@ def line_chart(title: str, x_label: str, scale_x: List[Any], y_label: str, scale
         json.dump([title, x_label, scale_x, y_label, scale_y, output_folder, parameter], file)
 
 
-def bar_chart(title: str, x_label: str, x_tick_labels: List[Any], y_label: str, data: Dict[str, List[int]],
+def bar_chart(title: str, x_label: str, x_tick_labels: List[Any], y_label: str, data: Dict[str, List[float]],
               output_file_path: str, parameter: Dict):
     # https://matplotlib.org/stable/gallery/lines_bars_and_markers/barchart.html
     # https://pylibraries.com/matplotlib/tutorials/grouped-bar-charts-with-matplotlib-pyplot/#Triple-grouped-bar-chart
@@ -39,6 +39,7 @@ def bar_chart(title: str, x_label: str, x_tick_labels: List[Any], y_label: str, 
     fig, ax = plt.subplots()
     rects = []
     for i, label in enumerate(data):
+        data[label] = [round(j, 3) for j in data[label]]
         rects.append(ax.bar(pos + i * width, data[label], width, label=label))
 
     # Add some text for labels, title and custom x-axis tick labels, etc.
