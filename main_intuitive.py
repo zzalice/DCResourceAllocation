@@ -33,7 +33,7 @@ def intuitive_resource_allocation(data_set, visualize_the_algo: bool = False) ->
 
 
 if __name__ == '__main__':
-    file_path: str = 'test/1layer/0'
+    file_path: str = '0315-094335small/3layer/0'
     if len(sys.argv) == 2:
         file_path: str = sys.argv[1]
     intuitive_resource_allocation(data_set=file_path, visualize_the_algo=True)

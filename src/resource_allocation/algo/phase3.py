@@ -73,8 +73,8 @@ class Phase3(Undo):
             ue_allocated.append(ue)
             is_allocated: bool = False
             for space in spaces:
-                # from tests.assertion import check_undo_copy
-                # copy_ue = check_undo_copy(ue_allocated)
+                from utils.assertion import check_undo_copy
+                copy_ue = check_undo_copy(ue_allocated)
                 self.start_func_undo()
 
                 # allocate new ue
@@ -99,10 +99,10 @@ class Phase3(Undo):
                     break
                 else:
                     self.undo()
-                    # from tests.assertion import check_undo_compare
-                    # check_undo_compare(ue_allocated, copy_ue)
-                # from tests.assertion import assert_is_empty
-                # assert_is_empty(spaces, ue, is_allocated)
+                    from utils.assertion import check_undo_compare
+                    check_undo_compare(ue_allocated, copy_ue)
+                from utils.assertion import assert_is_empty
+                assert_is_empty(spaces, ue, is_allocated)
             if not is_allocated:
                 ue_allocated.remove(ue)
 
