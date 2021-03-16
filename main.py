@@ -23,7 +23,8 @@ def dc_resource_allocation(data_set, visualize_the_algo: bool = False) -> Tuple[
 
     data_set_file_path = os.path.join(dirname, 'src/simulation/data', data_set + '.P')
     with open(data_set_file_path, "rb") as file:
-        g_nb, e_nb, cochannel_index, channel_model, g_ue_list, d_ue_list, e_ue_list, inr_discount = pickle.load(file)
+        g_nb, e_nb, cochannel_index, channel_model, g_ue_list, d_ue_list, e_ue_list, inr_discount, worsen_threshold = pickle.load(
+            file)
 
     # noinspection PyTypeChecker
     g_phase1: Phase1 = Phase1(d_ue_list + g_ue_list)
@@ -67,12 +68,12 @@ def dc_resource_allocation(data_set, visualize_the_algo: bool = False) -> Tuple[
     d_ue_list_allocated, d_ue_list_unallocated = divide_ue(d_ue_list)
     e_ue_list_allocated, e_ue_list_unallocated = divide_ue(e_ue_list)
     phase3.allocate_new_ue(g_nb.nb_type, d_ue_list_unallocated + g_ue_list_unallocated,
-                           d_ue_list_allocated + g_ue_list_allocated + e_ue_list_allocated)
+                           d_ue_list_allocated + g_ue_list_allocated + e_ue_list_allocated, worsen_threshold)
     g_ue_list_allocated, g_ue_list_unallocated = divide_ue(g_ue_list)
     d_ue_list_allocated, d_ue_list_unallocated = divide_ue(d_ue_list)
     e_ue_list_allocated, _ = divide_ue(e_ue_list)  # for the concern of co-channel area
     phase3.allocate_new_ue(e_nb.nb_type, d_ue_list_unallocated + e_ue_list_unallocated,
-                           d_ue_list_allocated + g_ue_list_allocated + e_ue_list_allocated)
+                           d_ue_list_allocated + g_ue_list_allocated + e_ue_list_allocated, worsen_threshold)
 
     if visualize_the_algo:
         visualize_phase_uncategorized_ue(visualization_file_path, "ab+",
@@ -82,7 +83,10 @@ def dc_resource_allocation(data_set, visualize_the_algo: bool = False) -> Tuple[
 
 
 if __name__ == '__main__':
-    file_path: str = '0315-094335small/3layer/0'
+    file_path: str = '0316-164735small/3layer/0'
+    file_path: str = '0316-181915small_frame50/3layer/0'
+    file_path: str = '0316-183832small_frame50_moreUE/3layer/0'
+    file_path: str = '0316-184206small_frame50_moreUE/3layer/0'
     if len(sys.argv) == 2:
         file_path: str = sys.argv[1]
     dc_resource_allocation(data_set=file_path, visualize_the_algo=True)

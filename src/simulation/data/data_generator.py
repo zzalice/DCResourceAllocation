@@ -22,7 +22,7 @@ class DataGenerator:
                  enb_coordinate: Tuple[int, int], enb_radius: float, enb_tx_power: int, enb_freq: int, enb_time: int,
                  gnb_coordinate: Tuple[int, int], gnb_radius: float, gnb_tx_power: int, gnb_freq: int, gnb_time: int,
                  gnb_layer: int, inr_discount: float,
-                 cochannel_bandwidth: int):
+                 cochannel_bandwidth: int, worsen_threshold: int):
         assert iteration > 0
         self.iteration: int = iteration
         self.output_file_path: str = f'{os.path.dirname(__file__)}/{output_file_path}'
@@ -54,6 +54,8 @@ class DataGenerator:
         self.inr_discount: float = inr_discount
         assert cochannel_bandwidth >= 0
         self.cochannel_bandwidth: int = cochannel_bandwidth
+        assert worsen_threshold <= 0
+        self.worsen_threshold: int = worsen_threshold
 
     def generate_data(self):
         for i in range(self.iteration):
@@ -68,6 +70,8 @@ class DataGenerator:
             channel_model: ChannelModel = ChannelModel(cochannel_index)
 
             sec_to_frame: int = 1000 // (e_nb.frame.frame_time // 8)
+            worsen_threshold: float = self.worsen_threshold / sec_to_frame     # bit per frame
+
             qos_lower_bound_bps: int = self.qos_range[0]  # QoS range: 16,000-512,000 bps
             qos_higher_bound_bps: int = self.qos_range[1]
 
@@ -116,7 +120,8 @@ class DataGenerator:
 
             with open(f'{self.output_file_path}/{str(i)}.P', "wb") as file_of_frame_and_ue:
                 pickle.dump(
-                    [g_nb, e_nb, cochannel_index, channel_model, g_ue_list, d_ue_list, e_ue_list, self.inr_discount],
+                    [g_nb, e_nb, cochannel_index, channel_model, g_ue_list, d_ue_list, e_ue_list, self.inr_discount,
+                     worsen_threshold],
                     file_of_frame_and_ue)
 
         self.gen_txt_parameter()
@@ -145,4 +150,5 @@ class DataGenerator:
                 f'frame, time(in BU): {self.enb_time}\n' +
                 f'tx power: {self.enb_tx_power}\n\n' +
 
-                f'co-channel BW(in BU): {self.cochannel_bandwidth}\n')
+                f'co-channel BW(in BU): {self.cochannel_bandwidth}\n' +
+                f'worsen_threshold(bps): {self.worsen_threshold}\n')

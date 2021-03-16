@@ -17,7 +17,8 @@ def main(parameter: Dict):
                   gnb_tx_power=parameter['gnb_tx_power'], gnb_freq=parameter['gnb_freq'],
                   gnb_time=parameter['gnb_time'], gnb_layer=parameter['gnb_layer'],
                   inr_discount=parameter['inr_discount'],
-                  cochannel_bandwidth=parameter['cochannel_bandwidth']).generate_data()
+                  cochannel_bandwidth=parameter['cochannel_bandwidth'],
+                  worsen_threshold=parameter['worsen_threshold']).generate_data()
 
 
 if __name__ == '__main__':
@@ -41,7 +42,8 @@ if __name__ == '__main__':
                 'gnb_coordinate': (0.5, 0.0), 'gnb_radius': 0.3, 'gnb_tx_power': 30, 'gnb_freq': 216, 'gnb_time': 80,
                 'gnb_layer': i, 'inr_discount': 0.5,
 
-                'cochannel_bandwidth': 25
+                'cochannel_bandwidth': 25,
+                'worsen_threshold': -20  # bps, must be <= 0
                 # range of MCS: in file resource_allocation/ds/util_enum.py
                 }
 

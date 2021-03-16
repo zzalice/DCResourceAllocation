@@ -4,6 +4,7 @@ from src.channel_model.adjust_mcs import AdjustMCS
 from src.channel_model.sinr import ChannelModel
 from src.resource_allocation.algo.dual_connection import DualConnection
 from src.resource_allocation.algo.new_ue_allocation import AllocateUE
+from src.resource_allocation.algo.utils import calc_system_throughput
 from src.resource_allocation.ds.eutran import ENodeB
 from src.resource_allocation.ds.ngran import GNodeB
 from src.resource_allocation.ds.rb import ResourceBlock
@@ -61,7 +62,7 @@ class Phase3(Undo):
                 position[rb.numerology].append(LappingPosition([rb.i_start, rb.j_start], rb.numerology))
 
     def allocate_new_ue(self, nb_type: NodeBType, ue_to_allocate: Tuple[UserEquipment],
-                        ue_allocated: Tuple[UserEquipment]):
+                        ue_allocated: Tuple[UserEquipment], worsen_threshold: float = 0.0):
         nb: Union[GNodeB, ENodeB] = self.gnb if nb_type == NodeBType.G else self.enb
         ue_to_allocate: List[UserEquipment] = list(ue_to_allocate)
         ue_allocated: List[UserEquipment] = list(ue_allocated)
@@ -70,11 +71,12 @@ class Phase3(Undo):
 
         while ue_to_allocate:
             ue: UserEquipment = ue_to_allocate.pop()
+            origin_sys_throughput: float = calc_system_throughput(ue_allocated)
             ue_allocated.append(ue)
             is_allocated: bool = False
             for space in spaces:
-                from utils.assertion import check_undo_copy
-                copy_ue = check_undo_copy(ue_allocated)
+                # from utils.assertion import check_undo_copy
+                # copy_ue = check_undo_copy(ue_allocated)
                 self.start_func_undo()
 
                 # allocate new ue
@@ -90,7 +92,8 @@ class Phase3(Undo):
 
                 # the effected UEs
                 if is_allocated:
-                    is_allocated: bool = self.adjust_mcs_allocated_ues(ue_allocated)
+                    is_allocated: bool = self.adjust_mcs_allocated_ues(ue_allocated,
+                                                                       origin_sys_throughput, worsen_threshold)
                 self.end_func_undo()
 
                 if is_allocated:
@@ -99,16 +102,22 @@ class Phase3(Undo):
                     break
                 else:
                     self.undo()
-                    from utils.assertion import check_undo_compare
-                    check_undo_compare(ue_allocated, copy_ue)
-                from utils.assertion import assert_is_empty
-                assert_is_empty(spaces, ue, is_allocated)
+                    # from utils.assertion import check_undo_compare
+                    # check_undo_compare(ue_allocated, copy_ue)
+                # from utils.assertion import assert_is_empty
+                # assert_is_empty(spaces, ue, is_allocated)
             if not is_allocated:
                 ue_allocated.remove(ue)
 
-    def adjust_mcs_allocated_ues(self, ue_allocated: List[UserEquipment]) -> bool:
+    def adjust_mcs_allocated_ues(self, ue_allocated: List[UserEquipment],
+                                 origin_sys_throughput, worsen_threshold) -> bool:
         self.assert_undo_function()
         while True:
+            # check if the new movement lowers down the system throughput
+            if not (calc_system_throughput(ue_allocated) - origin_sys_throughput) >= worsen_threshold:
+                return False
+
+            # main
             is_all_adjusted: bool = True
             for ue in ue_allocated:
                 if ue.is_to_recalculate_mcs:
