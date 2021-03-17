@@ -68,7 +68,7 @@ class FrameRenderer:
             if rb.position[0] != rb_i:
                 rb_i: int = rb.position[0]
                 self.body.append('<br>')
-            self.body.append(f'[{rb.position[0]}, {rb.position[2]}]')
+            self.body.append(f'[{rb.position[0]}, {rb.position[2]}]{round(rb.sinr, 3)} ')
 
     def gen_ue(self, ue_list: Tuple[GUserEquipment, ...], frame_time: int):
         for ue in ue_list:
