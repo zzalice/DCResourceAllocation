@@ -72,7 +72,14 @@ class ChannelModel(Undo):
             overlapped_bu_power_rx: float = self.power_rx(
                 overlapped_rb.layer.nodeb.nb_type,
                 overlapped_rb.layer.nodeb.power_tx,
-                ue.coordinate.distance_gnb if overlapped_rb.layer.nodeb.nb_type == NodeBType.G else ue.coordinate.distance_enb)
+                overlapped_rb.ue.coordinate.distance_gnb if overlapped_rb.layer.nodeb.nb_type == NodeBType.G else (
+                    overlapped_rb.ue.coordinate.distance_enb))
+            interference_from_overlapped_bu: float = self.power_rx(
+                overlapped_rb.layer.nodeb.nb_type,
+                overlapped_rb.layer.nodeb.power_tx,
+                ue.coordinate.distance_gnb if overlapped_rb.layer.nodeb.nb_type == NodeBType.G else (
+                    ue.coordinate.distance_enb))
+
             # NOMA interference
             if overlapped_rb.layer.nodeb.nb_type == NodeBType.G and nodeb.nb_type == NodeBType.G:
                 """
@@ -80,16 +87,18 @@ class ChannelModel(Undo):
                 As the reference bellow, this part is done by comparing power and power is related to distance.
                 https://ecewireless.blogspot.com/2020/04/how-to-simulate-ber-capacity-and-outage.html
                 """
-                if overlapped_bu_power_rx < power_rx:
-                    interference_noma += overlapped_bu_power_rx
+                if power_rx < overlapped_bu_power_rx:   # because every UE has the same tx power
+                # if power_rx > overlapped_bu_power_rx:
+                # if ue.coordinate.distance_gnb > overlapped_rb.ue.coordinate.distance_gnb:
+                    interference_noma += interference_from_overlapped_bu
                     # print(f'interference_noma: {10 * math.log10(interference_noma)}')
             # cross-tier interference
             if overlapped_rb.layer.nodeb.nb_type != nodeb.nb_type:
-                interference_cross += overlapped_bu_power_rx
+                interference_cross += interference_from_overlapped_bu
                 # print(f'interference_cross: {10 * math.log10(interference_cross)}')
             # inter-numerology interference
             if overlapped_rb.numerology.freq != rb.numerology.freq:
-                interference_ini += overlapped_bu_power_rx
+                interference_ini += interference_from_overlapped_bu
                 # print(f'interference_ini: {10 * math.log10(interference_ini)}')
         interference_channel: float = self.channel_interference(bu)
 

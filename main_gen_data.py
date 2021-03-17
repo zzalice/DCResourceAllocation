@@ -32,12 +32,13 @@ if __name__ == '__main__':
                 # eue:gue:due_num = 62:10:14 when radius are 0.5 and 0.3
                 # eue:gue:due_num = 6:2:3    when radius are 0.5 and 0.4
                 'eue_num': 930,
-                'eue_hotspots': (),
+                'eue_hotspots': (),  # e.g. ((-0.15, 0.0, 0.15, 75),) => (x, y, radius, #ue)
                 'gue_num': 150,
                 'gue_hotspots': (),
                 'due_num': 210,
                 'due_hotspots': (),
-
+                # enb_freq(MHz/#): 1.4/6, 3/15, 5/25, 10/50, 15/75, 20/100
+                # gnb_freq(MHz/#): 5/25, 10/52, 15/79, 20/106, 25/133, 30/160, 40/216, 50/270, 60/324, 70/378, 80/434, 90/490, 100/546
                 'enb_coordinate': (0.0, 0.0), 'enb_radius': 0.5, 'enb_tx_power': 46, 'enb_freq': 200, 'enb_time': 80,
                 'gnb_coordinate': (0.5, 0.0), 'gnb_radius': 0.3, 'gnb_tx_power': 30, 'gnb_freq': 216, 'gnb_time': 80,
                 'gnb_layer': i, 'inr_discount': 0.5,

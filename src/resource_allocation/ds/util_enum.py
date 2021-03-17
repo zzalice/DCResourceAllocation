@@ -99,22 +99,23 @@ class _MCS(Enum):
 class _SINRtoMCS:
     """
     ref: https://www.mathworks.com/help/5g/ug/5g-nr-cqi-reporting.html
+         https://www.researchgate.net/figure/CQI-MCS-and-SNR-mapping-for-3GPP-NR_tbl2_335395546
     """
-    CQI1 = -1.889  # SINR in dB
-    CQI2 = -0.817
-    CQI3 = 0.954
-    CQI4 = 2.948
-    CQI5 = 4.899
-    CQI6 = 7.39
-    CQI7 = 8.898
-    CQI8 = 11.02
-    CQI9 = 13.3
-    CQI10 = 14.68
-    CQI11 = 16.62
-    CQI12 = 18.91
-    CQI13 = 21.58
-    CQI14 = 24.88
-    CQI15 = 29.32
+    CQI1 = -9.478  # SINR in dB
+    CQI2 = -6.658
+    CQI3 = -4.098
+    CQI4 = -1.798
+    CQI5 = 0.399
+    CQI6 = 2.424
+    CQI7 = 4.489
+    CQI8 = 6.367
+    CQI9 = 8.456
+    CQI10 = 10.266
+    CQI11 = 12.218
+    CQI12 = 14.122
+    CQI13 = 15.849
+    CQI14 = 17.786
+    CQI15 = 19.809
 
     @staticmethod
     def sinr_to_mcs(sinr: float, nb_type: NodeBType) -> Union[E_MCS, G_MCS, Boolean]:
