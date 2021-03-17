@@ -58,5 +58,5 @@ class IterateAlgo:
 
     @staticmethod
     def gen_txt_parameter(parameter, output_file_path: str):
-        with open(f'{output_file_path}/parameter.txt', 'w') as f:
+        with open(f'{output_file_path}/parameter_iteration.txt', 'w') as f:
             json.dump(parameter, f)
