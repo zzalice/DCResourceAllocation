@@ -5,6 +5,7 @@ from typing import Any, Dict, List, Tuple, Union
 from src.resource_allocation.algo.utils import bpframe_to_mbps, calc_system_throughput_uncategorized_ue
 from src.resource_allocation.ds.eutran import ENodeB, EUserEquipment
 from src.resource_allocation.ds.ngran import DUserEquipment, GNodeB, GUserEquipment
+from src.resource_allocation.ds.ue import UserEquipment
 from src.resource_allocation.ds.util_enum import UEType
 from src.simulation.graph.util_graph import bar_chart, line_chart, scatter_chart
 
@@ -39,22 +40,25 @@ class GraphGenerator:
                             self.collect_sys_throughput_layer(kwargs['iteration'], algo_result)
                         elif graph_type == 'used percentage':
                             self.collect_used_percentage(kwargs['iteration'], algo_result)
+                        elif graph_type == 'deployment':
+                            self.collect_depolyment(kwargs['iteration'], algo_result)
                     except EOFError:
                         if graph_type == 'sys throughput - layer':
                             self.gen_sys_throughput_layer(kwargs['iteration'], kwargs['layers'], file_path)
                         elif graph_type == 'used percentage':
                             self.gen_used_percentage(kwargs['iteration'], kwargs['layers'], file_path)
+                        elif graph_type == 'deployment':
+                            self.gen_deployment(kwargs['iteration'], kwargs['layers'], file_path)
                         break
 
     # ==================================================================================================================
     def collect_sys_throughput_layer(self, iteration: int, result: Dict[str, Dict[str, Tuple[GNodeB, ENodeB, List[
         DUserEquipment], List[GUserEquipment], List[EUserEquipment]]]]):
-        #                                                               layer     algo
         # collect_data: Dict[str, Dict[str, float]
         #                    layer     algo sum of system throughput
         self.frame_time: int = next(iter(next(iter(result.values())).values()))[0].frame.frame_time
 
-        for layer in result:    # only one
+        for layer in result:  # only one
             l: int = int(layer.replace('layer', ''))
             self._increase_iter(l, iteration)
             for algo in result[layer]:
@@ -90,7 +94,7 @@ class GraphGenerator:
         DUserEquipment], List[GUserEquipment], List[EUserEquipment]]]]):
         # collect_data: Dict[str, Dict[str, [int,        int]]
         #                    layer     algo  used BU     number of BU in gNBs
-        for max_layer_str in result:    # only one
+        for max_layer_str in result:  # only one
             l: int = int(max_layer_str.replace('layer', ''))
             self._increase_iter(l, iteration)
             for algo in result[max_layer_str]:
@@ -136,52 +140,70 @@ class GraphGenerator:
                   output_file_path, {'iteration': iteration})
 
     # ==================================================================================================================
-    def gen_deployment(self, data_file_path: str):
-        with open(data_file_path, 'rb') as f:
-            pickle.load(f)  # TODO: new a empty pickle
-            while True:
+    def collect_depolyment(self, iteration: int, result: Dict[str, Dict[str, Tuple[GNodeB, ENodeB, List[
+        DUserEquipment], List[GUserEquipment], List[EUserEquipment]]]]):
+        # collect_data: Dict[str, Dict[str, Dict[str, Any]]
+        #                    layer     algo      nb   [nb_radius, nb_coordinate]
+        #                                        ue   [[ue.x, ue.y], ...]
+        for layer in result:  # only one
+            l: int = int(layer.replace('layer', ''))
+            self._increase_iter(l, iteration)
+            for algo in result[layer]:
                 try:
-                    output_data: Dict[str, Any] = self._read_data(pickle.load(f))
-                    for algo in output_data['algo']:
-                        x = []
-                        y = []
-                        color = []
-                        gnb: GNodeB = output_data['iter'][algo][0][0]
-                        gnb_radius = gnb.radius
-                        gnb_coordinate = (gnb.coordinate.x, gnb.coordinate.y)
-                        enb: ENodeB = output_data['iter'][algo][0][1]
-                        enb_radius = enb.radius
-                        enb_coordinate = (enb.coordinate.x, enb.coordinate.y)
-                        x.extend([gnb_coordinate[0], enb_coordinate[0]])
-                        y.extend([gnb_coordinate[1], enb_coordinate[1]])
-                        color.extend(['r'] * 2)
-                        for data in output_data['iter'][algo]:
-                            assert data[0].radius == gnb_radius and data[1].radius == enb_radius
-                            assert (data[0].coordinate.x, data[0].coordinate.y) == gnb_coordinate and (
-                                    (data[1].coordinate.x, data[1].coordinate.y) == enb_coordinate)
-                            due: List[DUserEquipment] = data[2]
-                            gue: List[GUserEquipment] = data[3]
-                            eue: List[EUserEquipment] = data[4]
-                            x, y, color = self._ue_deployment([due, gue, eue], x, y, color)
-
-                        assert len(x) == len(y) == len(color)
-                        scatter_chart(f'The deployment of {output_data["max_layer"]} gNBs, eNBs, and UEs({algo})', x, y,
-                                      color, (-enb_radius, gnb_coordinate[0] + gnb_radius), (-enb_radius, enb_radius),
-                                      f'{self.output_file_path}/deployment_{output_data["max_layer"]}_{algo}',
-                                      self._parameter())  # TODO: x_lim, y_lim不要寫死
-                except EOFError:
-                    break
+                    self.collect_data[l][algo]['allocated_ue'].extend(self.purge_ue(
+                        result[layer][algo][2] + result[layer][algo][3] + result[layer][algo][4]))
+                except KeyError:
+                    self.collect_data[l][algo] = {
+                        'nb_info': [result[layer][algo][0].radius,  # gNB
+                                    [result[layer][algo][0].coordinate.x, result[layer][algo][0].coordinate.y],
+                                    result[layer][algo][1].radius,  # eNB
+                                    [result[layer][algo][1].coordinate.x, result[layer][algo][1].coordinate.y]
+                                    ],
+                        'allocated_ue': self.purge_ue(
+                            result[layer][algo][2] + result[layer][algo][3] + result[layer][algo][4])}
+        return True
 
     @staticmethod
-    def _ue_deployment(all_ue: List[Union[List[DUserEquipment], List[GUserEquipment], List[EUserEquipment]]],
+    def purge_ue(ue_list: List[UserEquipment]) -> List[Tuple[UEType, float, float]]:
+        purged_ue: List[Tuple[UEType, float, float]] = []
+        for ue in ue_list:
+            if ue.is_allocated:
+                purged_ue.append((ue.ue_type, ue.coordinate.x, ue.coordinate.y))
+        return purged_ue
+
+    def gen_deployment(self, iteration: int, layers: List[int], output_file_path: str):
+        for layer in self.collect_data:
+            if layer in layers:
+                for algo in self.collect_data[layer]:
+                    gnb_radius: float = self.collect_data[layer][algo]['nb_info'][0]
+                    gnb_coordinate: List[float] = self.collect_data[layer][algo]['nb_info'][1]
+                    enb_radius: float = self.collect_data[layer][algo]['nb_info'][2]
+                    enb_coordinate: List[float] = self.collect_data[layer][algo]['nb_info'][3]
+                    x = [gnb_coordinate[0], enb_coordinate[0]]
+                    y = [gnb_coordinate[1], enb_coordinate[1]]
+                    color = ['r'] * 2
+                    x, y, color = self._ue_deployment(self.collect_data[layer][algo]['allocated_ue'], x, y, color)
+                    scatter_chart(f'The deployment of {layer} layer gNBs, eNBs, and UEs({algo})',
+                                  x, y, color,
+                                  (-enb_radius, gnb_coordinate[0] + gnb_radius), (-enb_radius, enb_radius),
+                                  f'{output_file_path}/deployment_{layer}_{algo}',
+                                  {'iteration': iteration})
+
+    @staticmethod
+    def _ue_deployment(all_ue: List[Tuple[UEType, float, float]],
                        x: List[float], y: List[float], color: List[str]) -> Tuple[List[float], List[float], List[str]]:
         c = ['b', 'g', 'm']
-        for i, ue_list in enumerate(all_ue):
-            for ue in ue_list:
-                if ue.is_allocated:
-                    x.append(ue.coordinate.x)
-                    y.append(ue.coordinate.y)
-                    color.append(c[i])
+        for ue in all_ue:
+            x.append(ue[1])
+            y.append(ue[2])
+            if ue[0] == UEType.D:
+                color.append(c[0])
+            elif ue[0] == UEType.G:
+                color.append(c[1])
+            elif ue[0] == UEType.E:
+                color.append(c[2])
+            else:
+                raise AssertionError
         return x, y, color
 
     # ==================================================================================================================
@@ -231,8 +253,6 @@ class GraphGenerator:
                           output_file_path=f'{os.path.dirname(__file__)}/{folder}/avg_allocated_ue/{algo}_{layer}',
                           parameter=self._parameter())
 
-    # ==================================================================================================================
-
     @staticmethod
     def count_allocated_ue(all_ue: List[Union[List[DUserEquipment], List[GUserEquipment], List[EUserEquipment]]],
                            raw_data: Dict[str, Dict[str, Dict[str, Dict[str, int]]]], variation, max_layer, algo
@@ -258,6 +278,8 @@ class GraphGenerator:
             if due.is_allocated:
                 raw_data[variation][max_layer][algo]['due-cross-bs'] += 1 if due.cross_nb else 0
         return raw_data
+
+    # ==================================================================================================================
 
     def _increase_iter(self, key: Union[str, int], iteration: int):
         try:
