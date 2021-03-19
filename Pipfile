@@ -12,6 +12,9 @@ mock = "*"
 dill = "*"
 numpy = "*"
 matplotlib = "*"
+pandas = "*"
+altair = "*"
+seaborn = "*"
 
 [dev-packages]
 pytest = "*"

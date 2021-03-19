@@ -1,3 +1,4 @@
+import json
 import os
 import pickle
 from typing import Any, Dict, List, Tuple, Union
@@ -42,6 +43,8 @@ class GraphGenerator:
                             self.collect_used_percentage(kwargs['iteration'], algo_result)
                         elif graph_type == 'deployment':
                             self.collect_depolyment(kwargs['iteration'], algo_result)
+                        elif graph_type == 'allocated ue':
+                            self.collect_allocated_ue(kwargs['iteration'], algo_result)
                     except EOFError:
                         if graph_type == 'sys throughput - layer':
                             self.gen_sys_throughput_layer(kwargs['iteration'], kwargs['layers'], file_path)
@@ -49,6 +52,8 @@ class GraphGenerator:
                             self.gen_used_percentage(kwargs['iteration'], kwargs['layers'], file_path)
                         elif graph_type == 'deployment':
                             self.gen_deployment(kwargs['iteration'], kwargs['layers'], file_path)
+                        elif graph_type == 'allocated ue':
+                            self.gen_allocated_ue(kwargs['iteration'], kwargs['layers'], file_path)
                         break
 
     # ==================================================================================================================
@@ -207,77 +212,53 @@ class GraphGenerator:
         return x, y, color
 
     # ==================================================================================================================
-    def gen_avg_allocated_ue(self, data_file_path: List[str]):
-        raw_data: Dict[str, Dict[str, Dict[str, Dict[str, int]]]] = dict()
-        #         variation layer     algo       ue       avg_allo_ue
-        ue_str: List[str] = ['due', 'gue', 'eue', 'due-cross-bs']
-
-        for variation in self.folder:
-            variation_file_path = data_file_path[0] + variation + data_file_path[1]
-            with open(variation_file_path, 'rb') as f:
-                raw_data[variation] = dict()
-                pickle.load(f)  # TODO: new a empty pickle
-                while True:
-                    try:
-                        output_data: Dict[str, Any] = self._read_data(pickle.load(f))
-                        raw_data[variation][output_data['max_layer']] = dict()
-                        for algo in output_data['algo']:
-                            raw_data[variation][output_data['max_layer']][algo] = dict()
-                            for i in ue_str:
-                                raw_data[variation][output_data['max_layer']][algo][i] = 0
-                            for data in output_data['iter'][algo]:
-                                due: List[DUserEquipment] = data[2]
-                                gue: List[GUserEquipment] = data[3]
-                                eue: List[EUserEquipment] = data[4]
-                                raw_data = self.count_allocated_ue([due, gue, eue],
-                                                                   raw_data, variation, output_data['max_layer'], algo)
-                                raw_data = self.count_due_cross_bs(due,
-                                                                   raw_data, variation, output_data['max_layer'], algo)
-                            for i in ue_str:
-                                raw_data[variation][output_data['max_layer']][algo][i] /= len(output_data['iter'][algo])
-                    except EOFError:
-                        break
-        folder: str = ''
-        for f in self.folder:
-            folder += f
-        for layer in next(iter(raw_data.values())):
-            for algo in next(iter(raw_data.values()))[layer]:
-                chart_data: Dict[str, List[int]] = {s: [] for s in ue_str}
-                for variation in raw_data:
-                    for s in ue_str:
-                        chart_data[s].append(raw_data[variation][layer][algo][s])
-                        # {'due': [4.1, 12.9, 53.5], 'gue': [58.0, 190.4, 39.2], 'eue': [57.0, 117.8, 76.7], 'due-cross-bs': [0.0, 0.0, 2.0]}
-                bar_chart(f'The number of allocated UE for {algo} of {layer}',
-                          x_label='Variation of radius', x_tick_labels=self.folder,
-                          y_label='Number of UEs', data=chart_data,
-                          output_file_path=f'{os.path.dirname(__file__)}/{folder}/avg_allocated_ue/{algo}_{layer}',
-                          parameter=self._parameter())
+    def collect_allocated_ue(self, iteration: int, result: Dict[str, Dict[str, Tuple[GNodeB, ENodeB, List[
+        DUserEquipment], List[GUserEquipment], List[EUserEquipment]]]]):
+        # collect_data: Dict[str, Dict[str, Dict[str, int]]
+        #                    layer     algo,     ue   num of allocated ue
+        for layer in result:  # only one
+            l: int = int(layer.replace('layer', ''))
+            self._increase_iter(l, iteration)
+            for algo in result[layer]:
+                try:
+                    self.count_allocated_ue(result[layer][algo][2], result[layer][algo][3], result[layer][algo][4],
+                                            self.collect_data[l][algo])
+                except KeyError:
+                    self.collect_data[l][algo] = {'dUE_in_gNB': 0, 'dUE_in_eNB': 0, 'dUE_cross_BS': 0,
+                                                  'eUE': 0, 'gUE': 0}
+                    self.count_allocated_ue(result[layer][algo][2], result[layer][algo][3], result[layer][algo][4],
+                                            self.collect_data[l][algo])
 
     @staticmethod
-    def count_allocated_ue(all_ue: List[Union[List[DUserEquipment], List[GUserEquipment], List[EUserEquipment]]],
-                           raw_data: Dict[str, Dict[str, Dict[str, Dict[str, int]]]], variation, max_layer, algo
-                           ) -> Dict[str, Dict[str, Dict[str, Dict[str, int]]]]:
-        for ue_list in all_ue:
-            if ue_list[0].ue_type == UEType.D:
-                ue_str = 'due'
-            elif ue_list[0].ue_type == UEType.G:
-                ue_str = 'gue'
-            elif ue_list[0].ue_type == UEType.E:
-                ue_str = 'eue'
-            else:
-                raise AssertionError
-            for ue in ue_list:
-                raw_data[variation][max_layer][algo][ue_str] += 1 if ue.is_allocated else 0
-        return raw_data
-
-    @staticmethod
-    def count_due_cross_bs(due_list: List[DUserEquipment],
-                           raw_data: Dict[str, Dict[str, Dict[str, Dict[str, int]]]], variation, max_layer, algo
-                           ) -> Dict[str, Dict[str, Dict[str, Dict[str, int]]]]:
+    def count_allocated_ue(due_list: List[DUserEquipment], gue_list: List[GUserEquipment],
+                           eue_list: List[EUserEquipment], collect_data):
         for due in due_list:
-            if due.is_allocated:
-                raw_data[variation][max_layer][algo]['due-cross-bs'] += 1 if due.cross_nb else 0
-        return raw_data
+            if due.cross_nb:
+                collect_data['dUE_cross_BS'] += 1
+            elif len(due.gnb_info.rb) > 0:
+                collect_data['dUE_in_gNB'] += 1
+            elif len(due.enb_info.rb) > 0:
+                collect_data['dUE_in_eNB'] += 1
+        for gue in gue_list:
+            if gue.is_allocated:
+                collect_data['gUE'] += 1
+        for eue in eue_list:
+            if eue.is_allocated:
+                collect_data['eUE'] += 1
+
+    def gen_allocated_ue(self, iteration: int, layers: List[int], output_file_path: str):
+        for layer in self.collect_data:
+            if layer in layers:
+                for algo in self.collect_data[layer]:
+                    self.collect_data[layer][algo]['total'] = 0
+                    for ue in self.collect_data[layer][algo]:
+                        if ue == 'total':
+                            continue
+                        self.collect_data[layer][algo][ue] /= iteration
+                        self.collect_data[layer][algo]['total'] += self.collect_data[layer][algo][ue]
+        with open(f'{output_file_path}/avg_num_of_allocated_ue.txt', 'w') as f:
+            import pprint
+            f.write(pprint.pformat(self.collect_data))
 
     # ==================================================================================================================
 
