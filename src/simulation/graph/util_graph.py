@@ -1,4 +1,5 @@
 import json
+from datetime import datetime
 from typing import Any, Dict, List, Tuple
 
 import matplotlib.pyplot as plt
@@ -20,7 +21,7 @@ def line_chart(title: str, x_label: str, scale_x: List[Any], y_label: str, scale
     plt.ylabel(y_label)
     plt.legend(loc="best")
 
-    file_name: str = f'{x_label}_{y_label}'
+    file_name: str = f'{x_label}_{y_label}_{datetime.today().strftime("%m%d-%H%M")}'
     plt.savefig(f'{output_folder}/{file_name}.png')
     plt.show()
     with open(f'{output_folder}/{file_name}.json', 'w') as file:
@@ -53,7 +54,7 @@ def bar_chart(title: str, x_label: str, x_tick_labels: List[Any], y_label: str, 
 
     fig.tight_layout()
 
-    file_name: str = f'{x_label}_{y_label}'
+    file_name: str = f'{x_label}_{y_label}_{datetime.today().strftime("%m%d-%H%M")}'
     plt.savefig(f'{output_file_path}/{file_name}.png')
     plt.show()
     with open(f'{output_file_path}/{file_name}.json', 'w') as file:

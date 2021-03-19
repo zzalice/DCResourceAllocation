@@ -1,6 +1,6 @@
-import json
 import os
 import pickle
+from datetime import datetime
 from typing import Any, Dict, List, Tuple, Union
 
 from src.resource_allocation.algo.utils import bpframe_to_mbps, calc_system_throughput_uncategorized_ue
@@ -191,7 +191,7 @@ class GraphGenerator:
                     scatter_chart(f'The deployment of {layer} layer gNBs, eNBs, and UEs({algo})',
                                   x, y, color,
                                   (-enb_radius, gnb_coordinate[0] + gnb_radius), (-enb_radius, enb_radius),
-                                  f'{output_file_path}/deployment_{layer}_{algo}',
+                                  f'{output_file_path}/deployment_{layer}_{algo}_{datetime.today().strftime("%m%d-%H%M")}',
                                   {'iteration': iteration})
 
     @staticmethod
@@ -256,7 +256,7 @@ class GraphGenerator:
                             continue
                         self.collect_data[layer][algo][ue] /= iteration
                         self.collect_data[layer][algo]['total'] += self.collect_data[layer][algo][ue]
-        with open(f'{output_file_path}/avg_num_of_allocated_ue.txt', 'w') as f:
+        with open(f'{output_file_path}/avg_num_of_allocated_ue_{datetime.today().strftime("%m%d-%H%M")}.txt', 'w') as f:
             import pprint
             f.write(pprint.pformat(self.collect_data))
 
