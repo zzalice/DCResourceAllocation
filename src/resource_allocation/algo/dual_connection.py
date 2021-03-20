@@ -3,7 +3,7 @@ from typing import List, Optional, Union
 from src.channel_model.adjust_mcs import AdjustMCS
 from src.channel_model.sinr import ChannelModel
 from src.resource_allocation.algo.max_subarray import MaxSubarray
-from src.resource_allocation.algo.new_ue_allocation import AllocateUE
+from src.resource_allocation.algo.new_resource_allocation import AllocateUE
 from src.resource_allocation.ds.ngran import DUserEquipment
 from src.resource_allocation.ds.nodeb import ENBInfo, GNBInfo
 from src.resource_allocation.ds.space import empty_space, Space

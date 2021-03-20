@@ -2,7 +2,7 @@ from typing import Dict, List, Tuple, Union
 
 from src.channel_model.adjust_mcs import AdjustMCS
 from src.channel_model.sinr import ChannelModel
-from src.resource_allocation.algo.new_ue_allocation import AllocateUE
+from src.resource_allocation.algo.new_resource_allocation import AllocateUE
 from src.resource_allocation.ds.eutran import ENodeB, EUserEquipment
 from src.resource_allocation.ds.ngran import DUserEquipment, GNodeB, GUserEquipment
 from src.resource_allocation.ds.space import empty_space, Space
