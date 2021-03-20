@@ -24,23 +24,23 @@ def main(parameter: Dict):
 if __name__ == '__main__':
     num_of_layer = [1, 2, 3, 4, 5]  # <--- change
     date: str = datetime.today().strftime("%m%d-%H%M%S")
-    output_folder: str = f'{date}large_radius'   # <--- change
+    output_folder: str = f'{date}low_qos'   # <--- change
     for i in num_of_layer:
         para = {'output_file_path': f'{output_folder}/{i}layer',
                 'iteration': 100,
-                'qos_range': [16_000, 512_000],
+                'qos_range': [16_000, 100_000],
                 # due:gue:eue_num = 14:10:62 when radius are 0.5 and 0.3
                 # due:gue:eue_num = 3:2:6    when radius are 0.5 and 0.4
-                'due_num': 210,
+                'due_num': 260,
                 'due_hotspots': (),  # e.g. ((-0.15, 0.0, 0.15, 75),) => (x, y, radius, #ue)
-                'gue_num': 150,
+                'gue_num': 180,
                 'gue_hotspots': (),
-                'eue_num': 930,
+                'eue_num': 420,
                 'eue_hotspots': (),
 
                 # gnb_freq(MHz/#): 5/25, 10/52, 15/79, 20/106, 25/133, 30/160, 40/216, 50/270, 60/324, 70/378, 80/434, 90/490, 100/546
                 # enb_freq(MHz/#): 1.4/6, 3/15, 5/25, 10/50, 15/75, 20/100
-                'gnb_coordinate': (0.5, 0.0), 'gnb_radius': 0.3, 'gnb_tx_power': 30, 'gnb_freq': 216, 'gnb_time': 80,
+                'gnb_coordinate': (0.5, 0.0), 'gnb_radius': 0.4, 'gnb_tx_power': 30, 'gnb_freq': 216, 'gnb_time': 80,
                 'gnb_layer': i, 'inr_discount': 0.5,
                 'enb_coordinate': (0.0, 0.0), 'enb_radius': 0.5, 'enb_tx_power': 46, 'enb_freq': 200, 'enb_time': 80,
 
