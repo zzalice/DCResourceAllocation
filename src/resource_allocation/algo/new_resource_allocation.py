@@ -117,36 +117,37 @@ class NewResource(Undo):
             last_rb: ResourceBlock = last_rb_enb
         else:
             assert last_rb_gnb is not None or last_rb_enb is not None, "The UE isn't allocated."
-        while True:
-            # check if there is empty space for one RB after the last_rb
-            next_rb: Optional[Tuple[int, int]] = next_rb_in_space(last_rb.i_start, last_rb.j_start,
-                                                                  ue.numerology_in_use,
-                                                                  last_rb.layer, 0, 0,
-                                                                  last_rb.layer.FREQ - 1, last_rb.layer.TIME - 1)
-            if next_rb is None:  # no continuous space for another RB. run out of space.
-                return False
 
-            self.start_func_undo()
-            # allocate a RB in the space
-            new_rb: Optional[ResourceBlock] = last_rb.layer.allocate_resource_block(next_rb[0], next_rb[1], ue)
-            self.append_undo(lambda l=last_rb.layer: l.undo(), lambda l=last_rb.layer: l.purge_undo())
-            if new_rb is None:  # allocation failed
-                self.end_func_undo()
-                self.purge_undo()
-                return False
+        # check if there is empty space for one RB after the last_rb
+        next_rb: Optional[Tuple[int, int]] = next_rb_in_space(last_rb.i_start, last_rb.j_start,
+                                                              ue.numerology_in_use,
+                                                              last_rb.layer, 0, 0,
+                                                              last_rb.layer.FREQ - 1, last_rb.layer.TIME - 1)
+        if next_rb is None:  # no continuous space for another RB. run out of space.
+            return False
 
-            # the SINR of the new RB
-            assert channel_model is not None, "Channel model isn't passed in."
-            channel_model.sinr_rb(new_rb)
-            self.append_undo(lambda: channel_model.undo(), lambda: channel_model.purge_undo())
+        self.start_func_undo()
 
+        # allocate a RB in the space
+        new_rb: Optional[ResourceBlock] = last_rb.layer.allocate_resource_block(next_rb[0], next_rb[1], ue)
+        self.append_undo(lambda l=last_rb.layer: l.undo(), lambda l=last_rb.layer: l.purge_undo())
+        if new_rb is None:  # allocation failed
             self.end_func_undo()
+            self.purge_undo()
+            return False
 
-            if new_rb.mcs.efficiency == 0.0:
-                self.undo()
-                return False
+        # the SINR of the new RB
+        assert channel_model is not None, "Channel model isn't passed in."
+        channel_model.sinr_rb(new_rb)
+        self.append_undo(lambda: channel_model.undo(), lambda: channel_model.purge_undo())
 
-            return new_rb
+        self.end_func_undo()
+
+        if new_rb.mcs.efficiency == 0.0:
+            self.undo()
+            return False
+
+        return new_rb
 
     @staticmethod
     def highest_freq_rb(rb_list: List[ResourceBlock]) -> Optional[ResourceBlock]:
