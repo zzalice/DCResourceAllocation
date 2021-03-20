@@ -1,11 +1,11 @@
-from typing import List, Optional, Tuple, Union
+from typing import List, Optional, Union
 
 from src.channel_model.sinr import ChannelModel
+from src.resource_allocation.algo.new_resource_allocation import NewResource
 from src.resource_allocation.ds.eutran import EUserEquipment
 from src.resource_allocation.ds.ngran import DUserEquipment, GUserEquipment
 from src.resource_allocation.ds.nodeb import ENBInfo, GNBInfo
 from src.resource_allocation.ds.rb import ResourceBlock
-from src.resource_allocation.ds.space import next_rb_in_space
 from src.resource_allocation.ds.ue import UserEquipment
 from src.resource_allocation.ds.undo import Undo
 from src.resource_allocation.ds.util_enum import E_MCS, G_MCS, NodeBType, UEType
@@ -128,50 +128,14 @@ class AdjustMCS(Undo):
             else:
                 # add a new RB
                 # Happens when allocating new UE
-                rb: Union[ResourceBlock, bool] = self.add_one_rb(ue, channel_model, undo=True)
-                if rb is False:
+                new_resource = NewResource()
+                rb: Union[ResourceBlock, bool] = new_resource.add_one_continuous_rb(ue, channel_model)
+                if rb:
+                    self.append_undo(lambda nr=new_resource: nr.undo(), lambda nr=new_resource: nr.purge_undo())
+                else:
                     return False
-
-    def add_one_rb(self, ue: UserEquipment, channel_model: ChannelModel, undo: bool = False) -> Union[ResourceBlock, bool]:
-        self.assert_undo_function() if undo else None
-        # the RB in highest frequency and latest time in a frame
-        last_rb_gnb: Optional[ResourceBlock] = None
-        last_rb_enb: Optional[ResourceBlock] = None
-        last_rb: Optional[ResourceBlock] = None
-        if hasattr(ue, 'gnb_info'):
-            last_rb_gnb: Optional[ResourceBlock] = self.highest_freq_rb(ue.gnb_info.rb)
-        if hasattr(ue, 'enb_info'):
-            last_rb_enb: Optional[ResourceBlock] = self.highest_freq_rb(ue.enb_info.rb)
-        if last_rb_gnb and last_rb_enb:
-            # pick the one with higher efficiency
-            last_rb: ResourceBlock = last_rb_gnb if last_rb_gnb.mcs.efficiency > last_rb_enb.mcs.efficiency else last_rb_enb
-        elif last_rb_gnb:
-            last_rb: ResourceBlock = last_rb_gnb
-        elif last_rb_enb:
-            last_rb: ResourceBlock = last_rb_enb
-        else:
-            assert last_rb_gnb is not None or last_rb_enb is not None, "The UE isn't allocated."
-
-        # check if there is empty space for one RB after the last_rb
-        next_rb: Optional[Tuple[int, int]] = next_rb_in_space(last_rb.i_start, last_rb.j_start, ue.numerology_in_use,
-                                                              last_rb.layer, 0, 0,
-                                                              last_rb.layer.FREQ - 1, last_rb.layer.TIME - 1)
-        if next_rb is None:  # no continuous space for another RB. run out of space.
-            return False
-
-        # allocate a RB in the space
-        new_rb: Optional[ResourceBlock] = last_rb.layer.allocate_resource_block(next_rb[0], next_rb[1], ue)
-        self.append_undo(lambda l=last_rb.layer: l.undo(), lambda l=last_rb.layer: l.purge_undo()) if undo else None
-        if new_rb is None:  # allocation failed
-            return False
-
-        # the SINR of the new RB
-        assert channel_model is not None, "Channel model isn't passed in."
-        channel_model.sinr_rb(new_rb)
-        self.append_undo(lambda: channel_model.undo(), lambda: channel_model.purge_undo()) if undo else None
-        (ue.gnb_info if new_rb.layer.nodeb.nb_type == NodeBType.G else ue.enb_info).rb.sort(key=lambda x: x.mcs.value,
-                                                                                            reverse=True)
-        return new_rb
+                (ue.gnb_info if rb.layer.nodeb.nb_type == NodeBType.G else ue.enb_info).rb.sort(
+                    key=lambda x: x.mcs.value, reverse=True)
 
     @staticmethod
     def throughput_ue(rb_list: List[ResourceBlock]) -> float:
@@ -180,17 +144,6 @@ class AdjustMCS(Undo):
             return lowest_mcs.value * len(rb_list)
         else:
             return 0.0
-
-    @staticmethod
-    def highest_freq_rb(rb_list: List[ResourceBlock]) -> Optional[ResourceBlock]:
-        if not rb_list:
-            return None
-        last_rb: ResourceBlock = rb_list[0]
-        for rb in rb_list[1:]:
-            if rb.i_start > last_rb.i_start or (rb.i_start == last_rb.i_start and rb.j_start > last_rb.j_start):
-                # higher frequency or later time
-                last_rb: ResourceBlock = rb
-        return last_rb
 
     # def from_lowest_freq(self, ue: UserEquipment, ue_rb_list: List[ResourceBlock], channel_model: ChannelModel,
     #                      precalculate: bool = False) -> int:
@@ -231,7 +184,8 @@ class AdjustMCS(Undo):
         non_lapped_rb.sort(key=lambda x: x.i_start)  # sort by freq
         self.pick_in_order(ue, lapped_rb + non_lapped_rb, channel_model)
 
-    def pick_in_order(self, ue: UserEquipment, rb_list: List[ResourceBlock], channel_model: ChannelModel) -> int:
+    @staticmethod
+    def pick_in_order(ue: UserEquipment, rb_list: List[ResourceBlock], channel_model: ChannelModel) -> int:
         """
         Delete the RB with highest freq & latest time.
         Only get better MCS or remove(CQI 0).
@@ -268,6 +222,7 @@ class AdjustMCS(Undo):
                 pointer += 1
 
         if qos_fulfilled:
+            assert count_rb == len(nb_info.rb)
             nb_info.mcs = current_mcs
             ue.update_throughput()
             ue.is_to_recalculate_mcs = False
@@ -277,12 +232,14 @@ class AdjustMCS(Undo):
             ue.remove_ue()
             return count_rb
         elif count_rb < current_mcs.calc_required_rb_count(ue.request_data_rate):
-            # need more RBs (why is mcs lower than the last round? May be caused by the random of seed in sinr.py)
+            # need more RBs
             for _ in range(count_rb, current_mcs.calc_required_rb_count(ue.request_data_rate)):
-                if self.add_one_rb(ue, channel_model):
+                # add continuous RBs
+                if NewResource().add_one_continuous_rb(ue, channel_model):
                     count_rb += 1
-                else:  # no continuous empty space or ue overlapped with itself(unlikely)
-                    raise AssertionError
+                else:  # no continuous empty space or ue overlapped with itself or the MCS of new RB is out of range
+                    ue.remove_ue()
+                    return 0
             return count_rb
         else:
             raise AssertionError
