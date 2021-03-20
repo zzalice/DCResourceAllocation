@@ -210,21 +210,23 @@ class AdjustMCS(Undo):
         :param rb_position: The position of RBs to use in the first place.
         :param channel_model: For adding new RBs if the MCS is lower than the old one.
         """
-        # collect the overlapped RBs in ue
-        non_lapped_rb: List[ResourceBlock] = []
-        lapped_rb: List[ResourceBlock] = []
-        for rb in ue.gnb_info.rb:
-            is_lapped: bool = False
-            for position in rb_position:
-                if rb.i_start == position.i_start and rb.j_start == position.j_start:
-                    is_lapped: bool = True
-                    break
-            lapped_rb.append(rb) if is_lapped else non_lapped_rb.append(rb)
+        # Use the RB with highest overlap times
+        rb_position.sort(key=lambda x: x.j_start, reverse=True)  # sort by time
+        rb_position.sort(key=lambda x: x.i_start, reverse=True)  # sort by freq
+        rb_position.sort(key=lambda x: x.time, reverse=True)
 
-        # adjust mcs TODO: Use the RB with highest overlap times
-        lapped_rb.sort(key=lambda x: x.j_start)  # sort by time
-        lapped_rb.sort(key=lambda x: x.i_start)  # sort by freq
-        lapped_rb.sort(key=lambda x: x.mcs.value, reverse=True)  # sort by mcs
+        # collect the overlapped RBs in ue
+        lapped_rb: List[ResourceBlock] = []
+        for position in rb_position:
+            for rb in ue.gnb_info.rb:
+                if rb.i_start == position.i_start and rb.j_start == position.j_start:
+                    lapped_rb.append(rb)
+                    break
+        non_lapped_rb: List[ResourceBlock] = []
+        for rb in ue.gnb_info.rb:
+            if rb not in lapped_rb:
+                non_lapped_rb.append(rb)
+
         non_lapped_rb.sort(key=lambda x: x.j_start)  # sort by time
         non_lapped_rb.sort(key=lambda x: x.i_start)  # sort by freq
         self.pick_in_order(ue, lapped_rb + non_lapped_rb, channel_model)
