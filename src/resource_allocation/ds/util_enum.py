@@ -243,6 +243,8 @@ class G_MCS(_MCS):
             return best_mcs
         else:
             return _SINRtoMCS.sinr_to_mcs(sinr, NodeBType.G)
+
+    @staticmethod
     def get_worst() -> G_MCS:
         return G_MCS.CQI1  # <-- change
 

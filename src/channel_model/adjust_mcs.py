@@ -192,11 +192,11 @@ class AdjustMCS(Undo):
                 last_rb: ResourceBlock = rb
         return last_rb
 
-    def from_lowest_freq(self, ue: UserEquipment, ue_rb_list: List[ResourceBlock], channel_model: ChannelModel,
-                         precalculate: bool = False) -> int:
-        ue_rb_list.sort(key=lambda x: x.j_start)  # sort by time
-        ue_rb_list.sort(key=lambda x: x.i_start)  # sort by freq
-        return self.pick_in_order(ue, ue_rb_list, channel_model, precalculate)
+    # def from_lowest_freq(self, ue: UserEquipment, ue_rb_list: List[ResourceBlock], channel_model: ChannelModel,
+    #                      precalculate: bool = False) -> int:
+    #     ue_rb_list.sort(key=lambda x: x.j_start)  # sort by time
+    #     ue_rb_list.sort(key=lambda x: x.i_start)  # sort by freq
+    #     return self.pick_in_order(ue, ue_rb_list, channel_model, precalculate)
 
     def from_highest_mcs(self, ue: UserEquipment, ue_rb_list: List[ResourceBlock], channel_model: ChannelModel):
         ue_rb_list.sort(key=lambda x: x.mcs.value, reverse=True)
@@ -231,8 +231,7 @@ class AdjustMCS(Undo):
         non_lapped_rb.sort(key=lambda x: x.i_start)  # sort by freq
         self.pick_in_order(ue, lapped_rb + non_lapped_rb, channel_model)
 
-    def pick_in_order(self, ue: UserEquipment, rb_list: List[ResourceBlock], channel_model: ChannelModel,
-                      precalculate: bool = False) -> int:
+    def pick_in_order(self, ue: UserEquipment, rb_list: List[ResourceBlock], channel_model: ChannelModel) -> int:
         """
         Delete the RB with highest freq & latest time.
         Only get better MCS or remove(CQI 0).
@@ -240,44 +239,50 @@ class AdjustMCS(Undo):
         :param ue: The UE to adjust mcs. For UE with SINGLE CONNECTION and had a number of RBs calculated by CQI_1
         :param rb_list: The UEs' RBs in gnb_info or enb_info.
         :param channel_model: For adding new RBs.
-        :param precalculate: If is "True", don't actually remove the ue or add RBs.
         :return: The number of RB this ue needs.
         """
-        current_mcs: Union[G_MCS, E_MCS] = rb_list[0].mcs
-        nb_info: Union[GNBInfo, ENBInfo] = ue.gnb_info if isinstance(current_mcs, G_MCS) else ue.enb_info
-        i: int = 1
-        while True:
-            if current_mcs.efficiency == 0.0:  # CQI 0
-                return 0 if precalculate else ue.remove_ue()
+        assert rb_list, 'Input empty list.'
 
-            if i == current_mcs.calc_required_rb_count(ue.request_data_rate):
-                # The current RBs can fulfill QoS
-                if not precalculate:
-                    # Remove the extra RBs
-                    while len(rb_list) > i:
-                        rb_list[-1].remove_rb()  # call the remove method in rb.py
-                        if nb_info.rb is not rb_list:
-                            # if rb_list is a combination of lists, not "the" nb_info in ue.
-                            # else the RB will be removed from rb_list at the remove() in rb.py
-                            rb_list.pop()
-                    nb_info.mcs = current_mcs
-                    ue.update_throughput()
-                    ue.is_to_recalculate_mcs = False
-                return i
-            elif i == len(rb_list) and i < current_mcs.calc_required_rb_count(ue.request_data_rate):
-                # need more RBs (why is mcs lower than the last round? May be caused by the random of seed in sinr.py)
-                for _ in range(i, current_mcs.calc_required_rb_count(ue.request_data_rate)):
-                    if rb := self.add_one_rb(ue, channel_model):
-                        if nb_info.rb is not rb_list:
-                            rb_list.append(rb)
-                    else:  # no continuous empty space or ue overlapped with itself(unlikely)
-                        raise AssertionError
-            elif i >= len(rb_list):
-                raise AssertionError
+        count_rb: int = 0
+        pointer: int = 0
+        first_time: bool = True
+        current_mcs: Optional[G_MCS, E_MCS] = None
+        nb_info: Optional[GNBInfo, ENBInfo] = None
+        qos_fulfilled: bool = False
+        for rb in rb_list[pointer:]:
+            if first_time:
+                first_time: bool = False
+                current_mcs: Union[G_MCS, E_MCS] = rb.mcs
+                nb_info: Union[GNBInfo, ENBInfo] = ue.gnb_info if isinstance(current_mcs, G_MCS) else ue.enb_info
 
-            # main
-            for rb in rb_list[i:current_mcs.calc_required_rb_count(ue.request_data_rate)]:
-                i += 1
-                if rb.mcs.efficiency < current_mcs.efficiency:
+            if rb.mcs.efficiency == 0.0 or qos_fulfilled:
+                rb.remove_rb()
+                if nb_info.rb is not rb_list:
+                    rb_list.remove(rb)
+            else:
+                count_rb += 1
+                if rb.mcs.efficiency < current_mcs.efficiency or current_mcs.efficiency == 0.0:
                     current_mcs: Union[G_MCS, E_MCS] = rb.mcs
-                    break
+                if count_rb == current_mcs.calc_required_rb_count(ue.request_data_rate):
+                    qos_fulfilled: bool = True
+                pointer += 1
+
+        if qos_fulfilled:
+            nb_info.mcs = current_mcs
+            ue.update_throughput()
+            ue.is_to_recalculate_mcs = False
+            return count_rb
+        elif count_rb == 0 and pointer == len(rb_list):
+            # the RBs in rb_list are all CQI 0
+            ue.remove_ue()
+            return count_rb
+        elif count_rb < current_mcs.calc_required_rb_count(ue.request_data_rate):
+            # need more RBs (why is mcs lower than the last round? May be caused by the random of seed in sinr.py)
+            for _ in range(count_rb, current_mcs.calc_required_rb_count(ue.request_data_rate)):
+                if self.add_one_rb(ue, channel_model):
+                    count_rb += 1
+                else:  # no continuous empty space or ue overlapped with itself(unlikely)
+                    raise AssertionError
+            return count_rb
+        else:
+            raise AssertionError
