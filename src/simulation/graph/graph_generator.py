@@ -142,7 +142,7 @@ class GraphGenerator:
 
         bar_chart('Frame used',
                   'The number of layer in a gNB', x_labels,
-                  'Percentage(%)', percentages,
+                  'Frame Usage(%)', percentages,
                   output_file_path, {'iteration': iteration})
 
     # ==================================================================================================================
