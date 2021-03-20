@@ -1,5 +1,6 @@
 import os
 import pickle
+import pprint
 from datetime import datetime
 from typing import Any, Dict, List, Tuple, Union
 
@@ -225,7 +226,7 @@ class GraphGenerator:
                                             self.collect_data[l][algo])
                 except KeyError:
                     self.collect_data[l][algo] = {'dUE_in_gNB': 0, 'dUE_in_eNB': 0, 'dUE_cross_BS': 0,
-                                                  'eUE': 0, 'gUE': 0}
+                                                  'eUE': 0, 'gUE': 0, 'total': 0}
                     self.count_allocated_ue(result[layer][algo][2], result[layer][algo][3], result[layer][algo][4],
                                             self.collect_data[l][algo])
 
@@ -235,29 +236,29 @@ class GraphGenerator:
         for due in due_list:
             if due.cross_nb:
                 collect_data['dUE_cross_BS'] += 1
+                collect_data['total'] += 1
             elif len(due.gnb_info.rb) > 0:
                 collect_data['dUE_in_gNB'] += 1
+                collect_data['total'] += 1
             elif len(due.enb_info.rb) > 0:
                 collect_data['dUE_in_eNB'] += 1
+                collect_data['total'] += 1
         for gue in gue_list:
             if gue.is_allocated:
                 collect_data['gUE'] += 1
+                collect_data['total'] += 1
         for eue in eue_list:
             if eue.is_allocated:
                 collect_data['eUE'] += 1
+                collect_data['total'] += 1
 
     def gen_allocated_ue(self, iteration: int, layers: List[int], output_file_path: str):
         for layer in self.collect_data:
             if layer in layers:
                 for algo in self.collect_data[layer]:
-                    self.collect_data[layer][algo]['total'] = 0
                     for ue in self.collect_data[layer][algo]:
-                        if ue == 'total':
-                            continue
                         self.collect_data[layer][algo][ue] /= iteration
-                        self.collect_data[layer][algo]['total'] += self.collect_data[layer][algo][ue]
         with open(f'{output_file_path}/avg_num_of_allocated_ue_{datetime.today().strftime("%m%d-%H%M")}.txt', 'w') as f:
-            import pprint
             f.write(pprint.pformat(self.collect_data))
 
     # ==================================================================================================================
