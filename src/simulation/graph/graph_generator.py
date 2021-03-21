@@ -20,7 +20,7 @@ class GraphGenerator:
         # parameters for graph generating usage
         self.collect_data = {}
         self.count_iter = {}
-        if graph_type == 'sys throughput - layer':
+        if graph_type == 'sys throughput - layer' or graph_type == 'increasing ue':
             self.frame_time: int = -1
 
         # main
@@ -29,16 +29,19 @@ class GraphGenerator:
             with open(file_result, 'rb') as f:
                 information: Dict = pickle.load(f)
                 assert kwargs['iteration'] <= information['iteration']
-                for l in kwargs['layers']:
-                    assert l in information['layers']
+                try:
+                    for l in kwargs['layers']:
+                        assert l in information['layers']
+                except KeyError:
+                    pass
 
                 while True:
                     try:
                         #                 layer     algo
                         algo_result: Dict[str, Dict[str, Tuple[GNodeB, ENodeB, List[
                             DUserEquipment], List[GUserEquipment], List[EUserEquipment]]]] = pickle.load(f)
-                        if graph_type == 'sys throughput - layer':
-                            self.collect_sys_throughput_layer(kwargs['iteration'], algo_result)
+                        if graph_type == 'sys throughput - layer' or graph_type == 'increasing ue':
+                            self.collect_sys_throughput(kwargs['iteration'], algo_result)
                         elif graph_type == 'used percentage':
                             self.collect_used_percentage(kwargs['iteration'], algo_result)
                         elif graph_type == 'deployment':
@@ -54,43 +57,60 @@ class GraphGenerator:
                             self.gen_deployment(kwargs['iteration'], kwargs['layers'], file_path)
                         elif graph_type == 'allocated ue':
                             self.gen_allocated_ue(kwargs['iteration'], kwargs['layers'], file_path)
+                        elif graph_type == 'increasing ue':
+                            self.gen_sys_throughput_increasing_ue(kwargs['iteration'], kwargs['total_ue'], file_path)
                         break
 
     # ==================================================================================================================
-    def collect_sys_throughput_layer(self, iteration: int, result: Dict[str, Dict[str, Tuple[GNodeB, ENodeB, List[
+    def collect_sys_throughput(self, iteration: int, result: Dict[str, Dict[str, Tuple[GNodeB, ENodeB, List[
         DUserEquipment], List[GUserEquipment], List[EUserEquipment]]]]):
         # collect_data: Dict[str, Dict[str, float]
         #                    layer     algo sum of system throughput
         self.frame_time: int = next(iter(next(iter(result.values())).values()))[0].frame.frame_time
 
-        for layer in result:  # only one
-            l: int = int(layer.replace('layer', ''))
-            self._increase_iter(l, iteration)
-            for algo in result[layer]:
+        for layer_or_total_ue in result:  # only one
+            l_or_u: str = layer_or_total_ue.replace('layer', '')
+            l_or_u: int = int(l_or_u.replace('ue', ''))
+            self._increase_iter(l_or_u, iteration)
+            for algo in result[layer_or_total_ue]:
                 try:
-                    self.collect_data[l][algo] += calc_system_throughput_uncategorized_ue(
-                        result[layer][algo][2] + result[layer][algo][3] + result[layer][algo][4])
+                    self.collect_data[l_or_u][algo] += calc_system_throughput_uncategorized_ue(
+                        result[layer_or_total_ue][algo][2] + result[layer_or_total_ue][algo][3] +
+                        result[layer_or_total_ue][algo][4])
                 except KeyError:
-                    self.collect_data[l][algo] = calc_system_throughput_uncategorized_ue(
-                        result[layer][algo][2] + result[layer][algo][3] + result[layer][algo][4])
+                    self.collect_data[l_or_u][algo] = calc_system_throughput_uncategorized_ue(
+                        result[layer_or_total_ue][algo][2] + result[layer_or_total_ue][algo][3] +
+                        result[layer_or_total_ue][algo][4])
         return True
+
+    def gen_sys_throughput(self, topic: List[int], iteration: int) -> Dict[str, List[float]]:
+        avg_system_throughput: Dict[str, List[float]] = {algo: [] for algo in next(iter(self.collect_data.values()))}
+        #                           algo      avg throughput of each layer
+        for t in topic:
+            for algo in self.collect_data[t]:
+                assert self.count_iter[t] == iteration
+                self.collect_data[t][algo] /= iteration
+                assert self.frame_time > 0
+                self.collect_data[t][algo] = bpframe_to_mbps(self.collect_data[t][algo], self.frame_time)
+                avg_system_throughput[algo].append(self.collect_data[t][algo])
+        return avg_system_throughput
 
     def gen_sys_throughput_layer(self, iteration: int, layers: List[int], output_file_path: str):
         for i in range(len(layers) - 1):
             assert layers[i] < layers[i + 1], 'Not in order.'
-        avg_system_throughput: Dict[str, List[float]] = {algo: [] for algo in next(iter(self.collect_data.values()))}
-        #                           algo      avg throughput of each layer
 
-        for layer in layers:
-            for algo in self.collect_data[layer]:
-                assert self.count_iter[layer] == iteration
-                self.collect_data[layer][algo] /= iteration
-                assert self.frame_time > 0
-                self.collect_data[layer][algo] = bpframe_to_mbps(self.collect_data[layer][algo], self.frame_time)
-                avg_system_throughput[algo].append(self.collect_data[layer][algo])
+        avg_system_throughput: Dict[str, List[float]] = self.gen_sys_throughput(layers, iteration)
 
         line_chart('',
                    'The number of gNB layer', ([str(i) for i in layers]),
+                   'System throughput(Mbps)', avg_system_throughput,
+                   output_file_path, {'iteration': iteration})
+
+    def gen_sys_throughput_increasing_ue(self, iteration: int, total_ue: List[int], output_file_path: str):
+        avg_system_throughput: Dict[str, List[float]] = self.gen_sys_throughput(total_ue, iteration)
+
+        line_chart('',
+                   'Number of UEs', ([str(i) for i in total_ue]),
                    'System throughput(Mbps)', avg_system_throughput,
                    output_file_path, {'iteration': iteration})
 

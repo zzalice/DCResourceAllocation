@@ -14,7 +14,8 @@ if __name__ == '__main__':
 
     # ---Graphs for ue---
     ut: List[int] = [60, 80, 100, 120, 140, 160, 180, 200]
-    IterateAlgo(iteration=i, folder_data=f_data).iter_ue(total_ue=ut)
+    # IterateAlgo(iteration=i, folder_data=f_data).iter_ue(total_ue=ut)
+    GraphGenerator(iteration=i, total_ue=ut, graph_type='increasing ue', folder_result=(f'{f_data}/{f_mcs}',))
 
     # ---Graphs for layer---
     # l: List[int] = [1, 2, 3, 4, 5]
