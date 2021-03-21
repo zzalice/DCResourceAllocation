@@ -29,6 +29,7 @@ class Phase3(Undo):
         :param nb_type: Adjust the MCS of the UEs in this BS.
         :param zones: The zones in each layer.
         """
+        # TODO: add dUE cut!!!!
         position: Dict[Numerology, LappingPositionList] = {numerology: LappingPositionList() for numerology in
                                                            Numerology.gen_candidate_set()}
 

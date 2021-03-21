@@ -46,20 +46,20 @@ if __name__ == '__main__':
     date: str = datetime.today().strftime("%m%d-%H%M%S")
     output_folder: str = f'{date}avg_deploy'  # <--- change
 
-    # --- for layer ---
+    # # --- for layer ---
     # num_of_layer = [1, 2, 3, 4, 5]  # <--- change
     # for i in num_of_layer:
     #     para = {'output_file_path': f'{output_folder}/{i}layer',
-    # --- for ue ---
+    # # --- for ue ---
+    # # due:gue:eue_num = 3:4:17   when radius are 0.5 and 0.3
+    # # due:gue:eue_num = 2:3:6    when radius are 0.5 and 0.4
     num_of_total_ue = [60, 80, 100, 120, 140, 160, 180, 200]  # <--- change
     proportion_of_ue = [2, 3, 6]  # for radius 0.4   <--- change
     num_of_ue = calc_num_ue(num_of_total_ue, proportion_of_ue)
     for i in num_of_ue:
         para = {'output_file_path': f'{output_folder}/{i["total"]}ue',
-                'iteration': 10,
+                'iteration': 100,
                 'qos_range': [16_000, 100_000],
-                # due:gue:eue_num = 3:4:17   when radius are 0.5 and 0.3
-                # due:gue:eue_num = 2:3:6    when radius are 0.5 and 0.4
                 'due_num': i['due'],
                 'due_hotspots': (),  # e.g. ((-0.15, 0.0, 0.15, 75),) => (x, y, radius, #ue)
                 'gue_num': i['gue'],
