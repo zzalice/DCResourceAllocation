@@ -69,9 +69,9 @@ if __name__ == '__main__':
 
                 # gnb_freq(MHz/#): 5/25, 10/52, 15/79, 20/106, 25/133, 30/160, 40/216, 50/270, 60/324, 70/378, 80/434, 90/490, 100/546
                 # enb_freq(MHz/#): 1.4/6, 3/15, 5/25, 10/50, 15/75, 20/100
-                'gnb_coordinate': (0.5, 0.0), 'gnb_radius': 0.4, 'gnb_tx_power': 30, 'gnb_freq': 25, 'gnb_time': 8,
+                'gnb_freq': 25, 'gnb_time': 8, 'gnb_radius': 0.4, 'gnb_coordinate': (0.5, 0.0), 'gnb_tx_power': 30,
                 'gnb_layer': 5, 'inr_discount': 0.5,
-                'enb_coordinate': (0.0, 0.0), 'enb_radius': 0.5, 'enb_tx_power': 46, 'enb_freq': 200, 'enb_time': 8,
+                'enb_freq': 200, 'enb_time': 8, 'enb_radius': 0.5, 'enb_coordinate': (0.0, 0.0), 'enb_tx_power': 46,
 
                 'cochannel_bandwidth': 0,
                 'worsen_threshold': -20  # bps, must be <= 0
