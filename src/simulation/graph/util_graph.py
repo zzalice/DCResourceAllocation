@@ -4,6 +4,7 @@ from typing import Any, Dict, List, Tuple
 
 import matplotlib.pyplot as plt
 import numpy as np
+import pandas
 
 
 def line_chart(title: str, x_label: str, scale_x: List[Any], y_label: str, scale_y: Dict[str, List[Any]],
@@ -24,8 +25,7 @@ def line_chart(title: str, x_label: str, scale_x: List[Any], y_label: str, scale
     file_name: str = f'{x_label}_{y_label}_{datetime.today().strftime("%m%d-%H%M")}'
     plt.savefig(f'{output_folder}/{file_name}.png')
     plt.show()
-    with open(f'{output_folder}/{file_name}.json', 'w') as file:
-        json.dump([title, x_label, scale_x, y_label, scale_y, output_folder, parameter], file)
+    dump_json(f'{output_folder}/{file_name}', [title, x_label, scale_x, y_label, scale_y, output_folder, parameter])
 
 
 def bar_chart(title: str, x_label: str, x_tick_labels: List[Any], y_label: str, data: Dict[str, List[float]],
@@ -57,8 +57,8 @@ def bar_chart(title: str, x_label: str, x_tick_labels: List[Any], y_label: str, 
     file_name: str = f'{x_label}_{y_label}_{datetime.today().strftime("%m%d-%H%M")}'
     plt.savefig(f'{output_file_path}/{file_name}.png')
     plt.show()
-    with open(f'{output_file_path}/{file_name}.json', 'w') as file:
-        json.dump([title, x_label, x_tick_labels, y_label, data, output_file_path, parameter], file)
+    dump_json(f'{output_file_path}/{file_name}',
+              [title, x_label, x_tick_labels, y_label, data, output_file_path, parameter])
 
 
 def bar_chart_auto_label(rects, ax):
@@ -72,6 +72,54 @@ def bar_chart_auto_label(rects, ax):
                     ha='center', va='bottom')
 
 
+def bar_chart_grouped_stacked(title: str, x_label: str, y_label: str, output_file_path: str, parameter: Dict,
+                              data: Dict[str, List[List[float]]], x_index: List[str], stack_label: List[str],
+                              labels=None, H="/"):
+    # https://stackoverflow.com/questions/22787209/how-to-have-clusters-of-stacked-bars-with-python-pandas
+    dfall: List[pandas.DataFrame] = []
+    for algo in labels:
+        dfall.append(pandas.DataFrame(data[algo],
+                                      index=[i + ' layer' for i in x_index],
+                                      columns=[i.replace('_', ' ') for i in stack_label]))
+
+    n_df = len(dfall)
+    n_col = len(dfall[0].columns)
+    n_ind = len(dfall[0].index)
+    axe = plt.subplot(111)
+
+    for df in dfall:  # for each data frame
+        axe = df.plot(kind="bar", linewidth=0, stacked=True, ax=axe, legend=False, grid=False)  # make bar plots
+
+    h, l = axe.get_legend_handles_labels()  # get the handles we want to modify
+    for i in range(0, n_df * n_col, n_col):  # len(h) = n_col * n_df
+        for j, pa in enumerate(h[i:i + n_col]):
+            for rect in pa.patches:  # for each index
+                rect.set_x(rect.get_x() + 1 / float(n_df + 1) * i / float(n_col))
+                rect.set_hatch(H * int(i / n_col))  # edited part
+                rect.set_width(1 / float(n_df + 1))
+
+    axe.set_xticks((np.arange(0, 2 * n_ind, 2) + 1 / float(n_df + 1)) / 2.)
+    axe.set_xticklabels(df.index, rotation=0)
+    axe.set_ylabel(y_label)
+    axe.set_title(title)
+
+    # Add invisible data to add another legend
+    n = []
+    for i in range(n_df):
+        n.append(axe.bar(0, 0, color="gray", hatch=H * i))
+
+    l1 = axe.legend(h[:n_col], l[:n_col], loc=[1.01, 0.5])
+    if labels is not None:
+        l2 = plt.legend(n, labels, loc=[1.01, 0.1])
+    axe.add_artist(l1)
+
+    plt.tight_layout()
+    plt.savefig(f'{output_file_path}.png', bbox_inches='tight')
+    plt.show()
+    dump_json(output_file_path,
+              [title, x_label, y_label, output_file_path, parameter, data, x_index, stack_label, labels, H])
+
+
 def scatter_chart(title, x, y, color, x_lim: Tuple[float, float], y_lim: Tuple[float, float],
                   output_file: str, parameter: Dict):
     # https://www.pythonpool.com/matplotlib-circle/
@@ -83,8 +131,12 @@ def scatter_chart(title, x, y, color, x_lim: Tuple[float, float], y_lim: Tuple[f
     plt.title(title)
     plt.savefig(f'{output_file}.png')
     plt.show()
-    with open(f'{output_file}.json', 'w') as file:
-        json.dump([title, x, y, color, x_lim, y_lim, output_file, parameter], file)
+    dump_json(output_file, [title, x, y, color, x_lim, y_lim, output_file, parameter])
+
+
+def dump_json(path: str, data: Any):
+    with open(f'{path}.json', 'w') as file:
+        json.dump(data, file)
 
 
 if __name__ == '__main__':
@@ -99,6 +151,22 @@ if __name__ == '__main__':
     #     line_chart(data[0], data[1], data[2], data[3], data[4], data[5])
 
     # bar chart
-    labels = ['G1', 'G2', 'G3', 'G4', 'G5']
-    raw_data = {'men': [20, 34, 30, 35, 27], 'women': [25, 32, 34, 20, 25], 'child': [1, 2, 3, 4, 5]}
-    bar_chart(title='Scores by group and gender', x_tick_labels=labels, y_label='Scores', data=raw_data)
+    # labels = ['G1', 'G2', 'G3', 'G4', 'G5']
+    # raw_data = {'men': [20, 34, 30, 35, 27], 'women': [25, 32, 34, 20, 25], 'child': [1, 2, 3, 4, 5]}
+    # bar_chart(title='Scores by group and gender', x_tick_labels=labels, y_label='Scores', data=raw_data)
+
+    # bar chart grouped and stacked
+    # import pandas as pd
+    # import numpy as np
+    # import matplotlib.pyplot as plt
+    # df1 = pd.DataFrame(np.random.rand(4, 5),
+    #                    index=["A", "B", "C", "D"],
+    #                    columns=["I", "J", "K", "L", "M"])
+    # df2 = pd.DataFrame(np.random.rand(4, 5),
+    #                    index=["A", "B", "C", "D"],
+    #                    columns=["I", "J", "K", "L", "M"])
+    # df3 = pd.DataFrame(np.random.rand(4, 5),
+    #                    index=["A", "B", "C", "D"],
+    #                    columns=["I", "J", "K", "L", "M"])
+    # bar_chart_grouped_stacked([df1, df2, df3], ["df1", "df2", "df3"])
+    pass

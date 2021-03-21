@@ -1,6 +1,5 @@
 import os
 import pickle
-import pprint
 from datetime import datetime
 from typing import Any, Dict, List, Tuple, Union
 
@@ -9,7 +8,7 @@ from src.resource_allocation.ds.eutran import ENodeB, EUserEquipment
 from src.resource_allocation.ds.ngran import DUserEquipment, GNodeB, GUserEquipment
 from src.resource_allocation.ds.ue import UserEquipment
 from src.resource_allocation.ds.util_enum import UEType
-from src.simulation.graph.util_graph import bar_chart, line_chart, scatter_chart
+from src.simulation.graph.util_graph import bar_chart, bar_chart_grouped_stacked, line_chart, scatter_chart
 
 
 class GraphGenerator:
@@ -252,14 +251,40 @@ class GraphGenerator:
                 collect_data['eUE'] += 1
                 collect_data['total'] += 1
 
-    def gen_allocated_ue(self, iteration: int, layers: List[int], output_file_path: str):
+    def gen_allocated_ue(self, iteration: int, layers: List[int], output_file_path: str,
+                         ue_label: Tuple[str] = ('eUE', 'dUE_in_eNB', 'gUE', 'dUE_in_gNB', 'dUE_cross_BS'),
+                         algo_label: Tuple[str] = ('DC-RA', 'Intuitive')):
+        """
+        :param iteration:
+        :param layers: The display order of the number of layers in gNB
+        :param output_file_path:
+        :param ue_label: The display order of bar stack in the form of Dict name.
+        :param algo_label: The display order of algorithm
+        """
+        collect_data: Dict[str, Dict[int, Dict[str, float]]] = {}
+        #                  algo      layer     ue   avg allocated ue
         for layer in self.collect_data:
             if layer in layers:
                 for algo in self.collect_data[layer]:
                     for ue in self.collect_data[layer][algo]:
                         self.collect_data[layer][algo][ue] /= iteration
-        with open(f'{output_file_path}/avg_num_of_allocated_ue_{datetime.today().strftime("%m%d-%H%M")}.txt', 'w') as f:
-            f.write(pprint.pformat(self.collect_data))
+                    try:
+                        collect_data[algo][layer] = self.collect_data[layer][algo]
+                    except KeyError:
+                        collect_data[algo] = {layer: self.collect_data[layer][algo]}
+
+        num_of_allo_ue: Dict[str, List[List[float]]] = {}  # algo(str) -> layers(list) -> UEs(float)
+        for algo in algo_label:
+            num_of_allo_ue[algo] = []  # layers(list) -> UEs(float)
+            for layer in layers:
+                num_of_allo_ue[algo].append([])
+                for ue in ue_label:
+                    num_of_allo_ue[algo][-1].append(collect_data[algo][layer][ue])
+
+        bar_chart_grouped_stacked('The allocated UEs', 'The number of layers in gNB', 'The number of allocate UE',
+                                  f'{output_file_path}/num_of_allocated_ue_{datetime.today().strftime("%m%d-%H%M")}',
+                                  {'iteration': iteration}, num_of_allo_ue, [str(i) for i in layers], ue_label,
+                                  algo_label)
 
     # ==================================================================================================================
 
