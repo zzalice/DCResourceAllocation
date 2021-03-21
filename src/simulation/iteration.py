@@ -12,29 +12,28 @@ from src.resource_allocation.ds.util_enum import E_MCS, G_MCS
 
 
 class IterateAlgo:
-    def iter_layer(self, iteration: int, layers: List[int], folder_data: str) -> bool:
-        parameter = {'iteration': iteration, 'layers': layers, 'data folder': folder_data,
-                     'gNB MCS': [G_MCS.get_worst().name, G_MCS.get_best().name],
-                     'eNB MCS': [E_MCS.get_worst().name, E_MCS.get_best().name]}
+    def __init__(self, iteration: int, folder_data: str):
+        assert iteration > 0
+        self.iteration: int = iteration
+        self.folder_data: str = folder_data
 
-        folder_graph: str = f'{os.path.dirname(__file__)}/graph/{folder_data}/gNB{parameter["gNB MCS"][0]}{parameter["gNB MCS"][1]}_eNB{parameter["eNB MCS"][0]}{parameter["eNB MCS"][1]}'
-        self._new_directory(folder_graph)
-        self.gen_txt_parameter(parameter, folder_graph)
+    def iter_layer(self, layers: List[int]):
+        self.iter(('layers', layers), 'layer')
 
-        file_result: str = f'{folder_graph}/result.P'
-        with open(file_result, 'wb') as f:
-            pickle.dump(parameter, f)
+    def iter_ue(self, total_ue: List[int]):
+        self.iter(('total ue', total_ue), 'ue')
+
+    def iter(self, topic: Tuple[str, List[int]], folder_description: str):
+        file_result: str = self.create_file(topic)
 
         program_start_time = time.time()
-        for l in layers:
-            print(f'l: {l}')
-
-            for i in range(iteration):
+        for m in topic[1]:
+            print(f'm: {m}')
+            for i in range(self.iteration):
                 print(f'i: {i}')
-                file_data: str = f'{folder_data}/{l}layer/{i}'
+                file_data: str = f'{self.folder_data}/{m}{folder_description}/{i}'
                 result: Dict[
-                    str, Tuple[GNodeB, ENodeB, List[DUserEquipment], List[GUserEquipment], List[EUserEquipment]]] = {
-                    'DC-RA': (), 'Intuitive': ()}
+                    str, Tuple[GNodeB, ENodeB, List[DUserEquipment], List[GUserEquipment], List[EUserEquipment]]] = {}
 
                 # DC-RA
                 start_time = time.time()
@@ -47,9 +46,23 @@ class IterateAlgo:
                 print("--- %s min Intui ---" % round((time.time() - start_time) / 60, 3))
 
                 with open(file_result, 'ab+') as f:
-                    pickle.dump({f'{l}layer': result}, f)
-        print("--- %s min ---" % round((time.time() - program_start_time) / 60, 3))
+                    pickle.dump({f'{m}{folder_description}': result}, f)
+        print("--- Total %s min ---" % round((time.time() - program_start_time) / 60, 3))
         return True
+
+    def create_file(self, main_topic: Tuple[str, List[int]]) -> str:
+        parameter = {'iteration': self.iteration, main_topic[0]: main_topic[1], 'data folder': self.folder_data,
+                     'gNB MCS': [G_MCS.get_worst().name, G_MCS.get_best().name],
+                     'eNB MCS': [E_MCS.get_worst().name, E_MCS.get_best().name]}
+
+        folder_graph: str = f'{os.path.dirname(__file__)}/graph/{self.folder_data}/gNB{parameter["gNB MCS"][0]}{parameter["gNB MCS"][1]}_eNB{parameter["eNB MCS"][0]}{parameter["eNB MCS"][1]}'
+        self._new_directory(folder_graph)
+        self.gen_txt_parameter(parameter, folder_graph)
+
+        file_result: str = f'{folder_graph}/result.P'
+        with open(file_result, 'wb') as f:
+            pickle.dump(parameter, f)
+        return file_result
 
     @staticmethod
     def _new_directory(path):
