@@ -15,10 +15,9 @@ from src.simulation.data.util_type import UECoordinate, UEProfiles
 
 class DataGenerator:
     def __init__(self, iteration: int, output_file_path: str,
-                 qos_range: Tuple[int, int],
-                 eue_num: int, eue_hotspots: Tuple[Tuple[float, float, float, int]],
-                 gue_num: int, gue_hotspots: Tuple[Tuple[float, float, float, int]],
-                 due_num: int, due_hotspots: Tuple[Tuple[float, float, float, int]],
+                 eue_num: int, eue_qos_range: Tuple[int, int], eue_hotspots: Tuple[Tuple[float, float, float, int]],
+                 gue_num: int, gue_qos_range: Tuple[int, int], gue_hotspots: Tuple[Tuple[float, float, float, int]],
+                 due_num: int, due_qos_range: Tuple[int, int], due_hotspots: Tuple[Tuple[float, float, float, int]],
                  enb_coordinate: Tuple[int, int], enb_radius: float, enb_tx_power: int, enb_freq: int, enb_time: int,
                  gnb_coordinate: Tuple[int, int], gnb_radius: float, gnb_tx_power: int, gnb_freq: int, gnb_time: int,
                  gnb_layer: int, inr_discount: float,
@@ -28,15 +27,21 @@ class DataGenerator:
         self.output_file_path: str = f'{os.path.dirname(__file__)}/{output_file_path}'
         if not os.path.exists(self.output_file_path):
             os.makedirs(self.output_file_path)
-        assert qos_range[0] <= qos_range[1]
-        self.qos_range: Tuple[int, int] = qos_range
+
         assert eue_num >= 0 and gue_num >= 0 and due_num >= 0
         self.eue_num: int = eue_num
+        assert eue_qos_range[0] <= eue_qos_range[1]
+        self.eue_qos_range: Tuple[int, int] = eue_qos_range     # bps
         self.eue_hotspots: Tuple[Tuple[float, float, float, int]] = eue_hotspots
         self.gue_num: int = gue_num
+        assert gue_qos_range[0] <= gue_qos_range[1]
+        self.gue_qos_range: Tuple[int, int] = gue_qos_range
         self.gue_hotspots: Tuple[Tuple[float, float, float, int]] = gue_hotspots
         self.due_num: int = due_num
+        assert due_qos_range[0] <= due_qos_range[1]
+        self.due_qos_range: Tuple[int, int] = due_qos_range
         self.due_hotspots: Tuple[Tuple[float, float, float, int]] = due_hotspots
+
         self.enb_coordinate: Tuple[int, int] = enb_coordinate
         self.enb_radius: float = enb_radius
         self.enb_tx_power: int = enb_tx_power
@@ -72,12 +77,9 @@ class DataGenerator:
             sec_to_frame: int = 1000 // (e_nb.frame.frame_time // 8)
             worsen_threshold: float = self.worsen_threshold / sec_to_frame     # bit per frame
 
-            qos_lower_bound_bps: int = self.qos_range[0]  # QoS range: 16,000-512,000 bps
-            qos_higher_bound_bps: int = self.qos_range[1]
-
             e_profiles: UEProfiles = UEProfiles(
                 self.eue_num,
-                tuple(random.randrange(qos_lower_bound_bps // sec_to_frame, qos_higher_bound_bps // sec_to_frame + 1,
+                tuple(random.randrange(self.eue_qos_range[0] // sec_to_frame, self.eue_qos_range[1] // sec_to_frame + 1,
                                        10_000 // sec_to_frame) for _ in range(self.eue_num)),
                 LTEResourceBlock.gen_candidate_set() * self.eue_num,  # dummy (unused)
                 UECoordinate(UEType.E, self.eue_num, e_nb, g_nb, self.eue_hotspots).generate()
@@ -85,7 +87,7 @@ class DataGenerator:
 
             g_profiles: UEProfiles = UEProfiles(
                 self.gue_num,
-                tuple(random.randrange(qos_lower_bound_bps // sec_to_frame, qos_higher_bound_bps // sec_to_frame + 1,
+                tuple(random.randrange(self.gue_qos_range[0] // sec_to_frame, self.gue_qos_range[1] // sec_to_frame + 1,
                                        10_000 // sec_to_frame) for _ in
                       range(self.gue_num)),
                 tuple(Numerology.gen_candidate_set(random_pick=True) for _ in range(self.gue_num)),
@@ -94,7 +96,7 @@ class DataGenerator:
 
             d_profiles: UEProfiles = UEProfiles(
                 self.due_num,
-                tuple(random.randrange(qos_lower_bound_bps // sec_to_frame, qos_higher_bound_bps // sec_to_frame + 1,
+                tuple(random.randrange(self.due_qos_range[0] // sec_to_frame, self.due_qos_range[1] // sec_to_frame + 1,
                                        10_000 // sec_to_frame) for _ in
                       range(self.due_num)),
                 tuple(Numerology.gen_candidate_set(random_pick=True) for _ in range(self.due_num)),

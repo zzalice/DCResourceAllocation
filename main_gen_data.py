@@ -7,10 +7,9 @@ from src.simulation.data.data_generator import DataGenerator
 
 def main(parameter: Dict):
     DataGenerator(iteration=parameter['iteration'], output_file_path=parameter['output_file_path'],
-                  qos_range=parameter['qos_range'],
-                  eue_num=parameter['eue_num'], eue_hotspots=parameter['eue_hotspots'],
-                  gue_num=parameter['gue_num'], gue_hotspots=parameter['gue_hotspots'],
-                  due_num=parameter['due_num'], due_hotspots=parameter['due_hotspots'],
+                  eue_num=parameter['eue_num'], eue_qos_range=parameter['eue_qos'], eue_hotspots=parameter['eue_hotspots'],
+                  gue_num=parameter['gue_num'], gue_qos_range=parameter['gue_qos'], gue_hotspots=parameter['gue_hotspots'],
+                  due_num=parameter['due_num'], due_qos_range=parameter['due_qos'], due_hotspots=parameter['due_hotspots'],
                   enb_coordinate=parameter['enb_coordinate'], enb_radius=parameter['enb_radius'],
                   enb_tx_power=parameter['enb_tx_power'], enb_freq=parameter['enb_freq'],
                   enb_time=parameter['enb_time'],
@@ -59,12 +58,14 @@ if __name__ == '__main__':
     for i in num_of_ue:
         para = {'output_file_path': f'{output_folder}/{i["total"]}ue',
                 'iteration': 100,
-                'qos_range': [16_000, 100_000],
                 'due_num': i['due'],
+                'due_qos': [16_000, 100_000],
                 'due_hotspots': (),  # e.g. ((-0.15, 0.0, 0.15, 75),) => (x, y, radius, #ue)
                 'gue_num': i['gue'],
+                'gue_qos': [16_000, 100_000],
                 'gue_hotspots': (),
                 'eue_num': i['eue'],
+                'eue_qos': [16_000, 100_000],
                 'eue_hotspots': (),
 
                 # gnb_freq(MHz/#): 5/25, 10/52, 15/79, 20/106, 25/133, 30/160, 40/216, 50/270, 60/324, 70/378, 80/434, 90/490, 100/546
