@@ -131,10 +131,9 @@ class DataGenerator:
     def gen_txt_parameter(self):
         with open(f'{self.output_file_path}/parameter_data.txt', 'w') as file:
             file.write(
-                f'QoS range(in bps): {self.qos_range}\n' +
-                f'dUE number: {self.due_num}\thot spots: {self.due_hotspots}\n' +
-                f'gUE number: {self.gue_num}\thot spots: {self.gue_hotspots}\n' +
-                f'eUE number: {self.eue_num}\thot spots: {self.eue_hotspots}\n\n' +
+                f'dUE number: {self.due_num}\tQoS(in bps): {self.due_qos_range}\thot spots: {self.due_hotspots}\n' +
+                f'gUE number: {self.gue_num}\tQoS(in bps): {self.gue_qos_range}\thot spots: {self.gue_hotspots}\n' +
+                f'eUE number: {self.eue_num}\tQoS(in bps): {self.eue_qos_range}\thot spots: {self.eue_hotspots}\n\n' +
 
                 f'gNB-------\n' +
                 f'max layer: {self.gnb_layer}\n' +
