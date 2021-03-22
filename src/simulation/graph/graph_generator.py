@@ -46,7 +46,7 @@ class GraphGenerator:
                             self.collect_used_percentage(kwargs['iteration'], algo_result)
                         elif graph_type == 'deployment':
                             self.collect_depolyment(kwargs['iteration'], algo_result)
-                        elif graph_type == 'allocated ue':
+                        elif graph_type == 'allocated ue' or graph_type == 'total_allocated_ue':
                             self.collect_allocated_ue(kwargs['iteration'], algo_result)
                     except EOFError:
                         if graph_type == 'sys throughput - layer':
@@ -56,7 +56,11 @@ class GraphGenerator:
                         elif graph_type == 'deployment':
                             self.gen_deployment(kwargs['iteration'], kwargs['layers'], file_path)
                         elif graph_type == 'allocated ue':
-                            self.gen_allocated_ue(kwargs['iteration'], kwargs['layers'], file_path)
+                            self.gen_allocated_ue(kwargs['iteration'], kwargs['layers'], file_path,
+                                                  ue_label=('eUE', 'dUE_in_eNB', 'gUE', 'dUE_in_gNB', 'dUE_cross_BS'))
+                        elif graph_type == 'total_allocated_ue':
+                            self.gen_allocated_ue(kwargs['iteration'], kwargs['layers'], file_path,
+                                                  ue_label=('total',))
                         elif graph_type == 'increasing ue':
                             self.gen_sys_throughput_increasing_ue(kwargs['iteration'], kwargs['total_ue'], file_path)
                         break
@@ -272,8 +276,8 @@ class GraphGenerator:
                 collect_data['total'] += 1
 
     def gen_allocated_ue(self, iteration: int, layers: List[int], output_file_path: str,
-                         ue_label: Tuple[str] = ('eUE', 'dUE_in_eNB', 'gUE', 'dUE_in_gNB', 'dUE_cross_BS'),
-                         algo_label: Tuple[str] = ('DC-RA', 'Intuitive')):
+                         ue_label: Tuple[str, ...],
+                         algo_label: Tuple[str, ...] = ('DC-RA', 'Intuitive')):
         """
         :param iteration:
         :param layers: The display order of the number of layers in gNB
@@ -301,7 +305,7 @@ class GraphGenerator:
                 for ue in ue_label:
                     num_of_allo_ue[algo][-1].append(collect_data[algo][layer][ue])
 
-        bar_chart_grouped_stacked('The allocated UEs', 'The number of layers in gNB', 'The number of allocate UE',
+        bar_chart_grouped_stacked('The allocated UEs', 'The number of layers in gNB', 'The number of allocated UE',
                                   f'{output_file_path}/num_of_allocated_ue_{datetime.today().strftime("%m%d-%H%M")}',
                                   {'iteration': iteration}, num_of_allo_ue, [str(i) for i in layers], ue_label,
                                   algo_label)
