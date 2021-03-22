@@ -59,7 +59,6 @@ class DataGenerator:
         self.inr_discount: float = inr_discount
         assert cochannel_bandwidth >= 0
         self.cochannel_bandwidth: int = cochannel_bandwidth
-        assert worsen_threshold <= 0
         self.worsen_threshold: int = worsen_threshold
 
     def generate_data(self):
