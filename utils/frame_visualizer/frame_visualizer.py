@@ -196,6 +196,7 @@ if __name__ == '__main__':
     file_to_visualize = "vis_" + datetime.today().strftime('%Y%m%d')
     # file_to_visualize = "vis_intuitive_" + datetime.today().strftime('%Y%m%d')
     # file_to_visualize = "vis_wang_" + datetime.today().strftime('%Y%m%d')
+    file_to_visualize = "vis_msema_" + datetime.today().strftime('%Y%m%d')
 
     frame_renderer = FrameRenderer()
     s, gf, ef, t, gue, due, eue = frame_renderer.open_file(file_to_visualize + ".P")
