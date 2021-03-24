@@ -41,11 +41,11 @@ class Intuitive(Undo):
 
     def resource_allocation(self, nb_type: NodeBType):
         if nb_type == NodeBType.G:
-            self.ue_gnb_to_allocate.sort(key=lambda x: x.coordinate.distance_gnb, reverse=True)
+            self.ue_gnb_to_allocate.sort(key=lambda x: x.coordinate.distance_gnb)
             ue_to_allocate: List[Union[GUserEquipment, DUserEquipment]] = self.ue_gnb_to_allocate
             nb: GNodeB = self.gnb
         else:
-            self.ue_enb_to_allocate.sort(key=lambda x: x.coordinate.distance_enb, reverse=True)
+            self.ue_enb_to_allocate.sort(key=lambda x: x.coordinate.distance_enb)
             ue_to_allocate: List[Union[EUserEquipment, DUserEquipment]] = self.ue_enb_to_allocate
             nb: ENodeB = self.enb
 

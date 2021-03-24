@@ -4,7 +4,7 @@ import sys
 from datetime import datetime
 from typing import List, Tuple
 
-from src.resource_allocation.algo.intuitive_algo import Intuitive
+from src.resource_allocation.algo.algo_intuitive import Intuitive
 from src.resource_allocation.ds.eutran import ENodeB, EUserEquipment
 from src.resource_allocation.ds.ngran import DUserEquipment, GNodeB, GUserEquipment
 from utils.pickle_generator import visualize_phase
