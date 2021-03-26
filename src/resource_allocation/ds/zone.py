@@ -68,6 +68,14 @@ class Zone:
         return self.zone_freq > self.numerology.freq or self.zone_time == self.last_row_duration
 
     @property
+    def is_half(self) -> bool:
+        if self.zone_freq > self.numerology.freq or (
+                self.zone_freq == self.numerology.freq and self.last_row_duration >= self.zone_time / 2):
+            return True
+        else:
+            return False
+
+    @property
     def last_row_remaining_time(self) -> int:
         return self.zone_time - self.last_row_duration
 

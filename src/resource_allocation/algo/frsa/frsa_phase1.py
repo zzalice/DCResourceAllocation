@@ -7,7 +7,7 @@ from src.resource_allocation.ds.util_enum import Numerology
 from src.resource_allocation.ds.zone import Zone
 
 
-class WangPhase1(Phase1):
+class FRSAPhase1(Phase1):
     def __init__(self, nodeb: GNodeB, ue_list: Tuple[UserEquipment, ...]):
         super().__init__(ue_list)
         self.nodeb: GNodeB = nodeb
@@ -22,6 +22,24 @@ class WangPhase1(Phase1):
         g_zone_fit, g_zone_undersized = super().form_zones(self.nodeb)
         g_zone_wide, g_zone_narrow = super().categorize_zone(g_zone_fit, g_zone_undersized)
         return g_zone_wide, g_zone_narrow
+
+    @staticmethod
+    def merge_zone_over_half(zone_undersized: Tuple[Zone, ...]) -> Tuple[Zone]:
+        assert True not in [z.is_half for z in zone_undersized]
+        zone_undersized: List[Zone] = list(zone_undersized)
+        zone_merged: List[Zone] = []
+        for numerology in Numerology:
+            zones: List[Zone] = list(filter(lambda x: x.numerology == numerology, zone_undersized))
+            while len(zones) >= 2:
+                zone: Zone = zones.pop(0)
+                zone_to_merge: Zone = zones.pop(0)
+                zone.merge(zone_to_merge, row_limit=False)
+                if zone.is_half:
+                    zone_merged.append(zone)
+                else:
+                    zones.append(zone)
+            zone_merged.extend(zones)
+        return tuple(zone_merged)
 
     def allocate_zone_to_layer(self, zone_unallocated: Tuple[Zone, ...]) -> Tuple[
                                                                     Tuple[List[Zone], ...], Tuple[Zone, ...]]:

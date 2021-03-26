@@ -5,7 +5,7 @@ from src.resource_allocation.ds.util_enum import Numerology
 from src.resource_allocation.ds.zone import Zone
 
 
-class WangPhase2:
+class FRSAPhase2:
     def __init__(self, nodeb: GNodeB, zones_in_layers: Tuple[List[Zone], ...]):
         self.nb: GNodeB = nodeb
         self.zones_in_layers: Tuple[List[Zone], ...] = zones_in_layers
