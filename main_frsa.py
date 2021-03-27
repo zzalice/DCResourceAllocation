@@ -26,14 +26,14 @@ def frsa(data_set: str, visualize_the_algo: bool = False) -> Tuple[
     g_zone_wide, g_zone_narrow = g_phase1.form_and_categorize_zone()
     g_zone_merged = g_phase1.merge_zone_over_half(g_zone_narrow)
     g_zone_wide, g_zone_narrow = g_phase1.categorize_zone(g_zone_wide, g_zone_merged)
-    g_zone_allocated, g_zone_unallocated = g_phase1.allocate_zone_to_layer(g_zone_wide)
+    g_zone_allocated, g_zone_unallocated = g_phase1.virtual_allocate_zone(g_zone_wide)
 
     if visualize_the_algo:
         visualize_phase_uncategorized_ue(visualization_file_path, 'wb',
                                          "phase1", g_nb, e_nb, g_ue_list, d_ue_list, e_ue_list, is_assert=False)
 
     g_phase2: FRSAPhase2 = FRSAPhase2(g_nb, g_zone_allocated)
-    g_phase2.calc_total_freq_space()
+    g_phase2.zd()
 
     # TODO 先調整完gNB再分配eNB
 

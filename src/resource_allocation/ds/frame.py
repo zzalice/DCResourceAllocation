@@ -96,7 +96,7 @@ class Layer(Undo):
         self.append_undo(lambda: nb_info.rb.remove(resource_block))
         return resource_block
 
-    def allocate_zone(self, zone: Zone) -> bool:
+    def allocate_zone(self, zone: Zone, virtual: bool = False) -> bool:
         is_allocatable: bool = self.available_bandwidth >= zone.zone_freq
         if is_allocatable:
             bu_i: int = self._available_frequent_offset
@@ -105,7 +105,8 @@ class Layer(Undo):
                 for idx_ue_rb in range(
                         (G_MCS if self.nodeb.nb_type == NodeBType.G else E_MCS).get_worst().calc_required_rb_count(
                             ue.request_data_rate)):
-                    self.allocate_resource_block(bu_i, bu_j, ue)
+                    if not virtual:
+                        self.allocate_resource_block(bu_i, bu_j, ue)
                     if bu_j + zone.numerology.time < self.nodeb.frame.frame_time:
                         bu_j += zone.numerology.time
                     elif bu_j + zone.numerology.time == self.nodeb.frame.frame_time:

@@ -1,4 +1,4 @@
-from typing import Dict, List, Tuple
+from typing import Dict, List, Tuple, Union
 
 from src.resource_allocation.algo.phase1 import Phase1
 from src.resource_allocation.ds.ngran import GNodeB
@@ -41,14 +41,17 @@ class FRSAPhase1(Phase1):
             zone_merged.extend(zones)
         return tuple(zone_merged)
 
-    def allocate_zone_to_layer(self, zone_unallocated: Tuple[Zone, ...]) -> Tuple[
-                                                                    Tuple[List[Zone], ...], Tuple[Zone, ...]]:
-        zone_allocated: List[List[Zone]] = [[] for _ in range(self.nodeb.frame.max_layer)]
+    def virtual_allocate_zone(self, zone_unallocated: Tuple[Zone, ...]) -> Tuple[
+                                Tuple[Dict[str, Union[int, List[Zone]]], ...], Tuple[Zone, ...]]:
+        zone_allocated: List[Dict[str, Union[int, List[Zone]]]] = [{'residual': 0, 'zones': []} for _ in
+                                                                   range(self.nodeb.frame.max_layer)]
         zone_unallocated: List[Zone] = list(zone_unallocated)
         zone_unallocated.sort(key=lambda x: x.sum_request_data_rate, reverse=True)
         for zone in zone_unallocated:
             for layer in self.nodeb.frame.layer:
-                if layer.allocate_zone(zone):
-                    zone_allocated[layer.layer_index].append(zone)
+                if layer.allocate_zone(zone, virtual=True):
+                    zone_allocated[layer.layer_index]['zones'].append(zone)
                     break
+        for layer in self.nodeb.frame.layer:
+            zone_allocated[layer.layer_index]['residual'] = layer.available_bandwidth
         return tuple(zone_allocated), tuple(zone_unallocated)
