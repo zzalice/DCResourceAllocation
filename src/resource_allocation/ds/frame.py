@@ -96,10 +96,10 @@ class Layer(Undo):
         self.append_undo(lambda: nb_info.rb.remove(resource_block))
         return resource_block
 
-    def allocate_zone(self, zone: Zone, virtual: bool = False) -> bool:
+    def allocate_zone(self, zone: Zone, offset: Optional[int] = None, virtual: bool = False) -> bool:
         is_allocatable: bool = self.available_bandwidth >= zone.zone_freq
         if is_allocatable:
-            bu_i: int = self._available_frequent_offset
+            bu_i: int = self._available_frequent_offset if offset is None else offset
             bu_j: int = 0
             for ue in zone.ue_list:
                 for idx_ue_rb in range(
@@ -114,13 +114,23 @@ class Layer(Undo):
                         bu_j: int = 0
                     else:
                         raise Exception("RB allocate error: index increase error")
-            self._available_frequent_offset += zone.zone_freq
+            if offset is None:
+                self._available_frequent_offset += zone.zone_freq
+            else:
+                self._available_frequent_offset = offset + zone.zone_freq
             assert (bu_i if bu_j == 0 else bu_i + zone.numerology.freq) == self._available_frequent_offset, \
                 "index increase error"
         return is_allocatable
 
     @property
-    def available_bandwidth(self):
+    def available_frequent_offset(self) -> int:
+        return self._available_frequent_offset
+
+    def reset_available_frequent_offset(self):
+        self._available_frequent_offset: int = 0
+
+    @property
+    def available_bandwidth(self) -> int:
         """
         restrict: used only when zones/RBs are allocated from the smaller frequency domain,
         i.e. the BUs after self._available_frequent_offset are not allocated.

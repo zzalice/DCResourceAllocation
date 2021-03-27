@@ -43,8 +43,9 @@ class FRSAPhase1(Phase1):
 
     def virtual_allocate_zone(self, zone_unallocated: Tuple[Zone, ...]) -> Tuple[
                                 Tuple[Dict[str, Union[int, List[Zone]]], ...], Tuple[Zone, ...]]:
-        zone_allocated: List[Dict[str, Union[int, List[Zone]]]] = [{'residual': 0, 'zones': []} for _ in
-                                                                   range(self.nodeb.frame.max_layer)]
+        zone_allocated: List[Dict[str, Union[int, List[Zone]]]] = [
+            {'layer': i, 'residual': self.nodeb.frame.frame_freq,
+             'zones': []} for i in range(self.nodeb.frame.max_layer)]
         zone_unallocated: List[Zone] = list(zone_unallocated)
         zone_unallocated.sort(key=lambda x: x.sum_request_data_rate, reverse=True)
         for zone in zone_unallocated:
@@ -54,4 +55,5 @@ class FRSAPhase1(Phase1):
                     break
         for layer in self.nodeb.frame.layer:
             zone_allocated[layer.layer_index]['residual'] = layer.available_bandwidth
+            layer.reset_available_frequent_offset()
         return tuple(zone_allocated), tuple(zone_unallocated)
