@@ -11,14 +11,15 @@ from src.resource_allocation.ds.undo import Undo
 from src.resource_allocation.ds.util_enum import E_MCS, G_MCS, NodeBType, UEType
 from src.resource_allocation.ds.util_type import LappingPositionList
 
+UE = Union[UserEquipment, GUserEquipment, DUserEquipment, EUserEquipment]
+
 
 class AdjustMCS(Undo):
     def __init__(self):
         super().__init__()
 
     @Undo.undo_func_decorator
-    def remove_worst_rb(self, ue: Union[UserEquipment, GUserEquipment, DUserEquipment, EUserEquipment],
-                        allow_lower_mcs: bool = True, allow_lower_than_cqi0: bool = True,
+    def remove_worst_rb(self, ue: UE, allow_lower_mcs: bool = True, allow_lower_than_cqi0: bool = True,
                         channel_model: ChannelModel = None) -> bool:
         """
         Delete the RB with worst MCS & highest freq & latest time.
@@ -140,22 +141,22 @@ class AdjustMCS(Undo):
     @staticmethod
     def throughput_ue(rb_list: List[ResourceBlock]) -> float:
         if rb_list:
-            lowest_mcs: Union[E_MCS, G_MCS] = rb_list[-1].mcs
+            lowest_mcs: Union[E_MCS, G_MCS] = min(rb_list, key=lambda rb: rb.mcs.value).mcs
             return lowest_mcs.value * len(rb_list)
         else:
             return 0.0
 
-    # def from_lowest_freq(self, ue: UserEquipment, ue_rb_list: List[ResourceBlock], channel_model: ChannelModel,
+    # def from_lowest_freq(self, ue: UE, ue_rb_list: List[ResourceBlock], channel_model: ChannelModel,
     #                      precalculate: bool = False) -> int:
     #     ue_rb_list.sort(key=lambda x: x.j_start)  # sort by time
     #     ue_rb_list.sort(key=lambda x: x.i_start)  # sort by freq
     #     return self.pick_in_order(ue, ue_rb_list, channel_model, precalculate)
 
-    def from_highest_mcs(self, ue: UserEquipment, ue_rb_list: List[ResourceBlock], channel_model: ChannelModel):
+    def from_highest_mcs(self, ue: UE, ue_rb_list: List[ResourceBlock], channel_model: ChannelModel):
         ue_rb_list.sort(key=lambda x: x.mcs.value, reverse=True)
         return self.pick_in_order(ue, ue_rb_list, channel_model)
 
-    def from_lapped_rb(self, ue: UserEquipment, rb_position: LappingPositionList, channel_model: ChannelModel):
+    def from_lapped_rb(self, ue: UE, rb_position: LappingPositionList, channel_model: ChannelModel):
         """
         Use the RBs in certain positions. Unless the RBs are not enough to fulfill QoS.
         FOR gNB ONLY.
@@ -185,7 +186,7 @@ class AdjustMCS(Undo):
         self.pick_in_order(ue, lapped_rb + non_lapped_rb, channel_model)
 
     @staticmethod
-    def pick_in_order(ue: UserEquipment, rb_list: List[ResourceBlock], channel_model: ChannelModel) -> int:
+    def pick_in_order(ue: UE, rb_list: List[ResourceBlock], channel_model: ChannelModel) -> int:
         """
         Delete the RB with highest freq & latest time.
         Only get better MCS or remove(CQI 0).
@@ -243,3 +244,22 @@ class AdjustMCS(Undo):
             return count_rb
         else:
             raise AssertionError
+
+    def remove_from_tail(self, ue: UE, nb_info: Union[GNBInfo, ENBInfo]):
+        """For single connection UE."""
+        assert ue.is_allocated and not ue.cross_nb if ue.ue_type == UEType.D else ue.is_allocated
+        nb_info.rb.sort(key=lambda x: x.j_start)  # sort by time
+        nb_info.rb.sort(key=lambda x: x.i_start)  # sort by freq
+        while True:
+            tmp_ue_throughput: float = self.throughput_ue(nb_info.rb[:-1])  # temporarily remove one RB
+            if tmp_ue_throughput == 0.0:
+                ue.remove_ue()
+                return True
+            elif tmp_ue_throughput >= ue.request_data_rate:
+                nb_info.rb[-1].remove_rb()
+            elif self.throughput_ue(nb_info.rb) >= ue.request_data_rate:
+                return True
+            else:
+                # ue.remove_ue()
+                # return False
+                raise AssertionError

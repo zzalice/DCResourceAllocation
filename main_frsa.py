@@ -5,13 +5,15 @@ from typing import List, Tuple
 
 from src.resource_allocation.algo.frsa.frsa_phase1 import FRSAPhase1
 from src.resource_allocation.algo.frsa.frsa_phase2 import FRSAPhase2
+from src.resource_allocation.algo.frsa.frsa_phase3 import FRSAPhase3
+from src.resource_allocation.algo.utils import divide_ue
 from src.resource_allocation.ds.eutran import ENodeB, EUserEquipment
 from src.resource_allocation.ds.ngran import DUserEquipment, GNodeB, GUserEquipment
 from utils.pickle_generator import visualize_phase_uncategorized_ue
 
 
 def frsa(data_set: str, visualize_the_algo: bool = False) -> Tuple[
-            GNodeB, ENodeB, List[DUserEquipment], List[GUserEquipment], List[EUserEquipment]]:
+    GNodeB, ENodeB, List[DUserEquipment], List[GUserEquipment], List[EUserEquipment]]:
     dirname = os.path.dirname(__file__)
     file_name_vis = "vis_frsa_" + datetime.today().strftime('%Y%m%d') + ".P"
     visualization_file_path = os.path.join(dirname, 'utils/frame_visualizer', file_name_vis)
@@ -31,12 +33,24 @@ def frsa(data_set: str, visualize_the_algo: bool = False) -> Tuple[
     g_phase2: FRSAPhase2 = FRSAPhase2(g_nb, g_zone_allocated)
     g_phase2.zd()
     g_phase2.za()
+    gue_allocated, gue_unallocated = divide_ue(g_ue_list, is_assert=False)
+    due_allocated, due_unallocated = divide_ue(d_ue_list, is_assert=False)
 
     if visualize_the_algo:
         visualize_phase_uncategorized_ue(visualization_file_path, 'wb',
                                          "phase2", g_nb, e_nb, g_ue_list, d_ue_list, e_ue_list, is_assert=False)
 
+    g_phase3: FRSAPhase3 = FRSAPhase3(g_nb, channel_model)
+    g_phase3.adjust_mcs(gue_allocated + due_allocated)
+    gue_allocated, gue_unallocated = divide_ue(g_ue_list, is_assert=False)
+    due_allocated, due_unallocated = divide_ue(d_ue_list, is_assert=False)
+    g_phase3.allocate_new_ue(gue_unallocated + due_unallocated, gue_allocated + due_allocated)
+
     # TODO 先調整完gNB再分配eNB
+
+    if visualize_the_algo:
+        visualize_phase_uncategorized_ue(visualization_file_path, 'ab+',
+                                         "phase3", g_nb, e_nb, g_ue_list, d_ue_list, e_ue_list)
 
     return g_nb, e_nb, d_ue_list, g_ue_list, e_ue_list
 
