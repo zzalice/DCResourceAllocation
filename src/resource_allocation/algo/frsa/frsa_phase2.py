@@ -33,6 +33,48 @@ class ConcatenateZone:
             layer.allocate_zone(zone, offset)
 
 
+class PreallocateCZ:
+    def __init__(self, layer: int, freq: int):
+        self.layer: int = layer
+        self.frame_freq: int = freq  # gNB BW
+        self.cz_list: List[Dict[str, Union[
+            int, ConcatenateZone]]] = []  # In the order of offset. [{'offset': int, 'cz': ConcatenateZone}, {}, ...]
+
+    def append_cz(self, cz: ConcatenateZone, offset: Optional[int] = None):
+        if offset is None:
+            offset: int = self.cz_list[-1]['offset'] + self.cz_list[-1]['cz'].bandwidth
+        self.cz_list.append({'offset': offset, 'cz': cz})
+        self.check_out_of_bound(-1)
+
+    def check_out_of_bound(self, index: int):
+        while True:
+            self.assert_cz_list()
+            edge: int = self.cz_list[index]['offset'] + self.cz_list[index]['cz'].bandwidth - 1
+            if edge > self.frame_freq:
+                self.shift(index)
+            else:
+                return True
+
+    def shift(self, index: int):
+        assert index > 0, 'Shifting the first cz in the layer.'
+
+        # shift
+        self.cz_list[index]['offset'] -= 1
+
+        # check invalid overlapped
+        edge_of_last_cz: int = self.cz_list[index - 1]['offset'] + self.cz_list[index - 1]['cz'].bandwidth - 1
+        if self.cz_list[index]['offset'] <= edge_of_last_cz:  # lapped
+            self.shift(index - 1)
+        else:
+            return True
+
+    def assert_cz_list(self):
+        assert self.cz_list[0]['offset'] >= 0
+        for i, cz in enumerate(self.cz_list[1:]):
+            last_cz: Dict[str, Union[int, ConcatenateZone]] = self.cz_list[i]
+            assert cz['offset'] > last_cz['offset'] + last_cz['cz'].bandwidth - 1
+
+
 Dissimilarity = Dict[int, List[Union[Numerology, float]]]  # {layer: [Numerology, 0.0]}
 LayerZone = Tuple[Dict[str, Union[int, List[Union[Zone, ConcatenateZone]]]], ...
 ]  # ({'layer': int, 'residual': int, 'zones': List[Zone/ConcatenateZone]},...) The Dict is in the order of layer index
@@ -62,7 +104,7 @@ class FRSAPhase2:
             cn: List[Tuple[int, List[Union[Numerology, float]]]] = []
             k: List[int] = []
             residual: List[int] = []
-            for i in range(2):  # pick two concatenate zone with largest dissimilarity FIXME: is this correct?
+            for i in range(2):  # pick two concatenate zone with largest dissimilarity FIXME: 假設A_1,mu包含z1, z2, z3，A_3,mu包含z4, z5，A_1,mu > A_3,mu，z1先看能不能跟z4換，如果空間不夠換，再看z1跟z5，z2跟z4，z2跟z5 ....
                 cn.append(max_dissimilarity.popitem())
                 k.append(self.freq_span[cn[-1][0]][cn[-1][1][0]])  # layer = cn[-1][0], numerology = cn[-1][1][0]
                 assert self.zones_in_layers[cn[-1][0]]['layer'] == cn[-1][0]
@@ -153,19 +195,25 @@ class FRSAPhase2:
         self.calc_total_freq_span()
 
     def za(self):
+        # base layer
         base_layer: Dict[str, Union[int, List[Zone]]] = min(self.zones_in_layers, key=lambda x: len(x['zones']))
         self.form_concatenate_zone()
         bl_offset: Dict[Numerology, int] = self.allocate_by_bandwidth(base_layer)
+
+        # other layers
         for l in range(self.nb.frame.max_layer):
             assert self.zones_in_layers[l]['layer'] == l
             if l == base_layer['layer']:
                 continue
+
+            pre: PreallocateCZ = PreallocateCZ(l, self.nb.frame.frame_freq)
             for bl_numerology in bl_offset:
                 for cz in filter(lambda x: x.numerology == bl_numerology, self.zones_in_layers[l]['zones']):  # only one
-                    self.allocate_by_align(cz, l, bl_offset[bl_numerology])
+                    pre.append_cz(cz, bl_offset[bl_numerology])  # allocate by aligning
                     self.zones_in_layers[l]['zones'].remove(cz)
             for cz in self.zones_in_layers[l]['zones']:
-                self.allocate_by_squeeze(cz, l)
+                pre.append_cz(cz)  # allocate by squeezing
+            self.allocate_preallocate_cz(pre)
 
     def form_concatenate_zone(self):
         for zones_in_layer in self.zones_in_layers:
@@ -191,17 +239,7 @@ class FRSAPhase2:
             cz.allocate(layer, None)  # allocate from large bandwidth concatenate zone
         return numerology_offset
 
-    def allocate_by_align(self, cz: ConcatenateZone, l: int, offset: int):  # FIXME: 有可能會超出去！
-        layer: Layer = self.nb.frame.layer[l]
-        if offset < layer.available_frequent_offset:
-            offset: int = layer.available_frequent_offset
-        cz.allocate(layer, offset)
-
-    def allocate_by_squeeze(self, cz: ConcatenateZone, l: int):
-        layer: Layer = self.nb.frame.layer[l]
-        offset: int = layer.available_frequent_offset
-        if layer.available_bandwidth < cz.bandwidth:
-            # FIXME shift
-            offset: int  # FIXME
-        cz.allocate(layer, offset)
-
+    def allocate_preallocate_cz(self, pre: PreallocateCZ):
+        layer: Layer = self.nb.frame.layer[pre.layer]
+        for cz_dict in pre.cz_list:
+            cz_dict['cz'].allocate(layer, cz_dict['offset'])
