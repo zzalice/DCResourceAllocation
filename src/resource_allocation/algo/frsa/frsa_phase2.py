@@ -62,7 +62,7 @@ class FRSAPhase2:
             cn: List[Tuple[int, List[Union[Numerology, float]]]] = []
             k: List[int] = []
             residual: List[int] = []
-            for i in range(2):  # pick two concatenate zone with largest dissimilarity TODO: is this correct?
+            for i in range(2):  # pick two concatenate zone with largest dissimilarity FIXME: is this correct?
                 cn.append(max_dissimilarity.popitem())
                 k.append(self.freq_span[cn[-1][0]][cn[-1][1][0]])  # layer = cn[-1][0], numerology = cn[-1][1][0]
                 assert self.zones_in_layers[cn[-1][0]]['layer'] == cn[-1][0]
@@ -191,7 +191,7 @@ class FRSAPhase2:
             cz.allocate(layer, None)  # allocate from large bandwidth concatenate zone
         return numerology_offset
 
-    def allocate_by_align(self, cz: ConcatenateZone, l: int, offset: int):
+    def allocate_by_align(self, cz: ConcatenateZone, l: int, offset: int):  # FIXME: 有可能會超出去！
         layer: Layer = self.nb.frame.layer[l]
         if offset < layer.available_frequent_offset:
             offset: int = layer.available_frequent_offset

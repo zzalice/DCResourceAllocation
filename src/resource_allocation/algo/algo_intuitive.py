@@ -21,7 +21,7 @@ class Intuitive(Undo):
 
     def algorithm(self):
         # Do gNB allocation first, then eNB.
-        AllocateUEList(self.gnb, self.gues + self.dues, tuple(), self.channel_model).allocate(allow_lower_mcs=False)
+        AllocateUEList(self.gnb, self.gues + self.dues, tuple(), self.channel_model).allocate(allow_lower_mcs=False)    # FIXME: implement the space finding algo
         gue_allocated, gue_unallocated = divide_ue(tuple(self.gues))
         due_allocated, due_unallocated = divide_ue(tuple(self.dues))
         AllocateUEList(self.enb, self.eues + due_unallocated, gue_allocated + due_allocated,

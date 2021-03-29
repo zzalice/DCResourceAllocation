@@ -22,7 +22,7 @@ class FRSAPhase3(Undo):
         for ue in allocated_ue:
             self.channel_model.sinr_ue(ue)
             AdjustMCS().remove_from_tail(ue,
-                                         ue.gnb_info if self.nb.nb_type == NodeBType.G else ue.enb_info)  # TODO: must be single connection ue
+                                         ue.gnb_info if self.nb.nb_type == NodeBType.G else ue.enb_info)  # FIXME: must be single connection ue
 
     def allocate_new_ue(self, unallocated_ue: Tuple[UE], allocated_ue: Tuple[UE]):
         AllocateUEList(self.nb, unallocated_ue, allocated_ue, self.channel_model).allocate(allow_lower_than_cqi0=False)

@@ -46,7 +46,7 @@ def frsa(data_set: str, visualize_the_algo: bool = False) -> Tuple[
     due_allocated, due_unallocated = divide_ue(d_ue_list)
     g_phase3.allocate_new_ue(gue_unallocated + due_unallocated, gue_allocated + due_allocated)
 
-    # TODO 先調整完gNB再分配eNB
+    # FIXME 先調整完gNB再分配eNB
 
     if visualize_the_algo:
         visualize_phase_uncategorized_ue(visualization_file_path, 'ab+',
