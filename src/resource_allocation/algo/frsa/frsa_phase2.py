@@ -45,6 +45,8 @@ class FRSAPhase2:
         self.freq_span: List[Dict[Numerology, int]] = []
 
     def zd(self):
+        if self.nb.frame.max_layer < 2:
+            return True
         self.calc_total_freq_span()
         is_improved: bool = True
         while is_improved:

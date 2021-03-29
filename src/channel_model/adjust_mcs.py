@@ -258,6 +258,9 @@ class AdjustMCS(Undo):
             elif tmp_ue_throughput >= ue.request_data_rate:
                 nb_info.rb[-1].remove_rb()
             elif self.throughput_ue(nb_info.rb) >= ue.request_data_rate:
+                nb_info.mcs = min(nb_info.rb, key=lambda rb: rb.mcs.value).mcs
+                ue.update_throughput()
+                ue.is_to_recalculate_mcs = False
                 return True
             else:
                 # ue.remove_ue()

@@ -277,7 +277,7 @@ class GraphGenerator:
 
     def gen_allocated_ue(self, iteration: int, layers: List[int], output_file_path: str,
                          ue_label: Tuple[str, ...],
-                         algo_label: Tuple[str, ...] = ('DC-RA', 'Intuitive')):
+                         algo_label: Tuple[str, ...] = ('DC-RA', 'FRSA', 'Intuitive')):
         """
         :param iteration:
         :param layers: The display order of the number of layers in gNB

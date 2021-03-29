@@ -42,8 +42,8 @@ def frsa(data_set: str, visualize_the_algo: bool = False) -> Tuple[
 
     g_phase3: FRSAPhase3 = FRSAPhase3(g_nb, channel_model)
     g_phase3.adjust_mcs(gue_allocated + due_allocated)
-    gue_allocated, gue_unallocated = divide_ue(g_ue_list, is_assert=False)
-    due_allocated, due_unallocated = divide_ue(d_ue_list, is_assert=False)
+    gue_allocated, gue_unallocated = divide_ue(g_ue_list)
+    due_allocated, due_unallocated = divide_ue(d_ue_list)
     g_phase3.allocate_new_ue(gue_unallocated + due_unallocated, gue_allocated + due_allocated)
 
     # TODO 先調整完gNB再分配eNB
@@ -56,5 +56,5 @@ def frsa(data_set: str, visualize_the_algo: bool = False) -> Tuple[
 
 
 if __name__ == '__main__':
-    file_path: str = '0316-184206small_frame50_moreUE/3layer/0'
+    file_path: str = '0317-100632small_frame50_moreUE/1layer/0'
     frsa(file_path, visualize_the_algo=True)
