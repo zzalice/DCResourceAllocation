@@ -9,7 +9,7 @@ from src.resource_allocation.ds.undo import Undo
 from src.resource_allocation.ds.util_enum import E_MCS, G_MCS, LTEResourceBlock, NodeBType, Numerology, UEType
 
 
-class AllocateUE(Undo):
+class AllocateUE(Undo):     # TODO: move to new_ue.py
     """
     In this method, self.ue will be allocated to one BS only.
     The RBs can be discontinuous.

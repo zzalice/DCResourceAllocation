@@ -24,7 +24,7 @@ def dc_resource_allocation(data_set, visualize_the_algo: bool = False) -> Tuple[
     data_set_file_path = os.path.join(dirname, 'src/simulation/data', data_set + '.P')
     with open(data_set_file_path, "rb") as file:
         g_nb, e_nb, cochannel_index, channel_model, g_ue_list, d_ue_list, e_ue_list, inr_discount, worsen_threshold = pickle.load(
-            file)
+            file)   # TODO: cochannel_index用不到了
 
     # noinspection PyTypeChecker
     g_phase1: Phase1 = Phase1(d_ue_list + g_ue_list)

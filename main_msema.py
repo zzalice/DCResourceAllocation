@@ -23,7 +23,7 @@ def msema_rb_ra(data_set: str, visualize_the_algo: bool = False) -> Tuple[
     # main
     Msema(channel_model).nb_allocate(g_nb, g_ue_list + d_ue_list)
     due_allocated, due_unallocated = divide_ue(d_ue_list)
-    Msema(channel_model).nb_allocate(e_nb, e_ue_list + due_unallocated)
+    Msema(channel_model).nb_allocate(e_nb, e_ue_list + due_unallocated)     # FIXME: The effected UE should include any type of UE in co-channel area
 
     if visualize_the_algo:
         visualize_phase_uncategorized_ue(visualization_file_path, 'wb',
