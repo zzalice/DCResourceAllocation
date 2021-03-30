@@ -56,7 +56,7 @@ class PreallocateCZ:
                 return True
 
     def shift(self, index: int):
-        assert index > 0, 'Shifting the first cz in the layer.'
+        assert index > 0 or (index == 0 and self.cz_list[0]['offset'] > 0), 'Can not shift.'
 
         # shift
         self.cz_list[index]['offset'] -= 1

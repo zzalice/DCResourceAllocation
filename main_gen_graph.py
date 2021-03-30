@@ -8,17 +8,17 @@ if __name__ == '__main__':
     MCS parameter can be set in resource_allocation/ds/util_enum.py
     and record in IterateAlgo output pickle.
     """
-    f_data: str = '0317-100632small_frame50_moreUE'
-    f_mcs: str = 'gNBCQI1CQI15_eNBCQI1CQI15'
-    i: int = 10
+    f_data: str = '0317-100632small_frame50_moreUE'  # <-- change
+    f_mcs: str = 'gNBCQI1CQI15_eNBCQI1CQI15'  # <-- change
+    i: int = 10  # <-- change
 
     # ---Graphs for ue---
-    # ut: List[int] = [60, 80, 100, 120, 140, 160, 180, 200]
+    # ut: List[int] = [60, 80, 100, 120, 140, 160, 180, 200]  # <-- change
     # IterateAlgo(iteration=i, folder_data=f_data).iter_ue(total_ue=ut)
     # GraphGenerator(iteration=i, total_ue=ut, graph_type='increasing ue', folder_result=(f'{f_data}/{f_mcs}',))
 
     # ---Graphs for layer---
-    l: List[int] = [1, 2, 3, 4, 5]
+    l: List[int] = [1, 2, 3, 4, 5]  # <-- change
     IterateAlgo(iteration=i, folder_data=f_data).iter_layer(layers=l)
     GraphGenerator(iteration=i, layers=l, graph_type='sys throughput - layer', folder_result=(f'{f_data}/{f_mcs}',))
     # GraphGenerator(iteration=i, layers=l, graph_type='used percentage', folder_result=(f'{f_data}/{f_mcs}',))
