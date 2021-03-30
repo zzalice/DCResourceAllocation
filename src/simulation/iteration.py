@@ -7,6 +7,7 @@ from typing import Dict, List, Tuple
 from main import dc_resource_allocation
 from main_frsa import frsa
 from main_intuitive import intuitive_resource_allocation
+from main_msema import msema_rb_ra
 from src.resource_allocation.ds.eutran import ENodeB, EUserEquipment
 from src.resource_allocation.ds.ngran import DUserEquipment, GNodeB, GUserEquipment
 from src.resource_allocation.ds.util_enum import E_MCS, G_MCS
@@ -45,6 +46,11 @@ class IterateAlgo:
                 start_time = time.time()
                 result['FRSA'] = frsa(file_data)
                 print("--- %s min FRSA ---" % round((time.time() - start_time) / 60, 3))
+
+                # MSEMA
+                start_time = time.time()
+                result['MSEMA'] = msema_rb_ra(file_data)
+                print("--- %s min MSEMA ---" % round((time.time() - start_time) / 60, 3))
 
                 # Intuitive
                 start_time = time.time()

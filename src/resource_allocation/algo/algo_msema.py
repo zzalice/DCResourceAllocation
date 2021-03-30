@@ -11,14 +11,21 @@ from src.resource_allocation.ds.ue import UserEquipment
 from src.resource_allocation.ds.undo import Undo
 from src.resource_allocation.ds.util_enum import E_MCS, G_MCS, LTEResourceBlock, NodeBType, Numerology, UEType
 
-Status = Tuple[Tuple[Dict[str, Union[int, Numerology, bool]], ...], ...]
-#        freq  time  bu  {'vacancy': the number of layers in the BS,
-#                         'numerology': the numerology this BU is using(in any layer),
-#                         'upper_left': if the BU is the upper left BU in a RB})),
+BU = Dict[str, Union[int, Numerology, bool]]
+#    bu  {'vacancy': the number of layers in the BS,
+#         'numerology': the numerology this BU is using(in any layer),
+#         'upper_left': if the BU is the upper left BU in a RB}
+Status = Tuple[Tuple[BU, ...], ...]
+#        freq  time
 RB = Dict[str, int]  # {'bu_i': index, 'bu_j': index, 'layer': index}
 
 
 class Msema(Undo):
+    """
+    UEs can only allocate to [BUs that has the same numerology as itself] or [BUs that are not used].
+    At the same time, the RBs of a UE must be [continuous] but [can be in different layers].
+    """
+
     def __init__(self, channel_model: ChannelModel, allocated_ue: Tuple[UserEquipment, ...]):
         super().__init__()
         self.channel_model: ChannelModel = channel_model
@@ -26,7 +33,7 @@ class Msema(Undo):
         self.frame_status: Status = ()
         self.allocated_ue: List[UserEquipment] = list(allocated_ue)
 
-    def nb_allocate(self, nb: Union[GNodeB, ENodeB], ue_list: List[UserEquipment]):
+    def allocate_ue_list(self, nb: Union[GNodeB, ENodeB], ue_list: List[UserEquipment]):
         self.nb: Union[GNodeB, ENodeB] = nb
         # from good channel quality
         if self.nb.nb_type == NodeBType.G:
@@ -47,7 +54,7 @@ class Msema(Undo):
                 ue.numerology_in_use = LTEResourceBlock.E  # TODO: refactor or redesign
 
             # main
-            is_allocated: bool = self.allocate(ue)
+            is_allocated: bool = self.allocate_ue(ue)
             if is_allocated:
                 nb_info: Union[GNBInfo, ENBInfo] = ue.gnb_info if self.nb.nb_type == NodeBType.G else ue.enb_info
                 self.update_frame_status(nb_info.rb)
@@ -56,9 +63,9 @@ class Msema(Undo):
             # restore RB type
             ue.numerology_in_use = tmp_numerology
 
-    def allocate(self, ue: UserEquipment) -> bool:
+    def allocate_ue(self, ue: UserEquipment) -> bool:
         assert not ue.is_allocated
-        from utils.assertion import check_undo_copy
+        from utils.assertion import check_undo_copy  # TODO: commend to save time
         copy_ue = check_undo_copy([ue] + self.allocated_ue)
 
         bu_i: int = 0
@@ -66,7 +73,7 @@ class Msema(Undo):
         while True:
             if start_rb := self.available_space(bu_i, bu_j, ue.numerology_in_use):
                 # allocate new UE
-                is_allocated, bu_i, bu_j = self.allocate_continuous(ue, start_rb)
+                is_allocated, bu_i, bu_j = self.allocate_rb(ue, start_rb)
 
                 # the effected UEs
                 if is_allocated:
@@ -82,7 +89,7 @@ class Msema(Undo):
                     bu_i += 1
                     bu_j += 1
 
-                    from utils.assertion import check_undo_compare
+                    from utils.assertion import check_undo_compare  # TODO: commend to save time
                     check_undo_compare([ue] + self.allocated_ue, copy_ue)
                     continue
             else:
@@ -90,7 +97,7 @@ class Msema(Undo):
                 return False
 
     @Undo.undo_func_decorator
-    def allocate_continuous(self, ue: UserEquipment, first_rb: RB) -> Tuple[bool, int, int]:
+    def allocate_rb(self, ue: UserEquipment, first_rb: RB) -> Tuple[bool, int, int]:
         nb_info: Union[GNBInfo, ENBInfo] = ue.gnb_info if self.nb.nb_type == NodeBType.G else ue.enb_info
         bu_i: int = first_rb['bu_i']
         bu_j: int = first_rb['bu_j']
@@ -121,10 +128,10 @@ class Msema(Undo):
                 return True, bu_i, bu_j
 
             # next RB
-            if next_rb := self.next_available_rb(bu_i, bu_j, ue.numerology_in_use):
+            if next_rb := self.continuous_available_rb(bu_i, bu_j, ue.numerology_in_use):
                 bu_i: int = next_rb['bu_i']
                 bu_j: int = next_rb['bu_j']
-                layer: int = self.nb.frame.layer[next_rb['layer']]
+                layer: Layer = self.nb.frame.layer[next_rb['layer']]
             else:
                 return False, bu_i, bu_j
 
@@ -158,7 +165,7 @@ class Msema(Undo):
                             'layer': (self.nb.frame.max_layer - self.frame_status[i][j]['vacancy'])}
         return None
 
-    def next_available_rb(self, bu_i: int, bu_j: int, ue_numerology: Numerology) -> Optional[RB]:
+    def continuous_available_rb(self, bu_i: int, bu_j: int, ue_numerology: Numerology) -> Optional[RB]:
         # continuous RB
         bu_j += ue_numerology.time
         if bu_j + ue_numerology.time > self.nb.frame.frame_time:
@@ -179,10 +186,10 @@ class Msema(Undo):
             # out of bound
             return False
 
-        bu: Dict[str, Union[int, Numerology, bool]] = self.frame_status[bu_i][bu_j]
         for i in range(ue_numerology.freq):
             for j in range(ue_numerology.time):
-                bu_: Dict[str, Union[int, Numerology, bool]] = self.frame_status[bu_i + i][bu_j + j]
+                bu: BU = self.frame_status[bu_i + i][bu_j + j]
+                self.assert_bu_status(bu)
                 if i == j == 0:
                     if bu['numerology'] is None or (
                             bu['numerology'] == ue_numerology and bu['upper_left'] and bu['vacancy'] > 0):
@@ -191,8 +198,8 @@ class Msema(Undo):
                     else:
                         return False
                 else:
-                    if bu_['numerology'] is None or (
-                            bu_['numerology'] == ue_numerology and bu['upper_left'] is False and bu_['vacancy'] > 0):
+                    if bu['numerology'] is None or (
+                            bu['numerology'] == ue_numerology and bu['upper_left'] is False and bu['vacancy'] > 0):
                         continue
                     else:
                         return False
@@ -200,13 +207,22 @@ class Msema(Undo):
 
     def update_frame_status(self, rb_list: List[ResourceBlock]):
         for rb in rb_list:
-            for i in range(rb.i_start, rb.i_end + 1):
-                for j in range(rb.j_start, rb.j_end + 1):
-                    bu: Dict[str, Union[int, Numerology]] = self.frame_status[i][j]
-                    if i == rb.i_start and j == rb.j_start:
-                        assert (bu['numerology'] is None and bu['upper_left'] is False) or bu['upper_left']
+            for i in range(rb.numerology.freq):
+                for j in range(rb.numerology.time):
+                    bu: BU = self.frame_status[rb.i_start + i][rb.j_start + j]
+                    self.assert_bu_status(bu)
+                    if i == j == 0:
+                        assert (bu['numerology'] is None and bu['upper_left'] is False) or (bu['upper_left']
+                                                                                            ), 'The RBs must align.'
                         bu['upper_left'] = True
-                    assert (bu['numerology'] is None) or (bu['numerology'] == rb.numerology)
+                    assert (bu['numerology'] is None) or (bu['numerology'] == rb.numerology
+                                                          ), 'The BU is used and not with the same Numerology.'
                     bu['numerology'] = rb.numerology
                     bu['vacancy'] -= 1
                     assert bu['vacancy'] >= 0
+
+    @staticmethod
+    def assert_bu_status(bu: BU):
+        if (bu['numerology'] is None and bu['upper_left']) or (
+                bu['numerology'] is None and not bu['upper_left'] and bu['vacancy'] <= 0):
+            raise AssertionError('Frame status update error.')
