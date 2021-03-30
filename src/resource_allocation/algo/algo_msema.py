@@ -19,12 +19,12 @@ RB = Dict[str, int]  # {'bu_i': index, 'bu_j': index, 'layer': index}
 
 
 class Msema(Undo):
-    def __init__(self, channel_model: ChannelModel):
+    def __init__(self, channel_model: ChannelModel, allocated_ue: Tuple[UserEquipment, ...]):
         super().__init__()
         self.channel_model: ChannelModel = channel_model
         self.nb: Optional[GNodeB, ENodeB] = None
         self.frame_status: Status = ()
-        self.allocated_ue: List[UserEquipment] = []
+        self.allocated_ue: List[UserEquipment] = list(allocated_ue)
 
     def nb_allocate(self, nb: Union[GNodeB, ENodeB], ue_list: List[UserEquipment]):
         self.nb: Union[GNodeB, ENodeB] = nb

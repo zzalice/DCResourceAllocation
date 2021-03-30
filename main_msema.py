@@ -21,9 +21,10 @@ def msema_rb_ra(data_set: str, visualize_the_algo: bool = False) -> Tuple[
         g_nb, e_nb, _, channel_model, g_ue_list, d_ue_list, e_ue_list, _, _ = pickle.load(file)
 
     # main
-    Msema(channel_model).nb_allocate(g_nb, g_ue_list + d_ue_list)
+    Msema(channel_model, ()).nb_allocate(g_nb, g_ue_list + d_ue_list)
+    gue_allocated, gue_unallocated = divide_ue(g_ue_list)
     due_allocated, due_unallocated = divide_ue(d_ue_list)
-    Msema(channel_model).nb_allocate(e_nb, e_ue_list + due_unallocated)     # FIXME: The effected UE should include any type of UE in co-channel area
+    Msema(channel_model, gue_allocated + due_allocated).nb_allocate(e_nb, e_ue_list + due_unallocated)
 
     if visualize_the_algo:
         visualize_phase_uncategorized_ue(visualization_file_path, 'wb',
