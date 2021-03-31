@@ -5,6 +5,7 @@ from datetime import datetime
 from typing import List, Tuple
 
 from src.resource_allocation.algo.algo_intuitive import Intuitive
+from src.resource_allocation.algo.utils import divide_ue
 from src.resource_allocation.ds.eutran import ENodeB, EUserEquipment
 from src.resource_allocation.ds.ngran import DUserEquipment, GNodeB, GUserEquipment
 from utils.pickle_generator import visualize_phase_uncategorized_ue
@@ -20,8 +21,12 @@ def intuitive_resource_allocation(data_set, visualize_the_algo: bool = False) ->
     with open(data_set_file_path, "rb") as file:
         g_nb, e_nb, cochannel_index, channel_model, g_ue_list, d_ue_list, e_ue_list, _, _ = pickle.load(file)
 
-    intuitive: Intuitive = Intuitive(g_nb, e_nb, channel_model, g_ue_list, d_ue_list, e_ue_list)
-    intuitive.algorithm()
+    # main
+    Intuitive(g_nb, g_ue_list + d_ue_list, tuple(), channel_model).allocate(allow_lower_mcs=False)
+    gue_allocated, gue_unallocated = divide_ue(g_ue_list)
+    due_allocated, due_unallocated = divide_ue(d_ue_list)
+    Intuitive(e_nb, e_ue_list + due_unallocated, gue_allocated + due_allocated, channel_model).allocate(
+        allow_lower_mcs=False)
 
     if visualize_the_algo:
         visualize_phase_uncategorized_ue(visualization_file_path, 'wb',

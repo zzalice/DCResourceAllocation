@@ -30,7 +30,7 @@ class Msema(Undo):
         super().__init__()
         self.channel_model: ChannelModel = channel_model
         self.nb: Optional[GNodeB, ENodeB] = None
-        self.frame_status: Status = ()
+        self.frame_status: Status = ()  # FIXME 不能用這個架構，還是要用empty_space來找
         self.allocated_ue: List[UserEquipment] = list(allocated_ue)
 
     def allocate_ue_list(self, nb: Union[GNodeB, ENodeB], ue_list: List[UserEquipment]):
