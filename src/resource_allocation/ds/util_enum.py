@@ -39,6 +39,10 @@ class _Numerology(Enum):
     def time(self) -> int:
         return self.value[1]
 
+    @property
+    def count_bu(self) -> int:
+        return self.value[0] * self.value[1]
+
     @staticmethod
     def gen_candidate_set():
         raise NotImplementedError

@@ -26,6 +26,7 @@ def dc_resource_allocation(data_set, visualize_the_algo: bool = False) -> Tuple[
         g_nb, e_nb, cochannel_index, channel_model, g_ue_list, d_ue_list, e_ue_list, inr_discount, worsen_threshold = pickle.load(
             file)   # TODO: cochannel_index用不到了
 
+    # gNB phase 1
     # noinspection PyTypeChecker
     g_phase1: Phase1 = Phase1(d_ue_list + g_ue_list)
     g_phase1.calc_inr(inr_discount)
@@ -34,6 +35,7 @@ def dc_resource_allocation(data_set, visualize_the_algo: bool = False) -> Tuple[
     g_zone_merged: Tuple[Zone, ...] = g_phase1.merge_zone(g_zone_undersized)
     g_zone_wide, g_zone_narrow = g_phase1.categorize_zone(g_zone_fit, g_zone_merged)
 
+    # gNB phase 2
     g_phase2: Phase2 = Phase2(g_nb)
     layer_using: int = g_phase2.calc_layer_using(g_zone_wide)
     g_zone_groups: Tuple[ZoneGroup, ...] = g_phase2.form_group(g_zone_wide, layer_using)
@@ -43,12 +45,14 @@ def dc_resource_allocation(data_set, visualize_the_algo: bool = False) -> Tuple[
                                                                          g_zone_unallocated)
     _, d_ue_list_unallocated = divide_ue(d_ue_list, is_assert=False)
 
+    # eNB phase 1
     # noinspection PyTypeChecker
     e_phase1: Phase1 = Phase1(d_ue_list_unallocated + e_ue_list)
     e_zone_fit, e_zone_undersized = e_phase1.form_zones(e_nb)
     e_zone_merged: Tuple[Zone, ...] = e_phase1.merge_zone(e_zone_undersized)
     e_zone_wide, e_zone_narrow = e_phase1.categorize_zone(e_zone_fit, e_zone_merged)
 
+    # eNB phase 2
     e_phase2: Phase2 = Phase2(e_nb)
     e_zone_allocated: List[List[Zone]] = e_phase2.allocate_zone_to_layer(e_nb.nb_type, [[]], e_zone_wide)
 
@@ -56,6 +60,7 @@ def dc_resource_allocation(data_set, visualize_the_algo: bool = False) -> Tuple[
         visualize_phase_uncategorized_ue(visualization_file_path, "wb",
                                          "Phase2", g_nb, e_nb, g_ue_list, d_ue_list, e_ue_list, is_assert=False)
 
+    # phase 3 step 1
     phase3: Phase3 = Phase3(channel_model, g_nb, e_nb)
     phase3.phase2_ue_adjust_mcs(NodeBType.E, e_zone_allocated)
     phase3.phase2_ue_adjust_mcs(NodeBType.G, g_zone_allocated)
@@ -64,11 +69,14 @@ def dc_resource_allocation(data_set, visualize_the_algo: bool = False) -> Tuple[
         visualize_phase_uncategorized_ue(visualization_file_path, "ab+",
                                          "Phase3_zoneGroup", g_nb, e_nb, g_ue_list, d_ue_list, e_ue_list)
 
+    # gNB step 2
     g_ue_list_allocated, g_ue_list_unallocated = divide_ue(g_ue_list)
     d_ue_list_allocated, d_ue_list_unallocated = divide_ue(d_ue_list)
     e_ue_list_allocated, e_ue_list_unallocated = divide_ue(e_ue_list)
     phase3.allocate_new_ue(g_nb.nb_type, d_ue_list_unallocated + g_ue_list_unallocated,
                            d_ue_list_allocated + g_ue_list_allocated + e_ue_list_allocated, worsen_threshold)
+
+    # eNB step 2
     g_ue_list_allocated, g_ue_list_unallocated = divide_ue(g_ue_list)
     d_ue_list_allocated, d_ue_list_unallocated = divide_ue(d_ue_list)
     e_ue_list_allocated, _ = divide_ue(e_ue_list)  # for the concern of co-channel area
@@ -86,7 +94,7 @@ if __name__ == '__main__':
     file_path: str = '0316-164735small/3layer/0'
     file_path: str = '0316-181915small_frame50/3layer/0'
     file_path: str = '0316-183832small_frame50_moreUE/3layer/0'
-    file_path: str = '0316-184206small_frame50_moreUE/3layer/0'
+    file_path: str = '0318-004644low_qos/1layer/0'
     if len(sys.argv) == 2:
         file_path: str = sys.argv[1]
     dc_resource_allocation(data_set=file_path, visualize_the_algo=True)

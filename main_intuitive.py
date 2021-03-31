@@ -38,7 +38,7 @@ if __name__ == '__main__':
     file_path: str = '0316-164735small/3layer/0'
     file_path: str = '0316-181915small_frame50/3layer/0'
     file_path: str = '0316-183832small_frame50_moreUE/3layer/0'
-    file_path: str = '0316-184206small_frame50_moreUE/3layer/0'
+    file_path: str = '0318-004644low_qos/1layer/0'
     if len(sys.argv) == 2:
         file_path: str = sys.argv[1]
     intuitive_resource_allocation(data_set=file_path, visualize_the_algo=True)
