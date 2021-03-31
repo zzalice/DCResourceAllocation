@@ -2,7 +2,7 @@ import pickle
 import re
 from datetime import datetime
 from tokenize import String
-from typing import Dict, List, Tuple, Union
+from typing import Dict, List, Optional, Tuple, Union
 
 from src.resource_allocation.algo.utils import bpframe_to_mbps
 from src.resource_allocation.ds.eutran import EUserEquipment
@@ -153,36 +153,6 @@ class FrameRenderer:
         self.body.append(div_end)
         return tab_title_id
 
-    @staticmethod
-    def open_file(file_path: String):
-        with open(file_path, "rb") as file_of_frame_and_ue:
-            stage: List[String] = []
-            g_frame: List[Frame] = []
-            e_frame: List[Frame] = []
-            system_throughput: List[float] = []
-            g_ue_list: List[Dict[str, Tuple[GUserEquipment, ...]]] = []
-            d_ue_list: List[Dict[str, Tuple[DUserEquipment, ...]]] = []
-            e_ue_list: List[Dict[str, Tuple[EUserEquipment, ...]]] = []
-            while True:
-                try:
-                    _s, _gf, _ef, _t, _gue, _due, _eue = pickle.load(file_of_frame_and_ue)
-                    stage.append(re.sub("[ ]", "_", _s))
-                    g_frame.append(_gf)
-                    e_frame.append(_ef)
-                    system_throughput.append(_t)
-                    g_ue_list.append(_gue)
-                    d_ue_list.append(_due)
-                    e_ue_list.append(_eue)
-                except EOFError:
-                    g_frame: Tuple[Frame, ...] = tuple(g_frame)
-                    e_frame: Tuple[Frame, ...] = tuple(e_frame)
-                    system_throughput: Tuple[float] = tuple(system_throughput)
-                    g_ue_list: Tuple[Dict[str, Tuple[GUserEquipment, ...]], ...] = tuple(g_ue_list)
-                    d_ue_list: Tuple[Dict[str, Tuple[DUserEquipment, ...]], ...] = tuple(d_ue_list)
-                    e_ue_list: Tuple[Dict[str, Tuple[EUserEquipment, ...]], ...] = tuple(e_ue_list)
-                    break
-        return stage, g_frame, e_frame, system_throughput, g_ue_list, d_ue_list, e_ue_list
-
     def render(self, filename: str):
         with open(filename, 'w') as w:
             w.write('<html>\n<head>')
@@ -192,14 +162,49 @@ class FrameRenderer:
             w.write('</body>\n</html>')
 
 
+def open_file(file_name_to_visualize: str):
+    with open(file_name_to_visualize + ".P", "rb") as file_of_frame_and_ue:
+        stage: List[String] = []
+        g_frame: List[Frame] = []
+        e_frame: List[Frame] = []
+        system_throughput: List[float] = []
+        g_ue_list: List[Dict[str, Tuple[GUserEquipment, ...]]] = []
+        d_ue_list: List[Dict[str, Tuple[DUserEquipment, ...]]] = []
+        e_ue_list: List[Dict[str, Tuple[EUserEquipment, ...]]] = []
+        while True:
+            try:
+                _s, _gf, _ef, _t, _gue, _due, _eue = pickle.load(file_of_frame_and_ue)
+                stage.append(re.sub("[ ]", "_", _s))
+                g_frame.append(_gf)
+                e_frame.append(_ef)
+                system_throughput.append(_t)
+                g_ue_list.append(_gue)
+                d_ue_list.append(_due)
+                e_ue_list.append(_eue)
+            except EOFError:
+                g_frame: Tuple[Frame, ...] = tuple(g_frame)
+                e_frame: Tuple[Frame, ...] = tuple(e_frame)
+                system_throughput: Tuple[float] = tuple(system_throughput)
+                g_ue_list: Tuple[Dict[str, Tuple[GUserEquipment, ...]], ...] = tuple(g_ue_list)
+                d_ue_list: Tuple[Dict[str, Tuple[DUserEquipment, ...]], ...] = tuple(d_ue_list)
+                e_ue_list: Tuple[Dict[str, Tuple[EUserEquipment, ...]], ...] = tuple(e_ue_list)
+                break
+    return stage, g_frame, e_frame, system_throughput, g_ue_list, d_ue_list, e_ue_list
+
+
+def visualize(file_name_visualized: Optional[str],
+              stage, g_frame, e_frame, system_throughput, g_ue_list, d_ue_list, e_ue_list):
+    frame_renderer = FrameRenderer()
+    tab_title = frame_renderer.gen_phase(stage, g_frame, e_frame, system_throughput, g_ue_list, d_ue_list, e_ue_list)
+    frame_renderer.tab_script(tab_title)
+    frame_renderer.render(file_name_visualized + '.html')
+
+
 if __name__ == '__main__':
     file_to_visualize = "vis_" + datetime.today().strftime('%Y%m%d')
     # file_to_visualize = "vis_intuitive_" + datetime.today().strftime('%Y%m%d')
     # file_to_visualize = "vis_frsa_" + datetime.today().strftime('%Y%m%d')
     # file_to_visualize = "vis_msema_" + datetime.today().strftime('%Y%m%d')
 
-    frame_renderer = FrameRenderer()
-    s, gf, ef, t, gue, due, eue = frame_renderer.open_file(file_to_visualize + ".P")
-    tab_title = frame_renderer.gen_phase(s, gf, ef, t, gue, due, eue)
-    frame_renderer.tab_script(tab_title)
-    frame_renderer.render(file_to_visualize + '.html')
+    s, gf, ef, t, gue, due, eue = open_file(file_to_visualize)
+    visualize(file_to_visualize, s, gf, ef, t, gue, due, eue)
