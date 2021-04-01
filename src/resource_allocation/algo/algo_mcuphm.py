@@ -1,4 +1,4 @@
-from math import ceil
+from math import ceil, floor
 from typing import List, Tuple, Union
 
 from src.resource_allocation.ds.eutran import ENodeB, EUserEquipment
@@ -27,70 +27,88 @@ class McupHm:
         count_frame_rb: float = (nb.frame.frame_freq * nb.frame.frame_time) / count_rb_bu
 
         if nb.nb_type == NodeBType.G:
-            self.gnb_max_serve = ceil(count_frame_rb / count_ue_rb)
+            self.gnb_max_serve = floor(count_frame_rb / count_ue_rb)
         elif nb.nb_type == NodeBType.E:
             self.enb_max_serve = ceil(count_frame_rb / count_ue_rb)
         else:
             raise AssertionError
 
-    def assign_single_connection_ue(self, nb_type: NodeBType, ue_list: Tuple[Union[GUserEquipment, EUserEquipment]]
-                                    ) -> Tuple[Union[GUserEquipment, EUserEquipment], ...]:
-        ue_list: List[Union[GUserEquipment, EUserEquipment]] = list(ue_list)
-        # sort by distance
-        if nb_type == NodeBType.G:
-            ue_list.sort(key=lambda x: x.coordinate.distance_gnb)
-        elif nb_type == NodeBType.E:
-            ue_list.sort(key=lambda x: x.coordinate.distance_enb)
-        else:
-            raise AssertionError
-
-        # append to limit
-        nb_max_serve: int = self.gnb_max_serve if nb_type == NodeBType.G else self.enb_max_serve
-        i: int = len(ue_list)   # any value to let method return empty array if didn't enter for loop
-        for i in range(min(nb_max_serve, len(ue_list))):
-            self.append_ue(nb_type, ue_list[i])
-        return tuple(ue_list[i+1:])    # ue not assigned
-
-    def assign_dual_connection_ue(self, due_list: Tuple[DUserEquipment]) -> Tuple[DUserEquipment, ...]:
-        due_list: List[DUserEquipment] = list(due_list)
-        # gNB
-        due_list.sort(key=lambda x: x.coordinate.distance_gnb)
+    @staticmethod
+    def due_preference_order(due_list: Tuple[DUserEquipment]):
         for due in due_list:
-            self.append_ue(NodeBType.G, due)
+            if due.coordinate.distance_enb > due.coordinate.distance_gnb:
+                due.nb_preference = [0, 1]
+            else:
+                due.nb_preference = [1, 0]
 
-        # eNB
-        due_list.sort(key=lambda x: x.coordinate.distance_enb)
-        for due in due_list:
-            self.append_ue(NodeBType.E, due)
+    def algorithm(self, ue_list: Tuple[UE]):
+        """
+        Refer to the pseudocode in "Multi-Connectivity Enabled User Association".
+        :param ue_list: All the UEs in the system.
+        :return:
+        """
+        ue_list: List[UE] = list(ue_list)
+        while ue_list:
+            n_i: UE = ue_list.pop(0)  # ue
+            m_j: int = n_i.nb_preference.pop(0)  # nb
+            is_assigned, ue_ = self.assign(n_i, m_j)
+            self.update(is_assigned, n_i, ue_)
+            self.append_ue(ue_list, n_i)
+            self.append_ue(ue_list, ue_)
 
-        due_unassigned: List[DUserEquipment] = []
-        for due in due_list:
-            if due not in self.gnb_ue_list and due not in self.enb_ue_list:
-                due_unassigned.append(due)
-        return tuple(due_unassigned)
-
-    def append_left_over(self, nb_type: NodeBType, ue_list: Tuple[UE]):
-        if nb_type == NodeBType.G:
-            self._gnb_ue_list.extend(ue_list)
-        elif nb_type == NodeBType.E:
-            self._enb_ue_list.extend(ue_list)
-        else:
-            raise AssertionError
-
-    def append_ue(self, nb_type: NodeBType, ue: UE) -> bool:
-        if nb_type == NodeBType.G:
+    def assign(self, ue: UE, nb: int) -> Tuple[bool, UE]:
+        """
+        Subscribe to NodeB.
+        :param ue: The UE to assign to nb
+        :param nb: 0 represent eNB, 1 represent gNB.
+        :return: Whether the input ue is assigned and the UE to be updated.
+        """
+        if nb == 0:
+            self._enb_ue_list.append(ue)
+            if len(self._enb_ue_list) > self.enb_max_serve:
+                self._enb_ue_list.sort(key=lambda x: x.coordinate.distance_enb)  # better channel quality
+                rejected: UE = self._enb_ue_list.pop()
+                return not (rejected == ue), rejected
+        elif nb == 1:
             self._gnb_ue_list.append(ue)
             if len(self._gnb_ue_list) > self.gnb_max_serve:
                 self._gnb_ue_list.sort(key=lambda x: x.coordinate.distance_gnb)
-                return not(self._gnb_ue_list.pop() == ue)
-        elif nb_type == NodeBType.E:
-            self._enb_ue_list.append(ue)
-            if len(self._enb_ue_list) > self.enb_max_serve:
-                self._enb_ue_list.sort(key=lambda x: x.coordinate.distance_enb)
-                return not(self._enb_ue_list.pop() == ue)
+                rejected: UE = self._gnb_ue_list.pop()
+                return not (rejected == ue), rejected
         else:
             raise AssertionError
-        return True
+        return True, ue
+
+    @staticmethod
+    def update(is_assigned: bool, ue: UE, ue_: UE):
+        if is_assigned:
+            # ue was assigned
+            if ue == ue_:
+                # BS can serve more UE than rejecting any
+                ue.connection_preference -= 1
+                assert ue.connection_preference >= 0
+            else:
+                # BS has reached connection limit so ue_ was rejected
+                ue_.connection_preference += 1
+                assert ue_.connection_preference >= 0
+        else:
+            if ue == ue_:
+                # ue was rejected
+                pass  # nothing to update
+            else:
+                raise AssertionError
+
+    @staticmethod
+    def append_ue(ue_list: List[UE], ue: UE):
+        if ue not in ue_list and ue.connection_preference > 0 and ue.nb_preference:  # there is other BS options for ue
+            ue_list.append(ue)
+
+    def left_over(self, ue_list: Tuple[UE]) -> Tuple[UE, ...]:
+        unassigned_ue: List[UE] = []
+        for ue in ue_list:
+            if ue not in self.gnb_ue_list + self.enb_ue_list:
+                unassigned_ue.append(ue)
+        return tuple(unassigned_ue)
 
     @property
     def gnb_ue_list(self) -> Tuple[Union[GUserEquipment, DUserEquipment], ...]:

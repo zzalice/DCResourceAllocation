@@ -1,3 +1,5 @@
+from typing import List
+
 from .nodeb import NodeB
 from .ue import UserEquipment
 from .util_enum import LTEResourceBlock, NodeBType, UEType
@@ -20,3 +22,7 @@ class EUserEquipment(UserEquipment):
 
         self.candidate_set: CandidateSet = (LTEResourceBlock.E,)
         self.numerology_in_use: LTEResourceBlock = LTEResourceBlock.E
+
+        # for MCUP
+        self.connection_preference: int = 1
+        self.nb_preference: List[int] = [0]  # 0 represent eNB, 1 represent gNB.

@@ -1,3 +1,5 @@
+from typing import List
+
 from .nodeb import NodeB
 from .ue import UserEquipment
 from .util_enum import NodeBType, UEType
@@ -18,11 +20,19 @@ class GUserEquipment(UserEquipment):
         self.ue_type: UEType = UEType.G
         del self.enb_info
 
+        # for MCUP
+        self.connection_preference: int = 1
+        self.nb_preference: List[int] = [1]  # 0 represent eNB, 1 represent gNB.
+
 
 class DUserEquipment(UserEquipment):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
         self.ue_type: UEType = UEType.D
+
+        # for MCUP
+        self.connection_preference: int = 2
+        self.nb_preference: List[int] = [0, 1]  # 0 represent eNB, 1 represent gNB.
 
     @property
     def cross_nb(self) -> bool:

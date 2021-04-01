@@ -9,29 +9,27 @@ from src.resource_allocation.ds.ngran import DUserEquipment, GNodeB, GUserEquipm
 
 
 def mcup_hm(data_set) -> Tuple[GNodeB, ENodeB,
-                               Tuple[Union[GUserEquipment, DUserEquipment], ...],
-                               Tuple[Union[EUserEquipment, DUserEquipment], ...],
-                               Tuple[DUserEquipment, ...]]:
-    dirname = os.path.dirname(__file__)
-    data_set_file_path = os.path.join(dirname, 'src/simulation/data', data_set + '.P')
-    with open(data_set_file_path, "rb") as file:
+                               Tuple[Union[GUserEquipment, DUserEquipment]],
+                               Tuple[Union[EUserEquipment, DUserEquipment]],
+                               Tuple[GUserEquipment], Tuple[EUserEquipment], Tuple[DUserEquipment]]:
+    with open(f'{os.path.dirname(__file__)}/src/simulation/data/{data_set}.P', "rb") as file:
         g_nb, e_nb, cochannel_index, channel_model, g_ue_list, d_ue_list, e_ue_list, _, _ = pickle.load(file)  # FIXME: pass eUE, gUE demand range in Tuple[int, int]
 
     # main
     mcup = McupHm()
-    mcup.calc_max_serve_ue(g_nb, (1000_000, 1512_000))  # FIXME
-    mcup.calc_max_serve_ue(e_nb, (1000_000, 1512_000))
-    gue_unassigned: Tuple[GUserEquipment] = mcup.assign_single_connection_ue(g_nb.nb_type, g_ue_list)
-    eue_unassigned: Tuple[EUserEquipment] = mcup.assign_single_connection_ue(e_nb.nb_type, e_ue_list)
-    due_unassigned: Tuple[DUserEquipment] = mcup.assign_dual_connection_ue(d_ue_list)
-    mcup.append_left_over(g_nb.nb_type, gue_unassigned)  # Notice: unassigned dUE are not append to any BS
-    mcup.append_left_over(e_nb.nb_type, eue_unassigned)
+    mcup.calc_max_serve_ue(g_nb, (800_000, 801_000))  # FIXME
+    mcup.calc_max_serve_ue(e_nb, (820_000, 821_000))
+    mcup.due_preference_order(d_ue_list)
+    mcup.algorithm(e_ue_list + g_ue_list + d_ue_list)
+    eue_unassigned: Tuple[EUserEquipment] = mcup.left_over(e_ue_list)
+    gue_unassigned: Tuple[GUserEquipment] = mcup.left_over(g_ue_list)
+    due_unassigned: Tuple[DUserEquipment] = mcup.left_over(d_ue_list)
 
-    return g_nb, e_nb, mcup.gnb_ue_list, mcup.enb_ue_list, due_unassigned
+    return g_nb, e_nb, mcup.gnb_ue_list, mcup.enb_ue_list, gue_unassigned, eue_unassigned, due_unassigned
 
 
 if __name__ == '__main__':
-    file_path: str = '0318-004644low_qos/1layer/0'
+    file_path: str = '0401-174227test_mcup/1layer/0'
 
     if len(sys.argv) == 2:
         file_path: str = sys.argv[1]
