@@ -53,10 +53,13 @@ class PreallocateCZ:
 
     def append_cz(self, cz: ConcatenateZone, offset: Optional[int] = None):
         if offset is None:
-            if len(self.cz_list) == 0:
-                offset: int = 0
-            else:
+            if self.cz_list:
                 offset: int = self.cz_list[-1].offset + self.cz_list[-1].bandwidth
+            else:
+                offset: int = 0
+        elif self.cz_list and offset < self.cz_list[-1].offset + self.cz_list[-1].bandwidth:
+            offset: int = self.cz_list[-1].offset + self.cz_list[-1].bandwidth
+
         cz.offset = offset
         self.cz_list.append(cz)
         self.check_out_of_bound(-1)

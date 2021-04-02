@@ -56,5 +56,5 @@ def frsa(data_set: str, visualize_the_algo: bool = False) -> Tuple[
 
 
 if __name__ == '__main__':
-    file_path: str = '0402-090957test_mcup/3layer/0'
+    file_path: str = '0402-102014avg_deploy/2layer/7'
     frsa(file_path, visualize_the_algo=True)
