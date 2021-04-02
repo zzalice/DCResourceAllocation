@@ -13,12 +13,12 @@ def mcup_hm(data_set) -> Tuple[GNodeB, ENodeB,
                                Tuple[Union[EUserEquipment, DUserEquipment]],
                                Tuple[GUserEquipment], Tuple[EUserEquipment], Tuple[DUserEquipment]]:
     with open(f'{os.path.dirname(__file__)}/src/simulation/data/{data_set}.P', "rb") as file:
-        g_nb, e_nb, cochannel_index, channel_model, g_ue_list, d_ue_list, e_ue_list, _, _ = pickle.load(file)  # FIXME: pass eUE, gUE demand range in Tuple[int, int]
+        g_nb, e_nb, channel_model, g_ue_list, d_ue_list, e_ue_list, gue_qos, eue_qos, _, _ = pickle.load(file)
 
     # main
     mcup = McupHm()
-    mcup.calc_max_serve_ue(g_nb, (800_000, 801_000))  # FIXME
-    mcup.calc_max_serve_ue(e_nb, (820_000, 821_000))
+    mcup.calc_max_serve_ue(g_nb, (gue_qos[0], gue_qos[1]))
+    mcup.calc_max_serve_ue(e_nb, (eue_qos[0], eue_qos[1]))
     mcup.due_preference_order(d_ue_list)
     mcup.algorithm(e_ue_list + g_ue_list + d_ue_list)
     eue_unassigned: Tuple[EUserEquipment] = mcup.left_over(e_ue_list)
@@ -29,7 +29,7 @@ def mcup_hm(data_set) -> Tuple[GNodeB, ENodeB,
 
 
 if __name__ == '__main__':
-    file_path: str = '0401-174227test_mcup/1layer/0'
+    file_path: str = '0402-090957test_mcup/3layer/0'
 
     if len(sys.argv) == 2:
         file_path: str = sys.argv[1]

@@ -19,7 +19,7 @@ def intuitive_resource_allocation(data_set, visualize_the_algo: bool = False) ->
 
     data_set_file_path = os.path.join(dirname, 'src/simulation/data', data_set + '.P')
     with open(data_set_file_path, "rb") as file:
-        g_nb, e_nb, cochannel_index, channel_model, g_ue_list, d_ue_list, e_ue_list, _, _ = pickle.load(file)
+        g_nb, e_nb, channel_model, g_ue_list, d_ue_list, e_ue_list, _, _, _, _ = pickle.load(file)
 
     # main
     Intuitive(g_nb, g_ue_list + d_ue_list, tuple(), channel_model).allocate(allow_lower_mcs=False)
@@ -35,10 +35,7 @@ def intuitive_resource_allocation(data_set, visualize_the_algo: bool = False) ->
 
 
 if __name__ == '__main__':
-    file_path: str = '0316-164735small/3layer/0'
-    file_path: str = '0316-181915small_frame50/3layer/0'
-    file_path: str = '0316-183832small_frame50_moreUE/3layer/0'
-    file_path: str = '0318-004644low_qos/1layer/0'
+    file_path: str = '0402-090957test_mcup/3layer/0'
     if len(sys.argv) == 2:
         file_path: str = sys.argv[1]
     intuitive_resource_allocation(data_set=file_path, visualize_the_algo=True)

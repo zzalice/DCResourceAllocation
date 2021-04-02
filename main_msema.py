@@ -18,7 +18,7 @@ def msema_rb_ra(data_set: str, visualize_the_algo: bool = False) -> Tuple[
 
     data_set_file_path = os.path.join(dirname, 'src/simulation/data', data_set + '.P')
     with open(data_set_file_path, "rb") as file:
-        g_nb, e_nb, _, channel_model, g_ue_list, d_ue_list, e_ue_list, _, _ = pickle.load(file)
+        g_nb, e_nb, channel_model, g_ue_list, d_ue_list, e_ue_list, _, _, _, _ = pickle.load(file)
 
     # main
     Msema(channel_model, ()).allocate_ue_list(g_nb, g_ue_list + d_ue_list)
@@ -34,5 +34,5 @@ def msema_rb_ra(data_set: str, visualize_the_algo: bool = False) -> Tuple[
 
 
 if __name__ == '__main__':
-    file_path: str = '0316-184206small_frame50_moreUE/3layer/0'
+    file_path: str = '0402-090957test_mcup/3layer/0'
     msema_rb_ra(file_path, visualize_the_algo=True)

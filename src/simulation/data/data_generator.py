@@ -121,8 +121,9 @@ class DataGenerator:
 
             with open(f'{self.output_file_path}/{str(i)}.P', "wb") as file_of_frame_and_ue:
                 pickle.dump(
-                    [g_nb, e_nb, cochannel_index, channel_model, g_ue_list, d_ue_list, e_ue_list, self.inr_discount,
-                     worsen_threshold],
+                    [g_nb, e_nb, channel_model,
+                     g_ue_list, d_ue_list, e_ue_list, self.gue_qos_range, self.eue_qos_range,
+                     self.inr_discount, worsen_threshold],
                     file_of_frame_and_ue)
 
         self.gen_txt_parameter()

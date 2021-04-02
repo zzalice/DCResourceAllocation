@@ -23,8 +23,8 @@ def dc_resource_allocation(data_set, visualize_the_algo: bool = False) -> Tuple[
 
     data_set_file_path = os.path.join(dirname, 'src/simulation/data', data_set + '.P')
     with open(data_set_file_path, "rb") as file:
-        g_nb, e_nb, cochannel_index, channel_model, g_ue_list, d_ue_list, e_ue_list, inr_discount, worsen_threshold = pickle.load(
-            file)   # TODO: cochannel_index用不到了
+        g_nb, e_nb, channel_model, g_ue_list, d_ue_list, e_ue_list, _, _, inr_discount, worsen_threshold = pickle.load(
+            file)
 
     # gNB phase 1
     # noinspection PyTypeChecker
@@ -91,10 +91,7 @@ def dc_resource_allocation(data_set, visualize_the_algo: bool = False) -> Tuple[
 
 
 if __name__ == '__main__':
-    file_path: str = '0316-164735small/3layer/0'
-    file_path: str = '0316-181915small_frame50/3layer/0'
-    file_path: str = '0316-183832small_frame50_moreUE/3layer/0'
-    file_path: str = '0318-004644low_qos/1layer/0'
+    file_path: str = '0402-090957test_mcup/3layer/0'
     if len(sys.argv) == 2:
         file_path: str = sys.argv[1]
     dc_resource_allocation(data_set=file_path, visualize_the_algo=True)
