@@ -65,8 +65,8 @@ class Msema(Undo):
 
     def allocate_ue(self, ue: UserEquipment) -> bool:
         assert not ue.is_allocated
-        from utils.assertion import check_undo_copy  # TODO: commend to save time
-        copy_ue = check_undo_copy([ue] + self.allocated_ue)
+        # from utils.assertion import check_undo_copy
+        # copy_ue = check_undo_copy([ue] + self.allocated_ue)
 
         bu_i: int = 0
         bu_j: int = 0
@@ -86,12 +86,17 @@ class Msema(Undo):
                     return True
                 else:
                     self.undo(undo_all=True)
-                    bu_i += 1
-                    bu_j += 1
-
-                    from utils.assertion import check_undo_compare  # TODO: commend to save time
-                    check_undo_compare([ue] + self.allocated_ue, copy_ue)
-                    continue
+                    if self.nb.nb_type == NodeBType.G:
+                        bu_i += 1
+                        bu_j += 1
+                    elif self.nb.nb_type == NodeBType.E:
+                        if bu := self.enb_next_rb(bu_i, bu_j):
+                            bu_i = bu[0]
+                            bu_j = bu[1]
+                        else:   # no more spaces in the frame
+                            return False
+                    # from utils.assertion import check_undo_compare
+                    # check_undo_compare([ue] + self.allocated_ue, copy_ue)
             else:
                 # all the possible spaces are checked
                 return False
@@ -180,6 +185,20 @@ class Msema(Undo):
                     'layer': (self.nb.frame.max_layer - self.frame_status[bu_i][bu_j]['vacancy'])}
         else:
             return None
+
+    def enb_next_rb(self, i: int, j: int) -> Optional[Tuple[int, int]]:
+        assert isinstance(self.nb, ENodeB)
+        assert j % LTEResourceBlock.E.count_bu == 0
+
+        # continuous RB
+        j += LTEResourceBlock.E.count_bu
+        if j + LTEResourceBlock.E.time > self.nb.frame.frame_time:
+            # next row
+            j = 0
+            i += LTEResourceBlock.E.freq
+            if i + LTEResourceBlock.E.freq > self.nb.frame.frame_freq:
+                return None
+        return i, j
 
     def is_available_rb(self, bu_i: int, bu_j: int, ue_numerology: Numerology) -> bool:
         if bu_i + ue_numerology.freq > self.nb.frame.frame_freq or bu_j + ue_numerology.time > self.nb.frame.frame_time:

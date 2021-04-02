@@ -8,7 +8,7 @@ if __name__ == '__main__':
     MCS parameter can be set in resource_allocation/ds/util_enum.py
     and record in IterateAlgo output pickle.
     """
-    f_data: str = '0402-090957test_mcup'  # <-- change
+    f_data: str = '0402-102014avg_deploy'  # <-- change
     f_mcs: str = 'gNBCQI1CQI15_eNBCQI1CQI15'  # <-- change
     i: int = 10  # <-- change
 
