@@ -1,122 +1,20 @@
-from copy import deepcopy
-from dataclasses import dataclass
-from typing import Dict, List, Optional, Tuple, Union
+from typing import List, Optional, Tuple
 
+from src.resource_allocation.algo.frsa.utils import ConcatenateZone, Dissimilarity, LayerZone, PreallocateCZ
 from src.resource_allocation.ds.frame import Layer
 from src.resource_allocation.ds.ngran import GNodeB
 from src.resource_allocation.ds.util_enum import Numerology
 from src.resource_allocation.ds.zone import Zone
 
 
-class ConcatenateZone:
-    def __init__(self, zone: Zone):
-        self.zone: List[Zone] = [zone]
-        self._numerology: Numerology = zone.numerology
-        self._offset: Optional[int] = None
-
-    @property
-    def bandwidth(self) -> int:
-        bw: int = 0
-        for z in self.zone:
-            bw += z.zone_freq
-        return bw
-
-    @property
-    def numerology(self) -> Numerology:
-        return self._numerology
-
-    def allocate(self, layer: Layer):
-        is_first: bool = True
-        for zone in self.zone:
-            if is_first:
-                is_first: bool = False
-                offset: int = self.offset
-            else:
-                offset: Optional[int] = None
-            layer.allocate_zone(zone, offset)
-
-    @property
-    def offset(self) -> int:
-        return self._offset
-
-    @offset.setter
-    def offset(self, value: int):
-        assert value >= 0
-        self._offset: int = value
-
-
-class PreallocateCZ:
-    def __init__(self, layer: int, freq: int):
-        self.layer: int = layer
-        self.frame_freq: int = freq  # gNB BW
-        self.cz_list: List[ConcatenateZone] = []  # In the order of offset.
-
-    def append_cz(self, cz: ConcatenateZone, offset: Optional[int] = None):
-        if offset is None:
-            if self.cz_list:
-                offset: int = self.cz_list[-1].offset + self.cz_list[-1].bandwidth
-            else:
-                offset: int = 0
-        elif self.cz_list and offset < self.cz_list[-1].offset + self.cz_list[-1].bandwidth:
-            offset: int = self.cz_list[-1].offset + self.cz_list[-1].bandwidth
-
-        cz.offset = offset
-        self.cz_list.append(cz)
-        self.check_out_of_bound(-1)
-        self.check_lapped(-1)
-        self.assert_cz_list()
-
-    def check_out_of_bound(self, cz_idx: int):
-        while True:
-            edge: int = self.cz_list[cz_idx].offset + self.cz_list[cz_idx].bandwidth - 1
-            if edge >= self.frame_freq:
-                self.shift(cz_idx)
-            else:
-                return True
-
-    def check_lapped(self, cz_idx: int):
-        # check invalid overlapped
-        for idx_below in range(cz_idx, -len(self.cz_list) - 1, -1):
-            for idx_above in range(idx_below - 1, -len(self.cz_list) - 1, -1):
-                while self.cz_list[idx_below].offset <= (
-                        self.cz_list[idx_above].offset + self.cz_list[idx_above].bandwidth - 1):
-                    self.shift(idx_above)
-
-    def shift(self, cz_idx: int):
-        assert self.cz_list[cz_idx].offset > 0, 'No space to shift.'
-
-        # shift
-        self.cz_list[cz_idx].offset -= 1
-
-    def assert_cz_list(self):
-        assert self.cz_list[0].offset >= 0
-        for i, cz in enumerate(self.cz_list[1:]):
-            last_cz: ConcatenateZone = self.cz_list[i]
-            assert cz.offset > last_cz.offset + last_cz.bandwidth - 1
-        assert self.cz_list[-1].offset + self.cz_list[-1].bandwidth <= self.frame_freq
-
-
-@dataclass
-class Dissimilarity:
-    layer: int
-    numerology: Numerology
-    dissimilarity: float
-
-
-LayerZone = Tuple[Dict[str, Union[int, List[Union[Zone, ConcatenateZone]]]], ...
-]  # ({'layer': int, 'residual': int, 'zones': List[Zone/ConcatenateZone]},...) The Dict is in the order of layer index
-
-
 class FRSAPhase2:
-    def __init__(self, nodeb: GNodeB, zones_in_layers: LayerZone):
+    def __init__(self, nodeb: GNodeB, zones_in_layers: Tuple[LayerZone]):
         self.nb: GNodeB = nodeb
-        self.zones_in_layers: LayerZone = zones_in_layers
-        self.freq_span: List[Dict[Numerology, int]] = []
+        self.zones_in_layers: Tuple[LayerZone] = zones_in_layers
 
     def zd(self):
         if self.nb.frame.max_layer < 2:
             return True
-        self.calc_total_freq_span()
         is_improved: bool = True
         while is_improved:
             is_improved: bool = False
@@ -125,145 +23,110 @@ class FRSAPhase2:
                 tmp_dissimilarity: float = -1
                 tmp_numerology: Optional[Numerology] = None
                 for numerology in Numerology:
-                    dissimilarity: float = self.calc_dissimilarity(l, numerology, self.freq_span)
+                    dissimilarity: float = self.calc_dissimilarity(l, numerology)
                     if dissimilarity > tmp_dissimilarity:
                         tmp_dissimilarity: float = dissimilarity
                         tmp_numerology: Numerology = numerology
                 max_dissimilarity.append(Dissimilarity(l, tmp_numerology, tmp_dissimilarity))
 
-            if len(max_dissimilarity) < 2:
-                return True
             max_dissimilarity.sort(key=lambda x: x.dissimilarity)
             zone_set: List[Dissimilarity] = []
             zone_bandwidth: List[int] = []
             residual: List[int] = []
             for i in range(2):  # pick two concatenate zone with largest dissimilarity FIXME: 假設A_1,mu包含z1, z2, z3，A_3,mu包含z4, z5，A_1,mu > A_3,mu，z1先看能不能跟z4換，如果空間不夠換，再看z1跟z5，z2跟z4，z2跟z5 ....
                 zone_set.append(max_dissimilarity.pop())
-                zone_bandwidth.append(self.freq_span[zone_set[-1].layer][zone_set[-1].numerology])
-                assert self.zones_in_layers[zone_set[-1].layer]['layer'] == zone_set[-1].layer
-                residual.append(self.zones_in_layers[zone_set[-1].layer]['residual'])
+                assert self.zones_in_layers[zone_set[-1].layer].layer == zone_set[-1].layer
+                zone_bandwidth.append(self.zones_in_layers[zone_set[-1].layer].frequency_span[zone_set[-1].numerology])
+                residual.append(self.zones_in_layers[zone_set[-1].layer].residual)
             if (zone_bandwidth[0] <= zone_bandwidth[1] + residual[1]) and (
                     zone_bandwidth[1] <= zone_bandwidth[0] + residual[0]):
-                origin_ld: float = self.calc_layer_dissimilarity(self.freq_span)
-                freq_span = self.displace_zone(zone_set)
-                new_ld: float = self.calc_layer_dissimilarity(freq_span)
+                origin_ld: float = self.calc_layer_dissimilarity()
+                self.swap(zone_set)
+                new_ld: float = self.calc_layer_dissimilarity()
                 if new_ld < origin_ld:
-                    self.update_zones_in_layers(zone_set)
-                    assert False not in [self.freq_span[i][j] == freq_span[i][j] for i, d in enumerate(self.freq_span)
-                                         for j in d]
                     is_improved: bool = True
+                else:
+                    self.swap(zone_set)  # undo FIXME wrong
 
-    def calc_total_freq_span(self):
-        self.freq_span: List[Dict[Numerology, int]] = [
-            {numerology: 0 for numerology in Numerology.gen_candidate_set()} for _ in
-            range(self.nb.frame.max_layer)]
-        for l, zone_in_l in enumerate(self.zones_in_layers):
-            assert self.zones_in_layers[l]['layer'] == l
-            for zone in zone_in_l['zones']:
-                self.freq_span[l][zone.numerology] += zone.zone_freq
-
-    def calc_dissimilarity(self, layer: int, numerology: Numerology, freq_span: List[Dict[Numerology, int]]) -> float:
+    def calc_dissimilarity(self, layer: int, numerology: Numerology) -> float:
         dissimilarity: float = 0.0
         for l in range(self.nb.frame.max_layer):
             if l == layer:
                 continue
-            dissimilarity += abs(freq_span[layer][numerology] - freq_span[l][numerology])
+            dissimilarity += abs(
+                self.zones_in_layers[layer].frequency_span[numerology] - self.zones_in_layers[l].frequency_span[
+                    numerology])
         return dissimilarity / self.nb.frame.max_layer
 
-    def calc_layer_dissimilarity(self, freq_span: List[Dict[Numerology, int]]) -> float:
+    def calc_layer_dissimilarity(self) -> float:
         ld: float = 0.0
         for numerology in Numerology:
             for layer in range(self.nb.frame.max_layer):
-                ld += self.calc_dissimilarity(layer, numerology, freq_span)
+                ld += self.calc_dissimilarity(layer, numerology)
         return ld
 
-    def displace_zone(self, zone_set: List[Dissimilarity]) -> List[Dict[Numerology, int]]:
-        assert len(zone_set) == 2
-        freq_span: List[Dict[Numerology, int]] = deepcopy(self.freq_span)
+    def swap(self, zone_set: List[Dissimilarity]):
+        zone_set[0].dissimilarity = zone_set[1].dissimilarity = -1
 
-        tmp_span: int = freq_span[zone_set[1].layer][zone_set[1].numerology]
-        freq_span[zone_set[1].layer][zone_set[1].numerology] = freq_span[zone_set[0].layer][zone_set[0].numerology]
-        freq_span[zone_set[0].layer][zone_set[0].numerology] = tmp_span
-        return freq_span
-
-    def update_zones_in_layers(self, zone_set: List[Dissimilarity]):
+        # back up zone_set 0
         tmp_zone: List[Zone] = []
-        tmp_span: int = 0
-
-        # back up zone_set 1
         i: int = 0
-        assert self.zones_in_layers[zone_set[0].layer]['layer'] == zone_set[0].layer
-        for zone in self.zones_in_layers[zone_set[0].layer]['zones'][i:]:
+        assert self.zones_in_layers[zone_set[0].layer].layer == zone_set[0].layer
+        for zone in self.zones_in_layers[zone_set[0].layer].zone[i:]:
             if zone.numerology == zone_set[0].numerology:
                 tmp_zone.append(zone)
-                tmp_span += zone.zone_freq
-                self.zones_in_layers[zone_set[0].layer]['zones'].remove(zone)
-                self.zones_in_layers[zone_set[0].layer]['residual'] += zone.zone_freq
+                self.zones_in_layers[zone_set[0].layer].remove_zone(zone)
             else:
                 i += 1
 
-        # move zone_set 2 to zone_set[0].layer
+        # move zone_set 1 to zone_set 0
         i: int = 0
-        assert self.zones_in_layers[zone_set[1].layer]['layer'] == zone_set[1].layer
-        for zone in self.zones_in_layers[zone_set[1].layer]['zones'][i:]:
+        assert self.zones_in_layers[zone_set[1].layer].layer == zone_set[1].layer
+        for zone in self.zones_in_layers[zone_set[1].layer].zone[i:]:
             if zone.numerology == zone_set[1].numerology:
-                self.zones_in_layers[zone_set[0].layer]['zones'].append(zone)
-                self.zones_in_layers[zone_set[0].layer]['residual'] -= zone.zone_freq
-                self.zones_in_layers[zone_set[1].layer]['zones'].remove(zone)
-                self.zones_in_layers[zone_set[1].layer]['residual'] += zone.zone_freq
+                self.zones_in_layers[zone_set[0].layer].add_zone(zone)
+                self.zones_in_layers[zone_set[1].layer].remove_zone(zone)
             else:
                 i += 1
 
-        # move zone_set 1 to zone_set 2
-        self.zones_in_layers[zone_set[1].layer]['zones'].extend(tmp_zone)
-        self.zones_in_layers[zone_set[1].layer]['residual'] -= tmp_span
-
-        self.calc_total_freq_span()
+        # move zone_set 0 to zone_set 1
+        for zone in tmp_zone:
+            self.zones_in_layers[zone_set[1].layer].add_zone(zone)
 
     def za(self):
         # base layer
-        base_layer: Dict[str, Union[int, List[Zone]]] = min(self.zones_in_layers, key=lambda x: len(x['zones']))
+        base_layer: LayerZone = min(self.zones_in_layers, key=lambda x: len(x.zone))
         self.form_concatenate_zone()
         bl_offset: List[ConcatenateZone] = self.allocate_by_bandwidth(base_layer)
 
         # other layers
         for l in range(self.nb.frame.max_layer):
-            assert self.zones_in_layers[l]['layer'] == l
-            if l == base_layer['layer']:
+            assert self.zones_in_layers[l].layer == l
+            if l == base_layer.layer:
                 continue
 
             pre: PreallocateCZ = PreallocateCZ(l, self.nb.frame.frame_freq)
             for bl_cz in bl_offset:
-                for cz in filter(lambda x: x.numerology == bl_cz.numerology, self.zones_in_layers[l]['zones']):  # only one
+                for cz in filter(lambda x: x.numerology == bl_cz.numerology, self.zones_in_layers[l].zone):  # only one FIXME use next()
                     pre.append_cz(cz, bl_cz.offset)  # allocate by aligning
-                    self.zones_in_layers[l]['zones'].remove(cz)
-            for cz in self.zones_in_layers[l]['zones']:
+                    cz.is_preallocate = True
+            for cz in filter(lambda x: not x.is_preallocate, self.zones_in_layers[l].zone):
                 pre.append_cz(cz)  # allocate by squeezing
             self.allocate_preallocate_cz(pre)
 
     def form_concatenate_zone(self):
         for zones_in_layer in self.zones_in_layers:
-            if not zones_in_layer['zones']:  # if is empty
-                continue
-            zones_in_layer['zones'].sort(key=lambda x: x.numerology.mu)
-            concatenate: List[ConcatenateZone] = [ConcatenateZone(zones_in_layer['zones'].pop())]
-            while zones_in_layer['zones']:
-                zone: Zone = zones_in_layer['zones'].pop()
-                if zone.numerology == concatenate[-1].numerology:
-                    concatenate[-1].zone.append(zone)
-                else:
-                    concatenate.append(ConcatenateZone(zone))
-            zones_in_layer['zones'] = concatenate
+            zones_in_layer.form_concatenate_zone()
 
-    def allocate_by_bandwidth(self, base_layer: Dict[str, Union[int, List[ConcatenateZone]]]) -> List[ConcatenateZone]:
-        layer: Layer = self.nb.frame.layer[base_layer['layer']]
-        base_layer['zones'].sort(key=lambda x: x.bandwidth)
+    def allocate_by_bandwidth(self, base_layer: LayerZone) -> List[ConcatenateZone]:
+        layer: Layer = self.nb.frame.layer[base_layer.layer]
+        base_layer.zone.sort(key=lambda x: x.bandwidth)
         numerology_offset: List[ConcatenateZone] = []
-        while base_layer['zones']:
-            cz: ConcatenateZone = base_layer['zones'].pop()
+        while base_layer.zone:
+            cz: ConcatenateZone = base_layer.zone.pop()     # allocate from large bandwidth concatenate zone
             cz.offset = layer.available_frequent_offset
             numerology_offset.append(cz)
-            cz.allocate(layer)  # allocate from large bandwidth concatenate zone
+            cz.allocate(layer)
         return numerology_offset
 
     def allocate_preallocate_cz(self, pre: PreallocateCZ):
