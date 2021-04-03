@@ -3,12 +3,14 @@ from typing import List, Optional, Tuple
 from src.resource_allocation.algo.frsa.utils import ConcatenateZone, Dissimilarity, LayerZone, PreallocateCZ
 from src.resource_allocation.ds.frame import Layer
 from src.resource_allocation.ds.ngran import GNodeB
+from src.resource_allocation.ds.undo import Undo
 from src.resource_allocation.ds.util_enum import Numerology
 from src.resource_allocation.ds.zone import Zone
 
 
-class FRSAPhase2:
+class FRSAPhase2(Undo):
     def __init__(self, nodeb: GNodeB, zones_in_layers: Tuple[LayerZone]):
+        super().__init__()
         self.nb: GNodeB = nodeb
         self.zones_in_layers: Tuple[LayerZone] = zones_in_layers
 
@@ -45,8 +47,9 @@ class FRSAPhase2:
                 new_ld: float = self.calc_layer_dissimilarity()
                 if new_ld < origin_ld:
                     is_improved: bool = True
+                    self.purge_undo()
                 else:
-                    self.swap(zone_set)  # undo FIXME wrong
+                    self.undo()
 
     def calc_dissimilarity(self, layer: int, numerology: Numerology) -> float:
         dissimilarity: float = 0.0
@@ -65,9 +68,8 @@ class FRSAPhase2:
                 ld += self.calc_dissimilarity(layer, numerology)
         return ld
 
+    @Undo.undo_func_decorator
     def swap(self, zone_set: List[Dissimilarity]):
-        zone_set[0].dissimilarity = zone_set[1].dissimilarity = -1
-
         # back up zone_set 0
         tmp_zone: List[Zone] = []
         i: int = 0
@@ -76,6 +78,7 @@ class FRSAPhase2:
             if zone.numerology == zone_set[0].numerology:
                 tmp_zone.append(zone)
                 self.zones_in_layers[zone_set[0].layer].remove_zone(zone)
+                self.append_undo(lambda zl=self.zones_in_layers[zone_set[0].layer], z=zone: zl.add_zone(z))
             else:
                 i += 1
 
@@ -86,12 +89,15 @@ class FRSAPhase2:
             if zone.numerology == zone_set[1].numerology:
                 self.zones_in_layers[zone_set[0].layer].add_zone(zone)
                 self.zones_in_layers[zone_set[1].layer].remove_zone(zone)
+                self.append_undo(lambda zl=self.zones_in_layers[zone_set[0].layer], z=zone: zl.remove_zone(z))
+                self.append_undo(lambda zl=self.zones_in_layers[zone_set[1].layer], z=zone: zl.add_zone(z))
             else:
                 i += 1
 
         # move zone_set 0 to zone_set 1
         for zone in tmp_zone:
             self.zones_in_layers[zone_set[1].layer].add_zone(zone)
+            self.append_undo(lambda zl=self.zones_in_layers[zone_set[1].layer], z=zone: zl.remove_zone(z))
 
     def za(self):
         # base layer
@@ -107,7 +113,9 @@ class FRSAPhase2:
 
             pre: PreallocateCZ = PreallocateCZ(l, self.nb.frame.frame_freq)
             for bl_cz in bl_offset:
-                for cz in filter(lambda x: x.numerology == bl_cz.numerology, self.zones_in_layers[l].zone):  # only one FIXME use next()
+                cz: Optional[ConcatenateZone] = next(
+                    (zone for zone in self.zones_in_layers[l].zone if zone.numerology == bl_cz.numerology), None)
+                if cz:
                     pre.append_cz(cz, bl_cz.offset)  # allocate by aligning
                     cz.is_preallocate = True
             for cz in filter(lambda x: not x.is_preallocate, self.zones_in_layers[l].zone):
