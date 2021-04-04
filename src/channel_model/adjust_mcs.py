@@ -250,19 +250,18 @@ class AdjustMCS(Undo):
         assert ue.is_allocated and not ue.cross_nb if ue.ue_type == UEType.D else ue.is_allocated
         nb_info.rb.sort(key=lambda x: x.j_start)  # sort by time
         nb_info.rb.sort(key=lambda x: x.i_start)  # sort by freq
-        while True:
-            tmp_ue_throughput: float = self.throughput_ue(nb_info.rb[:-1])  # temporarily remove one RB
-            if tmp_ue_throughput == 0.0:
-                ue.remove_ue()
-                return True
-            elif tmp_ue_throughput >= ue.request_data_rate:
-                nb_info.rb[-1].remove_rb()
-            elif self.throughput_ue(nb_info.rb) >= ue.request_data_rate:
-                nb_info.mcs = min(nb_info.rb, key=lambda rb: rb.mcs.value).mcs
-                ue.update_throughput()
-                ue.is_to_recalculate_mcs = False
-                return True
-            else:
-                # ue.remove_ue()
-                # return False
-                raise AssertionError
+        if self.throughput_ue(nb_info.rb) == 0.0:
+            ue.remove_ue()
+            return True
+        else:
+            while True:
+                tmp_ue_throughput: float = self.throughput_ue(nb_info.rb[:-1])  # temporarily remove one RB
+                if tmp_ue_throughput >= ue.request_data_rate:
+                    nb_info.rb[-1].remove_rb()
+                elif self.throughput_ue(nb_info.rb) >= ue.request_data_rate:
+                    nb_info.mcs = min(nb_info.rb, key=lambda rb: rb.mcs.value).mcs
+                    ue.update_throughput()
+                    ue.is_to_recalculate_mcs = False
+                    return True
+                else:
+                    raise AssertionError
