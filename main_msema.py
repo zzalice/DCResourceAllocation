@@ -21,10 +21,10 @@ def msema_rb_ra(data_set: str, visualize_the_algo: bool = False) -> Tuple[
         g_nb, e_nb, channel_model, g_ue_list, d_ue_list, e_ue_list, _, _, _, _ = pickle.load(file)
 
     # main
-    Msema(channel_model, ()).allocate_ue_list(g_nb, g_ue_list + d_ue_list)
+    Msema(g_nb, channel_model, ()).allocate_ue_list(g_ue_list + d_ue_list)
     gue_allocated, gue_unallocated = divide_ue(g_ue_list)
     due_allocated, due_unallocated = divide_ue(d_ue_list)
-    Msema(channel_model, gue_allocated + due_allocated).allocate_ue_list(e_nb, e_ue_list + due_unallocated)
+    Msema(e_nb, channel_model, gue_allocated + due_allocated).allocate_ue_list(e_ue_list + due_unallocated)
 
     if visualize_the_algo:
         visualize_phase_uncategorized_ue(visualization_file_path, 'wb',

@@ -22,16 +22,17 @@ class AllocateUEList(Undo):
         self.channel_model: ChannelModel = channel_model
 
     def allocate(self, allow_lower_mcs: bool = True, allow_lower_than_cqi0: bool = True):
-        spaces: Tuple[Space] = self.update_empty_space()
+        spaces: Tuple[Space] = self.update_empty_space(self.nb)
         while self.ue_to_allocate:
             ue: UE = self.ue_to_allocate.pop()
+            assert not ue.is_allocated
             for space in spaces:
                 # from tests.assertion import check_undo_copy
                 # copy_ue = check_undo_copy([ue] + self.gue_allocated + self.due_allocated + self.eue_allocated)
                 is_allocated: bool = self._allocate(ue, (space,), allow_lower_mcs, allow_lower_than_cqi0)
                 if is_allocated:
                     self.allocated_ue.append(ue)
-                    spaces: Tuple[Space] = self.update_empty_space()
+                    spaces: Tuple[Space] = self.update_empty_space(self.nb)
                     self.purge_undo()
                     break
                 else:
@@ -56,15 +57,16 @@ class AllocateUEList(Undo):
                 is_allocated: bool = False
         return is_allocated
 
-    def update_empty_space(self) -> Tuple[Space]:
+    @staticmethod
+    def update_empty_space(nb: Union[GNodeB, ENodeB]) -> Tuple[Space]:
         tmp_spaces: List[Space] = []
-        for layer in self.nb.frame.layer:
+        for layer in nb.frame.layer:
             new_spaces: Tuple[Space] = empty_space(layer)
             tmp_spaces.extend(new_spaces)
 
             # break if there is a complete layer in tmp_space
             if len(new_spaces) == 1 and (
-                    new_spaces[0].width == self.nb.frame.frame_time and new_spaces[0].height == self.nb.frame.frame_freq):
+                    new_spaces[0].width == nb.frame.frame_time and new_spaces[0].height == nb.frame.frame_freq):
                 break
 
         return tuple(tmp_spaces)

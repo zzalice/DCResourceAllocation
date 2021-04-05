@@ -90,6 +90,8 @@ class Layer(Undo):
         for i in range(ue.numerology_in_use.freq):
             for j in range(ue.numerology_in_use.time):
                 bu: BaseUnit = self.bu[offset_i + i][offset_j + j]
+                if i == j == 0:
+                    bu.is_upper_left = True
                 bu.set_up(resource_block)
                 self.append_undo(lambda b=bu: b.undo(), lambda b=bu: b.purge_undo())
         nb_info.rb.append(resource_block)
@@ -177,6 +179,9 @@ class BaseUnit(Undo):
         self._overlapped_rb: Tuple[ResourceBlock, ...] = ()
         self._overlapped_ue: Tuple[UserEquipment, ...] = ()
 
+        # for MSEMA
+        self.is_upper_left: bool = False
+
     def set_noma_bu(self):
         """Execute once."""
         overlapped_bu: List[BaseUnit] = []
@@ -198,6 +203,8 @@ class BaseUnit(Undo):
         self.append_undo(lambda: setattr(self.layer, 'bu_status_cache_is_valid', False))
         self.layer.bu_status_cache_is_valid = False
 
+        self.append_undo(lambda: setattr(self, 'is_upper_left', False))
+
     @Undo.undo_func_decorator
     def clear_up(self):
         assert self.is_used
@@ -211,6 +218,9 @@ class BaseUnit(Undo):
         self._effect_others()
         self.append_undo(lambda: setattr(self.layer, 'bu_status_cache_is_valid', False))
         self.layer.bu_status_cache_is_valid = False
+
+        self.append_undo(lambda origin=self.is_upper_left: setattr(self, 'is_upper_left', origin))
+        self.is_upper_left: bool = False
 
     def _effect_others(self):
         self.assert_undo_function()
@@ -295,6 +305,13 @@ class BaseUnit(Undo):
     @property
     def within_rb(self) -> ResourceBlock:
         return self._within_rb
+
+    @property
+    def numerology(self) -> Optional[Numerology, LTEResourceBlock]:
+        if self.within_rb:
+            return self.within_rb.numerology
+        else:
+            return None
 
     @property
     def is_used(self) -> bool:

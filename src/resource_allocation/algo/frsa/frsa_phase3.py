@@ -18,7 +18,7 @@ class FRSAPhase3(Undo):
         self.nb: Union[GNodeB, ENodeB] = nb
         self.channel_model: ChannelModel = channel_model
 
-    def adjust_mcs(self, allocated_ue: Tuple[UE]):
+    def adjust_mcs(self, allocated_ue: Tuple[UE]):  # TODO: adjust effected UEs
         for ue in allocated_ue:
             self.channel_model.sinr_ue(ue)
             AdjustMCS().remove_from_tail(ue,

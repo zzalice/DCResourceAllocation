@@ -1,23 +1,17 @@
 from typing import Dict, List, Optional, Tuple, Union
 
-from src.channel_model.adjust_mcs import AdjustMCS
 from src.channel_model.sinr import ChannelModel
-from src.resource_allocation.ds.eutran import ENodeB
-from src.resource_allocation.ds.frame import Layer
-from src.resource_allocation.ds.ngran import GNodeB
-from src.resource_allocation.ds.nodeb import ENBInfo, GNBInfo
-from src.resource_allocation.ds.rb import ResourceBlock
+from src.resource_allocation.algo.new_ue import AllocateUEList
+from src.resource_allocation.ds.eutran import ENodeB, EUserEquipment
+from src.resource_allocation.ds.frame import BaseUnit
+from src.resource_allocation.ds.ngran import DUserEquipment, GNodeB, GUserEquipment
+from src.resource_allocation.ds.space import Space
 from src.resource_allocation.ds.ue import UserEquipment
 from src.resource_allocation.ds.undo import Undo
-from src.resource_allocation.ds.util_enum import E_MCS, G_MCS, LTEResourceBlock, NodeBType, Numerology, UEType
+from src.resource_allocation.ds.util_enum import LTEResourceBlock, NodeBType, Numerology, UEType
 
-BU = Dict[str, Union[int, Numerology, bool]]
-#    bu  {'vacancy': the number of layers in the BS,
-#         'numerology': the numerology this BU is using(in any layer),
-#         'upper_left': if the BU is the upper left BU in a RB}
-Status = Tuple[Tuple[BU, ...], ...]
-#        freq  time
-RB = Dict[str, int]  # {'bu_i': index, 'bu_j': index, 'layer': index}
+UE = Union[UserEquipment, GUserEquipment, EUserEquipment, DUserEquipment]
+RB = Dict[str, int]  # {'layer': index, 'i': index, 'j': index}
 
 
 class Msema(Undo):
@@ -26,222 +20,176 @@ class Msema(Undo):
     At the same time, the RBs of a UE must be [continuous] but [can be in different layers].
     """
 
-    def __init__(self, channel_model: ChannelModel, allocated_ue: Tuple[UserEquipment, ...]):
+    def __init__(self, nb: Union[GNodeB, ENodeB], channel_model: ChannelModel, allocated_ue: Tuple[UE, ...]):
         super().__init__()
-        self.channel_model: ChannelModel = channel_model
-        self.nb: Optional[GNodeB, ENodeB] = None
-        self.frame_status: Status = ()  # FIXME 不能用這個架構，還是要用empty_space來找
-        self.allocated_ue: List[UserEquipment] = list(allocated_ue)
-
-    def allocate_ue_list(self, nb: Union[GNodeB, ENodeB], ue_list: List[UserEquipment]):
         self.nb: Union[GNodeB, ENodeB] = nb
-        # from good channel quality
+        self.channel_model: ChannelModel = channel_model
+        self.allocated_ue: List[UE] = list(allocated_ue)
+        self.unallocated_ue: List[UE] = []
+
+    def allocate_ue_list(self, ue_list: Tuple[UE]):
+        self.unallocated_ue: List[UE] = list(ue_list)
+
+        # lap with same numerology or unused BU in any layer
+        self.sort_by_channel_quality()  # from good channel quality
+        same_numerology: AllocateUEListSameNumerology = AllocateUEListSameNumerology(self.nb,
+                                                                                     tuple(self.unallocated_ue),
+                                                                                     tuple(self.allocated_ue),
+                                                                                     self.channel_model)
+        same_numerology.allocate_ue_list(allow_lower_than_cqi0=False)
+        self.allocated_ue = same_numerology.allocated_ue
+        self.unallocated_ue = same_numerology.unallocated_ue
+
+        # allocate to any empty space
+        self.sort_by_channel_quality()  # from good channel quality
+        AllocateUEList(self.nb, tuple(self.unallocated_ue), tuple(self.allocated_ue), self.channel_model).allocate(
+            allow_lower_than_cqi0=False)
+
+    def sort_by_channel_quality(self):
+        self.unallocated_ue.sort(key=lambda x: x.request_data_rate, reverse=True)
         if self.nb.nb_type == NodeBType.G:
-            assert UEType.E not in [ue.ue_type for ue in ue_list]
-            ue_list: List[UserEquipment] = sorted(ue_list, key=lambda x: x.coordinate.distance_gnb)
+            assert UEType.E not in [ue.ue_type for ue in self.unallocated_ue]
+            self.unallocated_ue.sort(key=lambda x: x.coordinate.distance_gnb)
         elif self.nb.nb_type == NodeBType.E:
-            assert UEType.G not in [ue.ue_type for ue in ue_list]
-            ue_list: List[UserEquipment] = sorted(ue_list, key=lambda x: x.coordinate.distance_enb)
+            assert UEType.G not in [ue.ue_type for ue in self.unallocated_ue]
+            self.unallocated_ue.sort(key=lambda x: x.coordinate.distance_enb)
+        else:
+            raise AssertionError
 
-        self.frame_status: Status = tuple(
-            tuple({'vacancy': self.nb.frame.max_layer, 'numerology': None, 'upper_left': False} for _ in
-                  range(self.nb.frame.frame_time)) for _ in range(self.nb.frame.frame_freq))
 
-        for ue in ue_list:
-            # RB type
-            tmp_numerology: Numerology = ue.numerology_in_use
-            if self.nb.nb_type == NodeBType.E and ue.ue_type == UEType.D:
-                ue.numerology_in_use = LTEResourceBlock.E  # TODO: refactor or redesign
+class AllocateUEListSameNumerology(Undo):
+    def __init__(self, nb: Union[GNodeB, ENodeB], ue_to_allocate: Tuple[UE], allocated_ue: Tuple[UE],
+                 channel_model: ChannelModel):
+        super().__init__()
+        self.nb: Union[GNodeB, ENodeB] = nb
+        self.ue_to_allocate: List[UE] = list(ue_to_allocate)
+        self.allocated_ue: List[UE] = list(allocated_ue)  # including UEs in another BS(for co-channel area adjustment)
+        self.unallocated_ue: List[UE] = []
+        self.channel_model: ChannelModel = channel_model
 
-            # main
-            is_allocated: bool = self.allocate_ue(ue)
-            if is_allocated:
-                nb_info: Union[GNBInfo, ENBInfo] = ue.gnb_info if self.nb.nb_type == NodeBType.G else ue.enb_info
-                self.update_frame_status(nb_info.rb)
-                self.allocated_ue.append(ue)
+        self.empty_spaces: List[Space] = []
 
-            # restore RB type
-            ue.numerology_in_use = tmp_numerology
-
-    def allocate_ue(self, ue: UserEquipment) -> bool:
-        assert not ue.is_allocated
-        # from utils.assertion import check_undo_copy
-        # copy_ue = check_undo_copy([ue] + self.allocated_ue)
-
-        bu_i: int = 0
-        bu_j: int = 0
-        while True:
-            if start_rb := self.available_space(bu_i, bu_j, ue.numerology_in_use):
-                # allocate new UE
-                is_allocated, bu_i, bu_j = self.allocate_rb(ue, start_rb)
-
-                # the effected UEs
+    def allocate_ue_list(self, allow_lower_mcs: bool = True, allow_lower_than_cqi0: bool = True):
+        while self.ue_to_allocate:
+            ue: UE = self.ue_to_allocate.pop()
+            # FIXME RB type暫換
+            is_allocated: bool = False
+            bu: RB = {'layer': 0, 'i': -1, 'j': -1}
+            self.empty_spaces: List[Space] = list(AllocateUEList.update_empty_space(self.nb))
+            while bu_start := self.next_available_space(bu, ue.numerology_in_use):
+                # from tests.assertion import check_undo_copy
+                # copy_ue = check_undo_copy([ue] + self.gue_allocated + self.due_allocated + self.eue_allocated)
+                is_allocated, bu = self.allocate_ue(ue, bu_start, allow_lower_mcs, allow_lower_than_cqi0)
                 if is_allocated:
-                    has_positive_effect: bool = self.adjust_effected_ue([ue] + self.allocated_ue)
-                    if not has_positive_effect:
-                        is_allocated: bool = False
-
-                if is_allocated:
-                    self.purge_undo(undo_all=True)
-                    return True
+                    self.purge_undo()  # FIXME
+                    break
                 else:
-                    self.undo(undo_all=True)
-                    if self.nb.nb_type == NodeBType.G:
-                        bu_i += 1
-                        bu_j += 1
-                    elif self.nb.nb_type == NodeBType.E:
-                        if bu := self.enb_next_rb(bu_i, bu_j):
-                            bu_i = bu[0]
-                            bu_j = bu[1]
-                        else:   # no more spaces in the frame
-                            return False
-                    # from utils.assertion import check_undo_compare
-                    # check_undo_compare([ue] + self.allocated_ue, copy_ue)
+                    self.undo()
+                    # from tests.assertion import check_undo_compare
+                    # check_undo_compare([ue] + self.gue_allocated + self.due_allocated + self.eue_allocated, copy_ue)
+                # from tests.assertion import assert_is_empty
+                # assert_is_empty(spaces, ue, is_allocated)
+            if is_allocated:
+                self.allocated_ue.append(ue)
             else:
-                # all the possible spaces are checked
-                return False
+                self.unallocated_ue.append(ue)
 
-    @Undo.undo_func_decorator
-    def allocate_rb(self, ue: UserEquipment, first_rb: RB) -> Tuple[bool, int, int]:
-        nb_info: Union[GNBInfo, ENBInfo] = ue.gnb_info if self.nb.nb_type == NodeBType.G else ue.enb_info
-        bu_i: int = first_rb['bu_i']
-        bu_j: int = first_rb['bu_j']
-        layer: Layer = self.nb.frame.layer[first_rb['layer']]
-        while True:
-            # allocate a new RB
-            rb: Optional[ResourceBlock] = layer.allocate_resource_block(bu_i, bu_j, ue)
-            self.append_undo(lambda l=layer: l.undo(), lambda l=layer: l.purge_undo())
-            if not rb:
-                # overlapped with itself
-                return False, bu_i, bu_j
+    def allocate_ue(self, ue: UE, bu: RB, allow_lower_mcs: bool, allow_lower_than_cqi0: bool) -> Tuple[bool, RB]:
+        # FIXME
+        """
+        :param ue:
+        :param bu: The first RB for ue.
+        :param allow_lower_mcs:
+        :param allow_lower_than_cqi0:
+        :return: 1. if UE is allocated 2. The last RB the UE was allocated
+        """
+        assert not ue.is_allocated
+        return is_allocated, {layer, bu_i, bu_j}
 
-            self.channel_model.sinr_rb(rb)
-            self.append_undo(lambda: self.channel_model.undo(), lambda: self.channel_model.purge_undo())
-            if rb.mcs is (G_MCS if nb_info.nb_type == NodeBType.G else E_MCS).CQI0:
-                # SINR out of range
-                return False, bu_i, bu_j
+    def allocate_resource(self):  # FIXME
+        pass
 
-            # check if the allocated RBs fulfill request data rate
-            if ue.calc_throughput() >= ue.request_data_rate:
-                self.append_undo(lambda origin=nb_info.mcs: setattr(nb_info, 'mcs', origin))
-                self.append_undo(lambda origin=ue.throughput: setattr(ue, 'throughput', origin))
-                self.append_undo(lambda origin=ue.is_to_recalculate_mcs: setattr(ue, 'is_to_recalculate_mcs', origin))
-
-                nb_info.update_mcs()
-                ue.update_throughput()
-                ue.is_to_recalculate_mcs = False
-                return True, bu_i, bu_j
-
-            # next RB
-            if next_rb := self.continuous_available_rb(bu_i, bu_j, ue.numerology_in_use):
-                bu_i: int = next_rb['bu_i']
-                bu_j: int = next_rb['bu_j']
-                layer: Layer = self.nb.frame.layer[next_rb['layer']]
-            else:
-                return False, bu_i, bu_j
-
-    @Undo.undo_func_decorator
-    def adjust_effected_ue(self, ue_list: List[UserEquipment]):
-        while True:
-            is_all_adjusted: bool = True
-            for ue in ue_list:
-                if ue.is_to_recalculate_mcs:
-                    is_all_adjusted: bool = False
-                    self.channel_model.sinr_ue(ue)
-                    self.append_undo(lambda: self.channel_model.undo(), lambda: self.channel_model.purge_undo())
-                    adjust_mcs: AdjustMCS = AdjustMCS()
-                    has_positive_effect: bool = adjust_mcs.remove_worst_rb(ue, allow_lower_mcs=False)
-                    self.append_undo(lambda a_m=adjust_mcs: a_m.undo(), lambda a_m=adjust_mcs: a_m.purge_undo())
-                    if not has_positive_effect:
-                        # the mcs of the ue is lowered down by another UE.
-                        return False
-            if is_all_adjusted:
-                return True
-
-    def available_space(self, bu_i: int, bu_j: int, ue_numerology: Numerology) -> Optional[RB]:
-        for i in range(bu_i, self.nb.frame.frame_freq):
-            for j in range(self.nb.frame.frame_time):
-                if i == bu_i:
-                    j += bu_j
-                    if j >= self.nb.frame.frame_time:
-                        break
-                if self.is_available_rb(i, j, ue_numerology):
-                    return {'bu_i': i, 'bu_j': j,
-                            'layer': (self.nb.frame.max_layer - self.frame_status[i][j]['vacancy'])}
-        return None
-
-    def continuous_available_rb(self, bu_i: int, bu_j: int, ue_numerology: Numerology) -> Optional[RB]:
+    def continuous_available_rb(self, bu: RB, numerology: Union[Numerology, LTEResourceBlock]) -> Optional[RB]:  # FIXME
         # continuous RB
-        bu_j += ue_numerology.time
-        if bu_j + ue_numerology.time > self.nb.frame.frame_time:
+        bu_j += numerology.time
+        if bu_j + numerology.time > self.nb.frame.frame_time:
             # next row
             bu_j = 0
-            bu_i += ue_numerology.freq
-            if bu_i + ue_numerology.freq > self.nb.frame.frame_freq:
+            bu_i += numerology.freq
+            if bu_i + numerology.freq > self.nb.frame.frame_freq:
                 return None
 
-        if self.is_available_rb(bu_i, bu_j, ue_numerology):
-            return {'bu_i': bu_i, 'bu_j': bu_j,
+        if self.is_available_rb(bu_i, bu_j, numerology):
+            return {'i': bu_i, 'j': bu_j,
                     'layer': (self.nb.frame.max_layer - self.frame_status[bu_i][bu_j]['vacancy'])}
         else:
             return None
 
-    def enb_next_rb(self, i: int, j: int) -> Optional[Tuple[int, int]]:
-        assert isinstance(self.nb, ENodeB)
-        assert j % LTEResourceBlock.E.count_bu == 0
+    def next_available_space(self, bu: RB, numerology: Union[Numerology, LTEResourceBlock]) -> Optional[RB]:
+        next_bu: RB = bu
+        next_bu['j'] += 1  # FIXME LTE RB
+        if next_bu['j'] >= self.nb.frame.frame_time:
+            next_bu['j'] = 0
+            next_bu['i'] += 1
+            if next_bu['i'] >= self.nb.frame.frame_freq:
+                next_bu['i'] = 0
+                next_bu['layer'] += 1
+                if next_bu['layer'] >= self.nb.frame.max_layer:
+                    return None
 
-        # continuous RB
-        j += LTEResourceBlock.E.count_bu
-        if j + LTEResourceBlock.E.time > self.nb.frame.frame_time:
-            # next row
-            j = 0
-            i += LTEResourceBlock.E.freq
-            if i + LTEResourceBlock.E.freq > self.nb.frame.frame_freq:
-                return None
-        return i, j
+        self.empty_spaces.sort(key=lambda x: x.ending_j)
+        self.empty_spaces.sort(key=lambda x: x.ending_i)
+        self.empty_spaces.sort(key=lambda x: x.layer.layer_index)
 
-    def is_available_rb(self, bu_i: int, bu_j: int, ue_numerology: Numerology) -> bool:
-        if bu_i + ue_numerology.freq > self.nb.frame.frame_freq or bu_j + ue_numerology.time > self.nb.frame.frame_time:
-            # out of bound
-            return False
+        for space in self.empty_spaces:
+            if (space.layer.layer_index < next_bu['layer']) or (space.layer.layer_index == next_bu['layer'] and (
+                    (space.ending_i < next_bu['i']) or (
+                    space.ending_i == next_bu['i'] and space.ending_j < next_bu['j']))):
+                continue
+            elif space.layer.layer_index == next_bu['layer'] and (
+                    space.starting_i <= next_bu['i'] <= space.ending_i) and (
+                    space.starting_j <= next_bu['j'] <= space.ending_j):
+                # next_bu in the space
+                for i in range(next_bu['i'], space.ending_i + 1):
+                    for j in range(space.starting_j, space.ending_j + 1):
+                        if i == next_bu['i'] and j < next_bu['j']:
+                            continue
+                        if self.is_available_rb({'layer': space.layer.layer_index, 'i': i, 'j': j}, numerology):
+                            return {'layer': space.layer.layer_index, 'i': i, 'j': j}
+            else:
+                # look in a whole space
+                if bu := self.is_available_space(space, numerology):
+                    return bu
+        return None
 
-        for i in range(ue_numerology.freq):
-            for j in range(ue_numerology.time):
-                bu: BU = self.frame_status[bu_i + i][bu_j + j]
-                self.assert_bu_status(bu)
-                if i == j == 0:
-                    if bu['numerology'] is None or (
-                            bu['numerology'] == ue_numerology and bu['upper_left'] and bu['vacancy'] > 0):
+    def is_available_space(self, space: Space, numerology: Union[Numerology, LTEResourceBlock]) -> Optional[RB]:
+        for i in range(space.starting_i, space.ending_i + 1):
+            for j in range(space.starting_j, space.ending_j + 1):
+                if self.is_available_rb({'layer': space.layer.layer_index, 'i': i, 'j': j}, numerology):
+                    return {'layer': space.layer.layer_index, 'i': i, 'j': j}
+        return None
+
+    def is_available_rb(self, starting_bu: RB, numerology: Union[Numerology, LTEResourceBlock]) -> bool:
+        assert (starting_bu['i'] + numerology.freq <= self.nb.frame.frame_freq) and (
+                starting_bu['j'] + numerology.time <= self.nb.frame.frame_time), 'RB out of bound.'
+
+        for i in range(starting_bu['i'], starting_bu['i'] + numerology.freq):
+            for j in range(starting_bu['j'], starting_bu['j'] + numerology.time):
+                bu: BaseUnit = self.nb.frame.layer[starting_bu['layer']].bu[i][j]
+                assert bu.within_rb is None
+                if i == starting_bu['i'] and j == starting_bu['j']:
+                    if not bu.overlapped_ue or (bu.numerology == numerology and bu.is_upper_left):
                         # if the BU hasn't been used by any UE or is using the same numerology
+                        assert not bu.overlapped_rb or (
+                                bu.overlapped_ue and bu.numerology), 'Should be either empty in any layer or used.'
                         continue
                     else:
                         return False
                 else:
-                    if bu['numerology'] is None or (
-                            bu['numerology'] == ue_numerology and bu['upper_left'] is False and bu['vacancy'] > 0):
+                    if not bu.overlapped_ue or (bu.numerology == numerology and not bu.is_upper_left):
+                        assert not bu.overlapped_rb or (
+                                bu.overlapped_ue and bu.numerology), 'Should be either empty in any layer or used.'
                         continue
                     else:
                         return False
         return True
-
-    def update_frame_status(self, rb_list: List[ResourceBlock]):
-        for rb in rb_list:
-            for i in range(rb.numerology.freq):
-                for j in range(rb.numerology.time):
-                    bu: BU = self.frame_status[rb.i_start + i][rb.j_start + j]
-                    self.assert_bu_status(bu)
-                    if i == j == 0:
-                        assert (bu['numerology'] is None and bu['upper_left'] is False) or (bu['upper_left']
-                                                                                            ), 'The RBs must align.'
-                        bu['upper_left'] = True
-                    assert (bu['numerology'] is None) or (bu['numerology'] == rb.numerology
-                                                          ), 'The BU is used and not with the same Numerology.'
-                    bu['numerology'] = rb.numerology
-                    bu['vacancy'] -= 1
-                    assert bu['vacancy'] >= 0
-
-    @staticmethod
-    def assert_bu_status(bu: BU):
-        if (bu['numerology'] is None and bu['upper_left']) or (
-                bu['numerology'] is None and not bu['upper_left'] and bu['vacancy'] <= 0):
-            raise AssertionError('Frame status update error.')
