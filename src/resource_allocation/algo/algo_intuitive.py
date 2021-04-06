@@ -15,37 +15,38 @@ class Intuitive(AllocateUEList):
                  channel_model: ChannelModel):
         super().__init__(nb=nb, ue_to_allocate=ue_to_allocate, allocated_ue=allocated_ue, channel_model=channel_model)
 
-    def update_empty_space(self):
+    @staticmethod
+    def update_empty_space(nb: Union[GNodeB, ENodeB]):
         spaces: List[Space] = []
-        for layer in self.nb.frame.layer:
+        for layer in nb.frame.layer:
             new_spaces: Tuple[Space] = empty_space(layer)
 
             # break if there is a complete layer in tmp_space
             if len(new_spaces) == 1 and (
-                    new_spaces[0].width == self.nb.frame.frame_time and new_spaces[
-                0].height == self.nb.frame.frame_freq):
+                    new_spaces[0].width == nb.frame.frame_time and new_spaces[
+                0].height == nb.frame.frame_freq):
                 spaces.extend(new_spaces)
                 break
 
             # find a space at the end of the frame
             space_at_bottom: Optional[Space] = next(
                 (s for s in new_spaces if (
-                        s.width == self.nb.frame.frame_time) and (s.ending_i == self.nb.frame.frame_freq - 1)),
+                        s.width == nb.frame.frame_time) and (s.ending_i == nb.frame.frame_freq - 1)),
                 None)
 
             if space_at_bottom:
                 # find a space above space_at_bottom
                 space_above_bottom: Optional[Space] = next(
                     (s for s in new_spaces if (
-                            s.ending_j == self.nb.frame.frame_time - 1) and (
+                            s.ending_j == nb.frame.frame_time - 1) and (
                                  s.ending_i == space_at_bottom.starting_i - 1)),
                     None)
             else:
                 # find a space at the end of the frame
                 space_above_bottom: Optional[Space] = next(
                     (s for s in new_spaces if (
-                            s.ending_j == self.nb.frame.frame_time - 1) and (
-                                 s.ending_i == self.nb.frame.frame_freq - 1)),
+                            s.ending_j == nb.frame.frame_time - 1) and (
+                                 s.ending_i == nb.frame.frame_freq - 1)),
                     None)
 
             # gather the spaces

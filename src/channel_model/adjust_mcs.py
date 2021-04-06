@@ -1,4 +1,4 @@
-from typing import List, Optional, Union
+from typing import Callable, List, Optional, Union
 
 from src.channel_model.sinr import ChannelModel
 from src.resource_allocation.algo.new_resource_allocation import NewResource
@@ -245,23 +245,60 @@ class AdjustMCS(Undo):
         else:
             raise AssertionError
 
-    def remove_from_tail(self, ue: UE, nb_info: Union[GNBInfo, ENBInfo]):
-        """For single connection UE."""
+    @Undo.undo_func_decorator
+    def remove_from_tail(self, ue: UE, nb_info: Union[GNBInfo, ENBInfo],
+                         allow_lower_mcs: bool = False, allow_lower_than_cqi0: bool = True,
+                         channel_model: ChannelModel = None,
+                         new_same_numerology_rb: bool = False, func_is_available_rb: Callable = None) -> bool:
+        """
+        For single connection UE.
+        :param ue:
+        :param nb_info: The BS ue is working on.
+        :param allow_lower_mcs: If allows, adding new RB.
+        :param allow_lower_than_cqi0: If allows, ue can be removed.
+        :param channel_model: If allow_lower_mcs is True, channel_model should be given. For add new RBs.
+        :param new_same_numerology_rb: If the new RB has the constraint of overlapping with same numerology.
+        :param func_is_available_rb: The function of checking is overlapping with same numerology.
+        :return: If the adjustment is completed.
+        """
+        assert not allow_lower_mcs or (allow_lower_mcs and channel_model is not None), 'Channel model not given.'
+        assert not new_same_numerology_rb or (new_same_numerology_rb and (func_is_available_rb is not None) and (
+                allow_lower_mcs and channel_model is not None)), 'Missing requirements for adding same numerology RB.'
         assert ue.is_allocated and not ue.cross_nb if ue.ue_type == UEType.D else ue.is_allocated
         nb_info.rb.sort(key=lambda x: x.j_start)  # sort by time
         nb_info.rb.sort(key=lambda x: x.i_start)  # sort by freq
         if self.throughput_ue(nb_info.rb) == 0.0:
-            ue.remove_ue()
-            return True
+            if allow_lower_than_cqi0:
+                ue.remove_ue()
+                return True
+            else:
+                return False
         else:
             while True:
                 tmp_ue_throughput: float = self.throughput_ue(nb_info.rb[:-1])  # temporarily remove one RB
                 if tmp_ue_throughput >= ue.request_data_rate:
+                    self.append_undo(lambda b=nb_info.rb[-1]: b.undo(), lambda b=nb_info.rb[-1]: b.purge_undo())
                     nb_info.rb[-1].remove_rb()
                 elif self.throughput_ue(nb_info.rb) >= ue.request_data_rate:
-                    nb_info.mcs = min(nb_info.rb, key=lambda rb: rb.mcs.value).mcs
+                    self.append_undo(lambda n_i=nb_info, origin=nb_info.mcs: setattr(n_i, 'mcs', origin))
+                    self.append_undo(lambda origin=ue.throughput: setattr(ue, 'throughput', origin))
+                    self.append_undo(
+                        lambda origin=ue.is_to_recalculate_mcs: setattr(ue, 'is_to_recalculate_mcs', origin))
+
+                    nb_info.mcs = min(nb_info.rb, key=lambda x: x.mcs.value).mcs
                     ue.update_throughput()
                     ue.is_to_recalculate_mcs = False
                     return True
                 else:
-                    raise AssertionError
+                    if not allow_lower_mcs:
+                        raise AssertionError
+
+                    # add one continuous RB
+                    new_resource = NewResource()
+                    rb: Union[ResourceBlock, bool] = new_resource.add_one_continuous_rb(ue, channel_model,
+                                                                                        same_numerology=new_same_numerology_rb,
+                                                                                        func_is_available_rb=func_is_available_rb)
+                    if rb:
+                        self.append_undo(lambda nr=new_resource: nr.undo(), lambda nr=new_resource: nr.purge_undo())
+                    else:
+                        return False

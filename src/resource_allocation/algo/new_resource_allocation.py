@@ -1,6 +1,7 @@
-from typing import List, Optional, Tuple, Union
+from typing import Callable, List, Optional, Tuple, Union
 
 from src.channel_model.sinr import ChannelModel
+from src.resource_allocation.algo.util_type import RBIndex
 from src.resource_allocation.ds.nodeb import ENBInfo, GNBInfo
 from src.resource_allocation.ds.rb import ResourceBlock
 from src.resource_allocation.ds.space import next_rb_in_space, Space
@@ -9,7 +10,7 @@ from src.resource_allocation.ds.undo import Undo
 from src.resource_allocation.ds.util_enum import E_MCS, G_MCS, LTEResourceBlock, NodeBType, Numerology, UEType
 
 
-class AllocateUE(Undo):     # TODO: move to new_ue.py
+class AllocateUE(Undo):  # TODO: move to new_ue.py
     """
     In this method, self.ue will be allocated to one BS only.
     The RBs can be discontinuous.
@@ -99,7 +100,18 @@ class NewResource(Undo):
     def __init__(self):
         super().__init__()
 
-    def add_one_continuous_rb(self, ue: UserEquipment, channel_model: ChannelModel) -> Union[ResourceBlock, bool]:
+    def add_one_continuous_rb(self, ue: UserEquipment, channel_model: ChannelModel,
+                              same_numerology: bool = False, func_is_available_rb: Callable = None
+                              ) -> Union[ResourceBlock, bool]:
+        """
+        
+        :param ue: The UE to add a new RB.
+        :param channel_model: For the new RB.
+        :param same_numerology: If is True, add a RB has the same numerology with other layers or any layer is empty.
+        :param func_is_available_rb: If same_numerology is True, is_available_rb should also be given.
+        :return: If a RB is allocated.
+        """
+        assert (not same_numerology) or (same_numerology and func_is_available_rb is not None), 'Function not given.'
         # the RB in highest frequency and latest time in a frame
         last_rb_gnb: Optional[ResourceBlock] = None
         last_rb_enb: Optional[ResourceBlock] = None
@@ -124,6 +136,10 @@ class NewResource(Undo):
                                                               last_rb.layer, 0, 0,
                                                               last_rb.layer.FREQ - 1, last_rb.layer.TIME - 1)
         if next_rb is None:  # no continuous space for another RB. run out of space.
+            return False
+        if same_numerology and not func_is_available_rb(
+                RBIndex(layer=last_rb.layer.layer_index, i=next_rb[0], j=next_rb[1]),
+                last_rb.numerology, last_rb.layer.nodeb):
             return False
 
         self.start_func_undo()

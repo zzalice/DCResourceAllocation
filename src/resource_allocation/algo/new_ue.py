@@ -28,7 +28,7 @@ class AllocateUEList(Undo):
         self.channel_model: ChannelModel = channel_model
 
     def allocate(self, allow_lower_mcs: bool = True, allow_lower_than_cqi0: bool = True):
-        spaces: Tuple[Space] = self.update_empty_space()
+        spaces: Tuple[Space] = self.update_empty_space(nb=self.nb)
         while self.ue_to_allocate:
             ue: UE = self.ue_to_allocate.pop()
             assert not ue.is_allocated
@@ -38,7 +38,7 @@ class AllocateUEList(Undo):
                 is_allocated: bool = self._allocate(ue, (space,), allow_lower_mcs, allow_lower_than_cqi0)
                 if is_allocated:
                     self.allocated_ue.append(ue)
-                    spaces: Tuple[Space] = self.update_empty_space()
+                    spaces: Tuple[Space] = self.update_empty_space(nb=self.nb)
                     self.purge_undo()
                     break
                 else:
@@ -63,15 +63,16 @@ class AllocateUEList(Undo):
                 is_allocated: bool = False
         return is_allocated
 
-    def update_empty_space(self) -> Tuple[Space]:
+    @staticmethod
+    def update_empty_space(nb: Union[GNodeB, ENodeB]) -> Tuple[Space]:
         tmp_spaces: List[Space] = []
-        for layer in self.nb.frame.layer:
+        for layer in nb.frame.layer:
             new_spaces: Tuple[Space] = empty_space(layer)
             tmp_spaces.extend(new_spaces)
 
             # break if there is a complete layer in tmp_space
             if len(new_spaces) == 1 and (
-                    new_spaces[0].width == self.nb.frame.frame_time and new_spaces[0].height == self.nb.frame.frame_freq):
+                    new_spaces[0].width == nb.frame.frame_time and new_spaces[0].height == nb.frame.frame_freq):
                 break
 
         return tuple(tmp_spaces)
@@ -87,21 +88,26 @@ class AllocateUEList(Undo):
                     self.channel_model.sinr_ue(ue)
                     self.append_undo(lambda: self.channel_model.undo(), lambda: self.channel_model.purge_undo())
 
-                    adjust_mcs: AdjustMCS = AdjustMCS()
-                    if not allow_lower_mcs:
-                        has_positive_effect: bool = adjust_mcs.remove_worst_rb(ue, allow_lower_mcs=False)
-                    elif not allow_lower_than_cqi0:
-                        has_positive_effect: bool = adjust_mcs.remove_worst_rb(ue, allow_lower_than_cqi0=False,
-                                                                               channel_model=self.channel_model)
-                    else:
-                        has_positive_effect: bool = adjust_mcs.remove_worst_rb(ue)  # ue can be removed
-                    self.append_undo(lambda a_m=adjust_mcs: a_m.undo(), lambda a_m=adjust_mcs: a_m.purge_undo())
+                    has_positive_effect: bool = self.adjust_mcs(ue, allow_lower_mcs, allow_lower_than_cqi0)
 
                     if not has_positive_effect:
                         # the mcs of the ue is lowered down by another UE.
                         return False
             if is_all_adjusted:
                 return True
+
+    def adjust_mcs(self, ue: UE, allow_lower_mcs: bool, allow_lower_than_cqi0: bool) -> bool:
+        self.assert_undo_function()
+        adjust_mcs: AdjustMCS = AdjustMCS()
+        if not allow_lower_mcs:
+            has_positive_effect: bool = adjust_mcs.remove_worst_rb(ue, allow_lower_mcs=False)
+        elif not allow_lower_than_cqi0:
+            has_positive_effect: bool = adjust_mcs.remove_worst_rb(ue, allow_lower_than_cqi0=False,
+                                                                   channel_model=self.channel_model)
+        else:
+            has_positive_effect: bool = adjust_mcs.remove_worst_rb(ue)  # ue can be removed
+        self.append_undo(lambda a_m=adjust_mcs: a_m.undo(), lambda a_m=adjust_mcs: a_m.purge_undo())
+        return has_positive_effect
 
     @staticmethod
     def assert_allow_lower(allow_lower_mcs, allow_lower_than_cqi0):
@@ -123,7 +129,7 @@ class AllocateUEListSameNumerology(AllocateUEList):
 
         self.empty_spaces: List[Space] = []
 
-    def allocate_ue_list(self, allow_lower_mcs: bool = True, allow_lower_than_cqi0: bool = True):
+    def allocate_ue_list(self, allow_lower_mcs: bool = True, allow_lower_than_cqi0: bool = False):
         while self.ue_to_allocate:
             ue: UE = self.ue_to_allocate.pop()
             tmp_numerology: Numerology = ue.numerology_in_use
@@ -133,7 +139,7 @@ class AllocateUEListSameNumerology(AllocateUEList):
             # main
             is_allocated: bool = False
             bu: RBIndex = RBIndex(layer=0, i=0, j=-1)
-            self.empty_spaces: List[Space] = list(self.update_empty_space())
+            self.empty_spaces: List[Space] = list(self.update_empty_space(self.nb))
             while bu_start := self.next_available_space(bu, ue.numerology_in_use):
                 # from utils.assertion import check_undo_copy
                 # copy_ue = check_undo_copy([ue] + self.allocated_ue)
@@ -214,10 +220,22 @@ class AllocateUEListSameNumerology(AllocateUEList):
         assert (0 <= bu.i + numerology.freq <= self.nb.frame.frame_freq) and (
                 0 <= bu.j + numerology.time <= self.nb.frame.frame_time), 'RB index out of bound'
 
-        if self.is_available_rb(bu, numerology):
+        if self.is_available_rb(bu, numerology, self.nb):
             return bu
         else:
             return None
+
+    def adjust_mcs(self, ue: UE, allow_lower_mcs: bool, allow_lower_than_cqi0: bool) -> bool:
+        nb_info: Union[GNBInfo, ENBInfo] = ue.gnb_info if self.nb.nb_type == NodeBType.G else ue.enb_info
+
+        adjust_mcs: AdjustMCS = AdjustMCS()
+        has_positive_effect: bool = adjust_mcs.remove_from_tail(ue, nb_info, allow_lower_mcs=allow_lower_mcs,
+                                                                allow_lower_than_cqi0=allow_lower_than_cqi0,
+                                                                channel_model=self.channel_model,
+                                                                new_same_numerology_rb=True,
+                                                                func_is_available_rb=self.is_available_rb)
+        self.append_undo(lambda a_m=adjust_mcs: a_m.undo(), lambda a_m=adjust_mcs: a_m.purge_undo())
+        return has_positive_effect
 
     def next_available_space(self, bu: RBIndex, numerology: Union[Numerology, LTEResourceBlock]) -> Optional[RBIndex]:
         next_bu: RBIndex = deepcopy(bu)
@@ -255,7 +273,7 @@ class AllocateUEListSameNumerology(AllocateUEList):
                         if i == next_bu.i and j < next_bu.j:
                             continue
                         new_bu: RBIndex = RBIndex(layer=space.layer.layer_index, i=i, j=j)
-                        if self.is_available_rb(new_bu, numerology):
+                        if self.is_available_rb(new_bu, numerology, self.nb):
                             assert new_bu != bu
                             return new_bu
             elif space.layer.layer_index > next_bu.layer:
@@ -270,20 +288,22 @@ class AllocateUEListSameNumerology(AllocateUEList):
     def is_available_space(self, space: Space, numerology: Union[Numerology, LTEResourceBlock]) -> Optional[RBIndex]:
         for i in range(space.starting_i, space.ending_i + 1):
             for j in range(space.starting_j, space.ending_j + 1):
-                if self.is_available_rb(RBIndex(layer=space.layer.layer_index, i=i, j=j), numerology):
+                if self.is_available_rb(RBIndex(layer=space.layer.layer_index, i=i, j=j), numerology, self.nb):
                     return RBIndex(layer=space.layer.layer_index, i=i, j=j)
         return None
 
-    def is_available_rb(self, starting_bu: RBIndex, numerology: Union[Numerology, LTEResourceBlock]) -> bool:
-        assert 0 <= starting_bu.i < self.nb.frame.frame_freq and 0 <= starting_bu.j < self.nb.frame.frame_time
-        if (starting_bu.i + numerology.freq > self.nb.frame.frame_freq) or (
-                starting_bu.j + numerology.time > self.nb.frame.frame_time):
+    @staticmethod
+    def is_available_rb(starting_bu: RBIndex, numerology: Union[Numerology, LTEResourceBlock],
+                        nb: Union[GNodeB, ENodeB]) -> bool:
+        assert 0 <= starting_bu.i < nb.frame.frame_freq and 0 <= starting_bu.j < nb.frame.frame_time
+        if (starting_bu.i + numerology.freq > nb.frame.frame_freq) or (
+                starting_bu.j + numerology.time > nb.frame.frame_time):
             # RB out of bound
             return False
 
         for i in range(starting_bu.i, starting_bu.i + numerology.freq):
             for j in range(starting_bu.j, starting_bu.j + numerology.time):
-                bu: BaseUnit = self.nb.frame.layer[starting_bu.layer].bu[i][j]
+                bu: BaseUnit = nb.frame.layer[starting_bu.layer].bu[i][j]
                 if bu.is_used:
                     return False
                 assert len(bu.lapped_numerology) <= 1, 'Only lap with same numerology.'
