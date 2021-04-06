@@ -74,7 +74,11 @@ class AllocateUEListSameNumerology(AllocateUEList):
     def allocate_ue_list(self, allow_lower_mcs: bool = True, allow_lower_than_cqi0: bool = True):
         while self.ue_to_allocate:
             ue: UE = self.ue_to_allocate.pop()
-            # FIXME RB type暫換
+            tmp_numerology: Numerology = ue.numerology_in_use
+            if self.nb.nb_type == NodeBType.E and ue.ue_type == UEType.D:
+                ue.numerology_in_use = LTEResourceBlock.E  # TODO: refactor or redesign
+
+            # main
             is_allocated: bool = False
             bu: RB = {'layer': 0, 'i': 0, 'j': -1}
             self.empty_spaces: List[Space] = list(self.update_empty_space())
@@ -97,6 +101,7 @@ class AllocateUEListSameNumerology(AllocateUEList):
                     # from utils.assertion import check_undo_compare
                     # check_undo_compare([ue] + self.allocated_ue, copy_ue)
             self.allocated_ue.append(ue) if is_allocated else self.unallocated_ue.append(ue)
+            ue.numerology_in_use = tmp_numerology  # restore
 
     def allocate_ue(self, ue: UE, first_rb: RB) -> Tuple[bool, RB]:
         """
@@ -164,15 +169,22 @@ class AllocateUEListSameNumerology(AllocateUEList):
 
     def next_available_space(self, bu: RB, numerology: Union[Numerology, LTEResourceBlock]) -> Optional[RB]:
         next_bu: RB = bu.copy()
-        next_bu['j'] += 1  # FIXME LTE RB
-        if next_bu['j'] >= self.nb.frame.frame_time:
-            next_bu['j'] = 0
-            next_bu['i'] += 1
-            if next_bu['i'] >= self.nb.frame.frame_freq:
-                next_bu['i'] = 0
-                next_bu['layer'] += 1
-                if next_bu['layer'] >= self.nb.frame.max_layer:
-                    return None
+        if self.nb.nb_type == NodeBType.G:
+            next_bu['j'] += 1
+            if next_bu['j'] >= self.nb.frame.frame_time:
+                next_bu['j'] = 0
+                next_bu['i'] += 1
+                if next_bu['i'] >= self.nb.frame.frame_freq:
+                    next_bu['i'] = 0
+                    next_bu['layer'] += 1
+                    if next_bu['layer'] >= self.nb.frame.max_layer:
+                        return None
+        elif self.nb.nb_type == NodeBType.E:
+            if not (next_bu := self.enb_next_rb(bu)):
+                # no more spaces in the frame
+                return None
+        else:
+            raise AssertionError
         assert (0 <= next_bu['i'] < self.nb.frame.frame_freq) and (
                 0 <= next_bu['j'] < self.nb.frame.frame_time), 'BU index out of bound'
 
@@ -223,12 +235,28 @@ class AllocateUEListSameNumerology(AllocateUEList):
                 if bu.is_used:
                     return False
                 if i == starting_bu['i'] and j == starting_bu['j']:
-                    if not(not bu.overlapped_rb or (bu.lapped_numerology[0] == numerology and bu.lapped_is_upper_left)):
+                    if not(not bu.overlapped_rb or (
+                            bu.lapped_numerology[0] == numerology and bu.lapped_is_upper_left)):
                         # not (if the BU hasn't been used by any UE or is using the same numerology)
                         return False
                 else:
-                    if not(not bu.overlapped_rb or (bu.lapped_numerology[0] == numerology and not bu.lapped_is_upper_left)):
+                    if not(not bu.overlapped_rb or (
+                            bu.lapped_numerology[0] == numerology and not bu.lapped_is_upper_left)):
                         return False
                 assert (bu.overlapped_ue and len(bu.lapped_numerology) == 1) or (
                     not bu.overlapped_ue), 'Should be either empty in any layer or used.'
         return True
+
+    def enb_next_rb(self, bu: RB) -> Optional[RB]:
+        assert isinstance(self.nb, ENodeB)
+        assert bu['j'] % LTEResourceBlock.E.count_bu == 0
+
+        # continuous RB
+        bu['j'] += LTEResourceBlock.E.count_bu
+        if bu['j'] + LTEResourceBlock.E.time > self.nb.frame.frame_time:
+            # next row
+            bu['j'] = 0
+            bu['i'] += LTEResourceBlock.E.freq
+            if bu['i'] + LTEResourceBlock.E.freq > self.nb.frame.frame_freq:
+                return None
+        return bu
