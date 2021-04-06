@@ -234,6 +234,7 @@ class AllocateUEListSameNumerology(AllocateUEList):
                 bu: BaseUnit = self.nb.frame.layer[starting_bu['layer']].bu[i][j]
                 if bu.is_used:
                     return False
+                assert len(bu.lapped_numerology) <= 1, 'Only lap with same numerology.'
                 if i == starting_bu['i'] and j == starting_bu['j']:
                     if not(not bu.overlapped_rb or (
                             bu.lapped_numerology[0] == numerology and bu.lapped_is_upper_left)):
@@ -243,8 +244,9 @@ class AllocateUEListSameNumerology(AllocateUEList):
                     if not(not bu.overlapped_rb or (
                             bu.lapped_numerology[0] == numerology and not bu.lapped_is_upper_left)):
                         return False
-                assert (bu.overlapped_ue and len(bu.lapped_numerology) == 1) or (
-                    not bu.overlapped_ue), 'Should be either empty in any layer or used.'
+                assert len(set(bu.lapped_numerology + (numerology,))) <= 1, 'Only lap with same numerology.'
+                assert (not bu.overlapped_ue) or (
+                        len(bu.lapped_numerology) == 1), 'Should be either empty in any layer or used.'
         return True
 
     def enb_next_rb(self, bu: RB) -> Optional[RB]:

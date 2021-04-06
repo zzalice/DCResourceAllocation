@@ -244,6 +244,7 @@ class BaseUnit(Undo):
     @property
     def lapped_numerology(self) -> Tuple[Union[Numerology, LTEResourceBlock], ...]:
         numerology: Set = set()
+        numerology.add(self.within_rb.numerology) if self.within_rb else None
         for rb in self.overlapped_rb:
             numerology.add(rb.numerology)
         return tuple(numerology)
