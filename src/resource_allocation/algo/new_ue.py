@@ -73,6 +73,7 @@ class AllocateUEList(Undo):
 
     def adjust_mcs_allocated_ues(self, allocated_ue: List[UE], allow_lower_mcs, allow_lower_than_cqi0) -> bool:
         self.assert_undo_function()
+        self.assert_allow_lower(allow_lower_mcs, allow_lower_than_cqi0)
         while True:
             is_all_adjusted: bool = True
             for ue in allocated_ue:
@@ -96,3 +97,10 @@ class AllocateUEList(Undo):
                         return False
             if is_all_adjusted:
                 return True
+
+    @staticmethod
+    def assert_allow_lower(allow_lower_mcs, allow_lower_than_cqi0):
+        if allow_lower_than_cqi0 is False:
+            assert allow_lower_mcs is True
+        else:
+            pass

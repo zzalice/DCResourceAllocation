@@ -24,6 +24,8 @@ def mcup_hm(data_set) -> Tuple[GNodeB, ENodeB,
     eue_unassigned: Tuple[EUserEquipment] = mcup.left_over(e_ue_list)
     gue_unassigned: Tuple[GUserEquipment] = mcup.left_over(g_ue_list)
     due_unassigned: Tuple[DUserEquipment] = mcup.left_over(d_ue_list)
+    assert len(mcup.gnb_ue_list + mcup.enb_ue_list + gue_unassigned + eue_unassigned + due_unassigned) == len(
+        g_ue_list + d_ue_list + e_ue_list)
 
     return g_nb, e_nb, mcup.gnb_ue_list, mcup.enb_ue_list, gue_unassigned, eue_unassigned, due_unassigned
 
