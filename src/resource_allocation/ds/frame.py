@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from typing import List, Optional, Tuple, TYPE_CHECKING, Union
+from typing import List, Optional, Set, Tuple, TYPE_CHECKING, Union
 
 from .rb import ResourceBlock
 from .undo import Undo
@@ -235,6 +235,20 @@ class BaseUnit(Undo):
             bu.overlapped_cache_is_valid = False
 
     @property
+    def lapped_is_upper_left(self) -> bool:
+        for bu in self.overlapped_bu:
+            if bu.is_upper_left:
+                return True
+        return False
+
+    @property
+    def lapped_numerology(self) -> Tuple[Union[Numerology, LTEResourceBlock], ...]:
+        numerology: Set = set()
+        for rb in self.overlapped_rb:
+            numerology.add(rb.numerology)
+        return tuple(numerology)
+
+    @property
     def overlapped_bu(self) -> Tuple[BaseUnit, ...]:
         return self._overlapped_bu
 
@@ -305,13 +319,6 @@ class BaseUnit(Undo):
     @property
     def within_rb(self) -> ResourceBlock:
         return self._within_rb
-
-    @property
-    def numerology(self) -> Optional[Numerology, LTEResourceBlock]:
-        if self.within_rb:
-            return self.within_rb.numerology
-        else:
-            return None
 
     @property
     def is_used(self) -> bool:

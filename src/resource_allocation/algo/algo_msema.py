@@ -76,16 +76,17 @@ class AllocateUEListSameNumerology(AllocateUEList):
             ue: UE = self.ue_to_allocate.pop()
             # FIXME RB type暫換
             is_allocated: bool = False
-            bu: RB = {'layer': 0, 'i': -1, 'j': -1}
-            self.empty_spaces: List[Space] = list(self.update_empty_space(self.nb))
+            bu: RB = {'layer': 0, 'i': 0, 'j': -1}
+            self.empty_spaces: List[Space] = list(self.update_empty_space())
             while bu_start := self.next_available_space(bu, ue.numerology_in_use):
-                # from tests.assertion import check_undo_copy
-                # copy_ue = check_undo_copy([ue] + self.gue_allocated + self.due_allocated + self.eue_allocated)
+                # from utils.assertion import check_undo_copy
+                # copy_ue = check_undo_copy([ue] + self.allocated_ue)
                 self.start_func_undo()
                 is_allocated, bu = self.allocate_ue(ue, bu_start)
 
                 if is_allocated:
-                    self.adjust_mcs_allocated_ues([ue] + self.allocated_ue, allow_lower_mcs, allow_lower_than_cqi0)
+                    is_allocated: bool = self.adjust_mcs_allocated_ues([ue] + self.allocated_ue,
+                                                                       allow_lower_mcs, allow_lower_than_cqi0)
                 self.end_func_undo()
 
                 if is_allocated:
@@ -93,8 +94,8 @@ class AllocateUEListSameNumerology(AllocateUEList):
                     break
                 else:
                     self.undo()
-                    # from tests.assertion import check_undo_compare
-                    # check_undo_compare([ue] + self.gue_allocated + self.due_allocated + self.eue_allocated, copy_ue)
+                    # from utils.assertion import check_undo_compare
+                    # check_undo_compare([ue] + self.allocated_ue, copy_ue)
             self.allocated_ue.append(ue) if is_allocated else self.unallocated_ue.append(ue)
 
     def allocate_ue(self, ue: UE, first_rb: RB) -> Tuple[bool, RB]:
@@ -153,8 +154,8 @@ class AllocateUEListSameNumerology(AllocateUEList):
             bu['i'] += numerology.freq
             if bu['i'] + numerology.freq > self.nb.frame.frame_freq:
                 return None
-        assert (bu['i'] + numerology.freq <= self.nb.frame.frame_freq) and (
-                bu['j'] + numerology.time <= self.nb.frame.frame_time), 'RB index out of bound'
+        assert (0 <= bu['i'] + numerology.freq <= self.nb.frame.frame_freq) and (
+                0 <= bu['j'] + numerology.time <= self.nb.frame.frame_time), 'RB index out of bound'
 
         if self.is_available_rb(bu, numerology):
             return bu
@@ -162,7 +163,7 @@ class AllocateUEListSameNumerology(AllocateUEList):
             return None
 
     def next_available_space(self, bu: RB, numerology: Union[Numerology, LTEResourceBlock]) -> Optional[RB]:
-        next_bu: RB = bu
+        next_bu: RB = bu.copy()
         next_bu['j'] += 1  # FIXME LTE RB
         if next_bu['j'] >= self.nb.frame.frame_time:
             next_bu['j'] = 0
@@ -172,8 +173,8 @@ class AllocateUEListSameNumerology(AllocateUEList):
                 next_bu['layer'] += 1
                 if next_bu['layer'] >= self.nb.frame.max_layer:
                     return None
-        assert (next_bu['i'] < self.nb.frame.frame_freq) and (
-                    next_bu['j'] < self.nb.frame.frame_time), 'BU index out of bound'
+        assert (0 <= next_bu['i'] < self.nb.frame.frame_freq) and (
+                0 <= next_bu['j'] < self.nb.frame.frame_time), 'BU index out of bound'
 
         self.empty_spaces.sort(key=lambda x: x.ending_j)
         self.empty_spaces.sort(key=lambda x: x.ending_i)
@@ -184,20 +185,22 @@ class AllocateUEListSameNumerology(AllocateUEList):
                     (space.ending_i < next_bu['i']) or (
                     space.ending_i == next_bu['i'] and space.ending_j < next_bu['j']))):
                 continue
-            elif space.layer.layer_index == next_bu['layer'] and (
-                    space.starting_i <= next_bu['i'] <= space.ending_i) and (
-                    space.starting_j <= next_bu['j'] <= space.ending_j):
-                # next_bu in the space
-                for i in range(next_bu['i'], space.ending_i + 1):
+            elif space.layer.layer_index == next_bu['layer']:
+                for i in range(max(next_bu['i'], space.starting_i), space.ending_i + 1):
                     for j in range(space.starting_j, space.ending_j + 1):
                         if i == next_bu['i'] and j < next_bu['j']:
                             continue
-                        if self.is_available_rb({'layer': space.layer.layer_index, 'i': i, 'j': j}, numerology):
-                            return {'layer': space.layer.layer_index, 'i': i, 'j': j}
-            else:
+                        new_bu: RB = {'layer': space.layer.layer_index, 'i': i, 'j': j}
+                        if self.is_available_rb(new_bu, numerology):
+                            assert new_bu != bu
+                            return new_bu
+            elif space.layer.layer_index > next_bu['layer']:
                 # look in a whole space
-                if bu := self.is_available_space(space, numerology):
-                    return bu
+                if new_bu := self.is_available_space(space, numerology):
+                    assert new_bu != bu
+                    return new_bu
+            else:
+                raise AssertionError
         return None
 
     def is_available_space(self, space: Space, numerology: Union[Numerology, LTEResourceBlock]) -> Optional[RB]:
@@ -208,6 +211,7 @@ class AllocateUEListSameNumerology(AllocateUEList):
         return None
 
     def is_available_rb(self, starting_bu: RB, numerology: Union[Numerology, LTEResourceBlock]) -> bool:
+        assert 0 <= starting_bu['i'] < self.nb.frame.frame_freq and 0 <= starting_bu['j'] < self.nb.frame.frame_time
         if (starting_bu['i'] + numerology.freq > self.nb.frame.frame_freq) or (
                 starting_bu['j'] + numerology.time > self.nb.frame.frame_time):
             # RB out of bound
@@ -219,18 +223,12 @@ class AllocateUEListSameNumerology(AllocateUEList):
                 if bu.is_used:
                     return False
                 if i == starting_bu['i'] and j == starting_bu['j']:
-                    if not bu.overlapped_ue or (bu.numerology == numerology and bu.is_upper_left):
-                        # if the BU hasn't been used by any UE or is using the same numerology
-                        assert not bu.overlapped_rb or (
-                                bu.overlapped_ue and bu.numerology), 'Should be either empty in any layer or used.'
-                        continue
-                    else:
+                    if not(not bu.overlapped_rb or (bu.lapped_numerology[0] == numerology and bu.lapped_is_upper_left)):
+                        # not (if the BU hasn't been used by any UE or is using the same numerology)
                         return False
                 else:
-                    if not bu.overlapped_ue or (bu.numerology == numerology and not bu.is_upper_left):
-                        assert not bu.overlapped_rb or (
-                                bu.overlapped_ue and bu.numerology), 'Should be either empty in any layer or used.'
-                        continue
-                    else:
+                    if not(not bu.overlapped_rb or (bu.lapped_numerology[0] == numerology and not bu.lapped_is_upper_left)):
                         return False
+                assert (bu.overlapped_ue and len(bu.lapped_numerology) == 1) or (
+                    not bu.overlapped_ue), 'Should be either empty in any layer or used.'
         return True

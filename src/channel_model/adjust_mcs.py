@@ -103,7 +103,7 @@ class AdjustMCS(Undo):
                         ue_nb_info: Union[GNBInfo, ENBInfo] = getattr(ue, nb_info)
                         self.append_undo(lambda n_i=ue_nb_info, origin=ue_nb_info.mcs: setattr(n_i, 'mcs', origin))
                         if ue_nb_info.rb:
-                            ue_nb_info.mcs = ue_nb_info.rb[-1].mcs
+                            ue_nb_info.update_mcs()
                         else:
                             ue_nb_info.mcs = None
 
