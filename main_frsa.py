@@ -3,6 +3,7 @@ import pickle
 from datetime import datetime
 from typing import List, Tuple
 
+from src.resource_allocation.algo.algo_intuitive import Intuitive
 from src.resource_allocation.algo.frsa.frsa_phase1 import FRSAPhase1
 from src.resource_allocation.algo.frsa.frsa_phase2 import FRSAPhase2
 from src.resource_allocation.algo.frsa.frsa_phase3 import FRSAPhase3
@@ -22,6 +23,8 @@ def frsa(data_set: str, visualize_the_algo: bool = False) -> Tuple[
     with open(data_set_file_path, "rb") as file:
         g_nb, e_nb, channel_model, g_ue_list, d_ue_list, e_ue_list, _, _, _, _ = pickle.load(file)
 
+    # main
+    # gNB resource allocation
     g_phase1: FRSAPhase1 = FRSAPhase1(g_nb, g_ue_list + d_ue_list)
     g_phase1.calc_inr()
     g_phase1.select_init_numerology()
@@ -46,7 +49,11 @@ def frsa(data_set: str, visualize_the_algo: bool = False) -> Tuple[
     due_allocated, due_unallocated = divide_ue(d_ue_list)
     g_phase3.allocate_new_ue(gue_unallocated + due_unallocated, gue_allocated + due_allocated)
 
-    # FIXME 分配eNB 用Intuitive的方法就好
+    # eNB resource allocation
+    gue_allocated, gue_unallocated = divide_ue(g_ue_list)
+    due_allocated, due_unallocated = divide_ue(d_ue_list)
+    Intuitive(e_nb, e_ue_list + due_unallocated, gue_allocated + due_allocated, channel_model).allocate(
+        allow_lower_mcs=False)
 
     if visualize_the_algo:
         visualize_phase_uncategorized_ue(visualization_file_path, 'ab+',
