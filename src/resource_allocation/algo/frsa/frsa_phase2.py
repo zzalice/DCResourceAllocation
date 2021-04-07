@@ -19,37 +19,57 @@ class FRSAPhase2(Undo):
             return True
         is_improved: bool = True
         while is_improved:
-            is_improved: bool = False
+            # calculate dissimilarity
             max_dissimilarity: List[Dissimilarity] = []
             for l in range(self.nb.frame.max_layer):
                 tmp_dissimilarity: float = -1
                 tmp_numerology: Optional[Numerology] = None
-                for numerology in Numerology:
+                for numerology in self.zones_in_layers[l].numerology_set:
                     dissimilarity: float = self.calc_dissimilarity(l, numerology)
                     if dissimilarity > tmp_dissimilarity:
                         tmp_dissimilarity: float = dissimilarity
                         tmp_numerology: Numerology = numerology
                 max_dissimilarity.append(Dissimilarity(l, tmp_numerology, tmp_dissimilarity))
+            assert len(max_dissimilarity) == self.nb.frame.max_layer
 
+            # swap zones to lower down dissimilarity
             max_dissimilarity.sort(key=lambda x: x.dissimilarity)
             zone_set: List[Dissimilarity] = []
-            zone_bandwidth: List[int] = []
-            residual: List[int] = []
-            for i in range(2):  # pick two concatenate zone with largest dissimilarity FIXME: 假設A_1,mu包含z1, z2, z3，A_3,mu包含z4, z5，A_1,mu > A_3,mu，z1先看能不能跟z4換，如果空間不夠換，再看z1跟z5，z2跟z4，z2跟z5 ....
+            for i in range(2):  # pick two group with largest dissimilarity
                 zone_set.append(max_dissimilarity.pop())
+                if zone_set[-1].numerology is None:  # empty layer
+                    return True
                 assert self.zones_in_layers[zone_set[-1].layer].layer == zone_set[-1].layer
-                zone_bandwidth.append(self.zones_in_layers[zone_set[-1].layer].frequency_span[zone_set[-1].numerology])
-                residual.append(self.zones_in_layers[zone_set[-1].layer].residual)
-            if (zone_bandwidth[0] <= zone_bandwidth[1] + residual[1]) and (
-                    zone_bandwidth[1] <= zone_bandwidth[0] + residual[0]):
-                origin_ld: float = self.calc_layer_dissimilarity()
-                self.swap(zone_set)
-                new_ld: float = self.calc_layer_dissimilarity()
-                if new_ld < origin_ld:
-                    is_improved: bool = True
-                    self.purge_undo()
-                else:
-                    self.undo()
+            is_improved: bool = self.swap_zone_set(zone_set)
+
+    def swap_zone_set(self, zone_set: List[Dissimilarity]) -> bool:
+        """
+        Swap two zones in different layers.
+        :param zone_set: Two group of zones to swap.
+        :return: If the dissimilarity of the frame is improved
+        """
+        assert zone_set[0].layer != zone_set[1].layer
+        for z0 in filter(lambda x: x.numerology == zone_set[0].numerology,
+                         self.zones_in_layers[zone_set[0].layer].zone):
+            for z1 in filter(lambda x: x.numerology == zone_set[1].numerology,
+                             self.zones_in_layers[zone_set[1].layer].zone):
+                if (z0.zone_freq <= z1.zone_freq + self.zones_in_layers[zone_set[1].layer].residual) and (
+                        z1.zone_freq <= z0.zone_freq + self.zones_in_layers[zone_set[0].layer].residual):
+                    origin_ld: float = self.calc_layer_dissimilarity()
+                    self.swap(zone_set[0], zone_set[1], z0, z1)
+                    new_ld: float = self.calc_layer_dissimilarity()
+                    if new_ld < origin_ld:
+                        return True
+                    else:
+                        # undo
+                        self.swap(zone_set[0], zone_set[1], z1, z0)
+        return False
+
+    def swap(self, zone_set_0: Dissimilarity, zone_set_1: Dissimilarity, z0: Zone, z1: Zone):
+        self.zones_in_layers[zone_set_0.layer].remove_zone(z0)
+        self.zones_in_layers[zone_set_1.layer].remove_zone(z1)
+        self.zones_in_layers[zone_set_0.layer].add_zone(z1)
+        self.zones_in_layers[zone_set_1.layer].add_zone(z0)
 
     def calc_dissimilarity(self, layer: int, numerology: Numerology) -> float:
         dissimilarity: float = 0.0
@@ -67,37 +87,6 @@ class FRSAPhase2(Undo):
             for layer in range(self.nb.frame.max_layer):
                 ld += self.calc_dissimilarity(layer, numerology)
         return ld
-
-    @Undo.undo_func_decorator
-    def swap(self, zone_set: List[Dissimilarity]):
-        # back up zone_set 0
-        tmp_zone: List[Zone] = []
-        i: int = 0
-        assert self.zones_in_layers[zone_set[0].layer].layer == zone_set[0].layer
-        for zone in self.zones_in_layers[zone_set[0].layer].zone[i:]:
-            if zone.numerology == zone_set[0].numerology:
-                tmp_zone.append(zone)
-                self.zones_in_layers[zone_set[0].layer].remove_zone(zone)
-                self.append_undo(lambda zl=self.zones_in_layers[zone_set[0].layer], z=zone: zl.add_zone(z))
-            else:
-                i += 1
-
-        # move zone_set 1 to zone_set 0
-        i: int = 0
-        assert self.zones_in_layers[zone_set[1].layer].layer == zone_set[1].layer
-        for zone in self.zones_in_layers[zone_set[1].layer].zone[i:]:
-            if zone.numerology == zone_set[1].numerology:
-                self.zones_in_layers[zone_set[0].layer].add_zone(zone)
-                self.zones_in_layers[zone_set[1].layer].remove_zone(zone)
-                self.append_undo(lambda zl=self.zones_in_layers[zone_set[0].layer], z=zone: zl.remove_zone(z))
-                self.append_undo(lambda zl=self.zones_in_layers[zone_set[1].layer], z=zone: zl.add_zone(z))
-            else:
-                i += 1
-
-        # move zone_set 0 to zone_set 1
-        for zone in tmp_zone:
-            self.zones_in_layers[zone_set[1].layer].add_zone(zone)
-            self.append_undo(lambda zl=self.zones_in_layers[zone_set[1].layer], z=zone: zl.remove_zone(z))
 
     def za(self):
         # base layer
@@ -131,7 +120,7 @@ class FRSAPhase2(Undo):
         base_layer.zone.sort(key=lambda x: x.bandwidth)
         numerology_offset: List[ConcatenateZone] = []
         while base_layer.zone:
-            cz: ConcatenateZone = base_layer.zone.pop()     # allocate from large bandwidth concatenate zone
+            cz: ConcatenateZone = base_layer.zone.pop()  # allocate from large bandwidth concatenate zone
             cz.offset = layer.available_frequent_offset
             numerology_offset.append(cz)
             cz.allocate(layer)

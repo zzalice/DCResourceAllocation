@@ -46,7 +46,7 @@ def frsa(data_set: str, visualize_the_algo: bool = False) -> Tuple[
     due_allocated, due_unallocated = divide_ue(d_ue_list)
     g_phase3.allocate_new_ue(gue_unallocated + due_unallocated, gue_allocated + due_allocated)
 
-    # FIXME 先調整完gNB再分配eNB
+    # FIXME 分配eNB 用Intuitive的方法就好
 
     if visualize_the_algo:
         visualize_phase_uncategorized_ue(visualization_file_path, 'ab+',
@@ -56,5 +56,5 @@ def frsa(data_set: str, visualize_the_algo: bool = False) -> Tuple[
 
 
 if __name__ == '__main__':
-    file_path: str = '0402-102014avg_deploy/2layer/7'
+    file_path: str = '0406-132558test_many_ue/4layer/5'
     frsa(file_path, visualize_the_algo=True)

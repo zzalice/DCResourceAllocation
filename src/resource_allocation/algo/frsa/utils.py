@@ -1,5 +1,5 @@
 from dataclasses import dataclass
-from typing import Dict, List, Optional, Union
+from typing import Dict, List, Optional, Set, Union
 
 from src.resource_allocation.ds.frame import Layer
 from src.resource_allocation.ds.util_enum import Numerology
@@ -11,6 +11,7 @@ class LayerZone:
         self._layer: int = layer
         self._residual: int = frame_freq
         self._zone: List[Union[Zone, ConcatenateZone]] = []
+        self._numerology_set: Set[Numerology] = set()
         self._frequency_span: Dict[Numerology, int] = {n: 0 for n in Numerology}
 
     def add_zone(self, zone: Zone):
@@ -18,11 +19,13 @@ class LayerZone:
         self._residual -= zone.zone_freq
         assert self._residual >= 0
         self._frequency_span[zone.numerology] += zone.zone_freq
+        self._update_numerology_set()
 
     def remove_zone(self, zone: Zone):
         self._zone.remove(zone)
         self._residual += zone.zone_freq
         self._frequency_span[zone.numerology] -= zone.zone_freq
+        self._update_numerology_set()
 
     def form_concatenate_zone(self):
         if not self.zone:  # if is empty
@@ -38,6 +41,11 @@ class LayerZone:
         self._zone: List[ConcatenateZone] = concatenate
         return True
 
+    def _update_numerology_set(self):
+        self._numerology_set: Set[Numerology] = set()
+        for zone in self.zone:
+            self._numerology_set.add(zone.numerology)
+
     @property
     def layer(self) -> int:
         return self._layer
@@ -49,6 +57,10 @@ class LayerZone:
     @property
     def zone(self) -> List[Zone]:
         return self._zone
+
+    @property
+    def numerology_set(self) -> Set[Numerology]:
+        return self._numerology_set
 
     @property
     def frequency_span(self) -> Dict[Numerology, int]:

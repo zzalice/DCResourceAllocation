@@ -24,7 +24,7 @@ def msema_rb_ra(data_set: str, visualize_the_algo: bool = False) -> Tuple[
     Msema(g_nb, channel_model, ()).allocate_ue_list(g_ue_list + d_ue_list)
     gue_allocated, gue_unallocated = divide_ue(g_ue_list)
     due_allocated, due_unallocated = divide_ue(d_ue_list)
-    Msema(e_nb, channel_model, gue_allocated + due_allocated).allocate_ue_list(e_ue_list + due_unallocated)
+    Msema(e_nb, channel_model, gue_allocated + due_allocated).allocate_ue_list(e_ue_list + due_unallocated)     # FIXME 用Intuitive的方法就好
 
     if visualize_the_algo:
         visualize_phase_uncategorized_ue(visualization_file_path, 'wb',
