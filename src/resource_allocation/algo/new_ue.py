@@ -1,4 +1,3 @@
-from copy import deepcopy
 from typing import List, Optional, Tuple, Union
 
 from src.channel_model.adjust_mcs import AdjustMCS
@@ -10,7 +9,7 @@ from src.resource_allocation.ds.frame import BaseUnit, Layer
 from src.resource_allocation.ds.ngran import DUserEquipment, GNodeB, GUserEquipment
 from src.resource_allocation.ds.nodeb import ENBInfo, GNBInfo
 from src.resource_allocation.ds.rb import ResourceBlock
-from src.resource_allocation.ds.space import empty_space, Space
+from src.resource_allocation.ds.space import empty_space, next_rb_in_space, Space
 from src.resource_allocation.ds.ue import UserEquipment
 from src.resource_allocation.ds.undo import Undo
 from src.resource_allocation.ds.util_enum import E_MCS, G_MCS, LTEResourceBlock, NodeBType, Numerology, UEType
@@ -238,23 +237,24 @@ class AllocateUEListSameNumerology(AllocateUEList):
         return has_positive_effect
 
     def next_available_space(self, bu: RBIndex, numerology: Union[Numerology, LTEResourceBlock]) -> Optional[RBIndex]:
-        next_bu: RBIndex = deepcopy(bu)
         if self.nb.nb_type == NodeBType.G:
-            next_bu.j += 1
-            if next_bu.j >= self.nb.frame.frame_time:
-                next_bu.j = 0
-                next_bu.i += 1
-                if next_bu.i >= self.nb.frame.frame_freq:
-                    next_bu.i = 0
-                    next_bu.layer += 1
-                    if next_bu.layer >= self.nb.frame.max_layer:
-                        return None
+            return self.next_space_gnb(bu, numerology)
         elif self.nb.nb_type == NodeBType.E:
-            if not (next_bu := self.enb_next_rb(bu)):
-                # no more spaces in the frame
-                return None
+            return self.next_space_enb(bu)
         else:
             raise AssertionError
+
+    def next_space_gnb(self, bu: RBIndex, numerology: Numerology) -> Optional[RBIndex]:
+        next_bu: RBIndex = RBIndex(layer=bu.layer, i=bu.i, j=bu.j)
+        next_bu.j += 1
+        if next_bu.j >= self.nb.frame.frame_time:
+            next_bu.j = 0
+            next_bu.i += 1
+            if next_bu.i >= self.nb.frame.frame_freq:
+                next_bu.i = 0
+                next_bu.layer += 1
+                if next_bu.layer >= self.nb.frame.max_layer:
+                    return None
         assert (0 <= next_bu.i < self.nb.frame.frame_freq) and (
                 0 <= next_bu.j < self.nb.frame.frame_time), 'BU index out of bound'
 
@@ -268,14 +268,15 @@ class AllocateUEListSameNumerology(AllocateUEList):
                     space.ending_i == next_bu.i and space.ending_j < next_bu.j))):
                 continue
             elif space.layer.layer_index == next_bu.layer:
-                for i in range(max(next_bu.i, space.starting_i), space.ending_i + 1):
-                    for j in range(space.starting_j, space.ending_j + 1):
-                        if i == next_bu.i and j < next_bu.j:
-                            continue
-                        new_bu: RBIndex = RBIndex(layer=space.layer.layer_index, i=i, j=j)
-                        if self.is_available_rb(new_bu, numerology, self.nb):
-                            assert new_bu != bu
-                            return new_bu
+                if space.ending_i >= next_bu.i:
+                    for i in range(max(next_bu.i, space.starting_i), space.ending_i + 1):
+                        for j in range(space.starting_j, space.ending_j + 1):
+                            if i == next_bu.i and j < next_bu.j:
+                                continue
+                            new_bu: RBIndex = RBIndex(layer=space.layer.layer_index, i=i, j=j)
+                            if self.is_available_rb(new_bu, numerology, self.nb):
+                                assert new_bu != bu
+                                return new_bu
             elif space.layer.layer_index > next_bu.layer:
                 # look in a whole space
                 if new_bu := self.is_available_space(space, numerology):
@@ -291,6 +292,51 @@ class AllocateUEListSameNumerology(AllocateUEList):
                 if self.is_available_rb(RBIndex(layer=space.layer.layer_index, i=i, j=j), numerology, self.nb):
                     return RBIndex(layer=space.layer.layer_index, i=i, j=j)
         return None
+
+    def next_space_enb(self, bu: RBIndex) -> Optional[RBIndex]:
+        # doesn't need to check if it's overlapped with same RB type.
+        assert self.nb.nb_type == NodeBType.E and bu.layer == 0
+        if not (next_bu := self.next_rb_enb(bu)):
+            # no more spaces in the frame
+            return None
+        else:
+            new_bu: Optional[RBIndex] = None
+            for space in self.empty_spaces:
+                # find the space includes next_bu or after next_bu
+                if space.starting_i <= next_bu.i <= space.ending_i and space.starting_j <= next_bu.j <= space.ending_j:
+                    # includes next_bu
+                    new_bu: RBIndex = next_bu
+                    break
+                elif space.starting_i <= next_bu.i <= space.ending_i and space.starting_j > next_bu.j:
+                    # same row after next_bu
+                    new_bu: RBIndex = RBIndex(layer=next_bu.layer, i=next_bu.i, j=space.starting_j)
+                    break
+                elif space.starting_i > next_bu.i:
+                    # after next_bu
+                    new_bu: RBIndex = RBIndex(layer=space.layer.layer_index, i=space.starting_i, j=space.starting_j)
+                    break
+            if new_bu is not None:
+                assert new_bu.i != bu.i or new_bu.j != bu.j, "The next RB shouldn't be the same."
+                assert (0 <= new_bu.i < self.nb.frame.frame_freq) and (
+                        0 <= new_bu.j < self.nb.frame.frame_time), 'RB index out of bound.'
+                assert new_bu.j % LTEResourceBlock.E.count_bu == 0, 'LTE RB not aligned.'
+            return new_bu
+
+    def next_rb_enb(self, bu: RBIndex) -> Optional[RBIndex]:
+        assert self.nb.nb_type == NodeBType.E
+        if bu.j == -1 and bu.i == 0 and bu.layer == 0:
+            return RBIndex(layer=0, i=0, j=0)
+        else:
+            # continuous RB
+            if bu_idx := next_rb_in_space(bu.i, bu.j, LTEResourceBlock.E, self.nb.frame.layer[bu.layer],
+                                          0, 0, self.nb.frame.frame_freq - 1, self.nb.frame.frame_time - 1):
+                assert bu_idx != bu, "RB index shouldn't be the same."
+                assert (0 <= bu_idx[0] < self.nb.frame.frame_freq) and (
+                        0 <= bu_idx[1] < self.nb.frame.frame_time), 'RB index out of bound.'
+                assert bu_idx[1] % LTEResourceBlock.E.count_bu == 0, 'LTE RB not aligned.'
+                return RBIndex(layer=bu.layer, i=bu_idx[0], j=bu_idx[1])
+            else:
+                return None
 
     @staticmethod
     def is_available_rb(starting_bu: RBIndex, numerology: Union[Numerology, LTEResourceBlock],
@@ -320,17 +366,3 @@ class AllocateUEListSameNumerology(AllocateUEList):
                 assert (not bu.overlapped_ue) or (
                         len(bu.lapped_numerology) == 1), 'Should be either empty in any layer or used.'
         return True
-
-    def enb_next_rb(self, bu: RBIndex) -> Optional[RBIndex]:
-        assert isinstance(self.nb, ENodeB)
-        assert bu.j % LTEResourceBlock.E.count_bu == 0
-
-        # continuous RB
-        bu.j += LTEResourceBlock.E.count_bu
-        if bu.j + LTEResourceBlock.E.time > self.nb.frame.frame_time:
-            # next row
-            bu.j = 0
-            bu.i += LTEResourceBlock.E.freq
-            if bu.i + LTEResourceBlock.E.freq > self.nb.frame.frame_freq:
-                return None
-        return bu
