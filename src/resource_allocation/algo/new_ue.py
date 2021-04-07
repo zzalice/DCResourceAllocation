@@ -225,14 +225,20 @@ class AllocateUEListSameNumerology(AllocateUEList):
             return None
 
     def adjust_mcs(self, ue: UE, allow_lower_mcs: bool, allow_lower_than_cqi0: bool) -> bool:
-        nb_info: Union[GNBInfo, ENBInfo] = ue.gnb_info if self.nb.nb_type == NodeBType.G else ue.enb_info
-
         adjust_mcs: AdjustMCS = AdjustMCS()
-        has_positive_effect: bool = adjust_mcs.remove_from_tail(ue, nb_info, allow_lower_mcs=allow_lower_mcs,
-                                                                allow_lower_than_cqi0=allow_lower_than_cqi0,
-                                                                channel_model=self.channel_model,
-                                                                new_same_numerology_rb=True,
-                                                                func_is_available_rb=self.is_available_rb)
+        if self.nb.nb_type == NodeBType.G:
+            has_positive_effect: bool = adjust_mcs.remove_from_tail(ue, allow_lower_mcs=allow_lower_mcs,
+                                                                    allow_lower_than_cqi0=allow_lower_than_cqi0,
+                                                                    channel_model=self.channel_model,
+                                                                    new_same_numerology_rb=True,
+                                                                    func_is_available_rb=self.is_available_rb)
+        elif self.nb.nb_type == NodeBType.E:
+            has_positive_effect: bool = adjust_mcs.remove_from_tail(ue, allow_lower_mcs=allow_lower_mcs,
+                                                                    allow_lower_than_cqi0=allow_lower_than_cqi0,
+                                                                    channel_model=self.channel_model)
+        else:
+            raise AssertionError
+
         self.append_undo(lambda a_m=adjust_mcs: a_m.undo(), lambda a_m=adjust_mcs: a_m.purge_undo())
         return has_positive_effect
 

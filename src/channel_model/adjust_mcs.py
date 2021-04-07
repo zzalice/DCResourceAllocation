@@ -246,14 +246,12 @@ class AdjustMCS(Undo):
             raise AssertionError
 
     @Undo.undo_func_decorator
-    def remove_from_tail(self, ue: UE, nb_info: Union[GNBInfo, ENBInfo],
-                         allow_lower_mcs: bool = False, allow_lower_than_cqi0: bool = True,
+    def remove_from_tail(self, ue: UE, allow_lower_mcs: bool = False, allow_lower_than_cqi0: bool = True,
                          channel_model: ChannelModel = None,
                          new_same_numerology_rb: bool = False, func_is_available_rb: Callable = None) -> bool:
         """
-        For single connection UE.
+        For single/dual connection UE.
         :param ue:
-        :param nb_info: The BS ue is working on.
         :param allow_lower_mcs: If allows, adding new RB.
         :param allow_lower_than_cqi0: If allows, ue can be removed.
         :param channel_model: If allow_lower_mcs is True, channel_model should be given. For add new RBs.
@@ -264,7 +262,26 @@ class AdjustMCS(Undo):
         assert not allow_lower_mcs or (allow_lower_mcs and channel_model is not None), 'Channel model not given.'
         assert not new_same_numerology_rb or (new_same_numerology_rb and (func_is_available_rb is not None) and (
                 allow_lower_mcs and channel_model is not None)), 'Missing requirements for adding same numerology RB.'
-        assert ue.is_allocated and not ue.cross_nb if ue.ue_type == UEType.D else ue.is_allocated
+        assert ue.is_allocated
+        if ue.ue_type == UEType.D and ue.cross_nb:
+            return self._remove_from_tail_dual(ue, allow_lower_mcs, allow_lower_than_cqi0, channel_model,
+                                               new_same_numerology_rb, func_is_available_rb)
+        else:
+            return self._remove_from_tail_single(ue, allow_lower_mcs, allow_lower_than_cqi0, channel_model,
+                                                 new_same_numerology_rb, func_is_available_rb)
+
+    def _remove_from_tail_single(self, ue: UE, allow_lower_mcs: bool = False, allow_lower_than_cqi0: bool = True,
+                                 channel_model: ChannelModel = None,
+                                 new_same_numerology_rb: bool = False, func_is_available_rb: Callable = None) -> bool:
+        assert ue.is_allocated
+        assert ue.ue_type != UEType.D or not ue.cross_nb
+        if hasattr(ue, 'gnb_info'):
+            nb_info: GNBInfo = ue.gnb_info
+        elif hasattr(ue, 'enb_info'):
+            nb_info: ENBInfo = ue.enb_info
+        else:
+            raise AssertionError
+
         nb_info.rb.sort(key=lambda x: x.j_start)  # sort by time
         nb_info.rb.sort(key=lambda x: x.i_start)  # sort by freq
         if self.throughput_ue(nb_info.rb) == 0.0:
@@ -302,3 +319,18 @@ class AdjustMCS(Undo):
                         self.append_undo(lambda nr=new_resource: nr.undo(), lambda nr=new_resource: nr.purge_undo())
                     else:
                         return False
+
+    def _remove_from_tail_dual(self, ue: DUserEquipment, allow_lower_mcs: bool = False, allow_lower_than_cqi0: bool = True,
+                               channel_model: ChannelModel = None,
+                               new_same_numerology_rb: bool = False, func_is_available_rb: Callable = None) -> bool:
+        """
+        For dual connected UE only.
+        :param ue:
+        :param allow_lower_mcs:
+        :param allow_lower_than_cqi0:
+        :param channel_model:
+        :param new_same_numerology_rb:
+        :param func_is_available_rb:
+        :return:
+        """
+        assert ue.cross_nb  # FIXME
