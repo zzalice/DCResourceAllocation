@@ -91,7 +91,7 @@ def dc_resource_allocation(data_set, visualize_the_algo: bool = False) -> Tuple[
 
 
 if __name__ == '__main__':
-    file_path: str = '0402-090957test_mcup/3layer/0'
+    file_path: str = '0407-204705follow_wang/1layer/0'
     if len(sys.argv) == 2:
         file_path: str = sys.argv[1]
     dc_resource_allocation(data_set=file_path, visualize_the_algo=True)

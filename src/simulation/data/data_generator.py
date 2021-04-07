@@ -24,10 +24,6 @@ class DataGenerator:
                  cochannel_bandwidth: int, worsen_threshold: int):
         assert iteration > 0
         self.iteration: int = iteration
-        self.output_file_path: str = f'{os.path.dirname(__file__)}/{output_file_path}'
-        if not os.path.exists(self.output_file_path):
-            os.makedirs(self.output_file_path)
-
         assert eue_num >= 0 and gue_num >= 0 and due_num >= 0
         self.eue_num: int = eue_num
         assert eue_qos_range[0] <= eue_qos_range[1]
@@ -60,6 +56,10 @@ class DataGenerator:
         assert cochannel_bandwidth >= 0
         self.cochannel_bandwidth: int = cochannel_bandwidth
         self.worsen_threshold: int = worsen_threshold
+
+        self.output_file_path: str = f'{os.path.dirname(__file__)}/{output_file_path}'
+        if not os.path.exists(self.output_file_path):
+            os.makedirs(self.output_file_path)
 
     def generate_data(self):
         for i in range(self.iteration):
