@@ -1,7 +1,7 @@
 import os
 import pickle
 import sys
-from typing import Tuple, Union
+from typing import List, Tuple, Union
 
 from src.resource_allocation.algo.algo_mcuphm import McupHm
 from src.resource_allocation.ds.eutran import ENodeB, EUserEquipment
@@ -11,10 +11,11 @@ from src.resource_allocation.ds.ngran import DUserEquipment, GNodeB, GUserEquipm
 def mcup_hm(g_nb: GNodeB, e_nb: ENodeB, g_ue_list: Tuple[GUserEquipment, ...], d_ue_list: Tuple[DUserEquipment, ...],
             e_ue_list: Tuple[EUserEquipment, ...], gue_qos: Tuple[int, int], eue_qos: Tuple[int, int]
             ) -> Tuple[Tuple[Union[GUserEquipment, DUserEquipment], ...],
-                       Tuple[Union[EUserEquipment, DUserEquipment], ...]]:
+                       Tuple[Union[EUserEquipment, DUserEquipment], ...],
+                       Tuple[DUserEquipment, ...]]:
     """
-    :return gnb_ue_list, enb_ue_list: The UEs that are assigned to gNB/eNB.
-                                      In the assign order which FRSA and MSEMA should follow.
+    :return gnb_sc_ue, enb_sc_ue: The single connection UEs that are assigned to gNB/eNB.
+    :return dc_ue: The dual connection UE that must connect to two BSs.
     """
     mcup = McupHm()
     mcup.calc_max_serve_ue(g_nb, (gue_qos[0], gue_qos[1]))
@@ -29,13 +30,22 @@ def mcup_hm(g_nb: GNodeB, e_nb: ENodeB, g_ue_list: Tuple[GUserEquipment, ...], d
     due_unassigned: Tuple[DUserEquipment, ...] = mcup.left_over(d_ue_list)
     mcup.set_preference(mcup.gnb_ue_list + gue_unassigned, g_nb.nb_type)
     mcup.set_preference(mcup.enb_ue_list + eue_unassigned, e_nb.nb_type)
-    gnb_due, enb_due = mcup.set_preference_due(due_unassigned)
+    gnb_sc_due, enb_sc_due = mcup.set_preference_due(due_unassigned)
     for ue in e_ue_list + g_ue_list:
         assert len(ue.nb_preference) == 1
-    for ue in d_ue_list:
-        assert 1 <= len(set(ue.nb_preference)) <= 2
 
-    return mcup.gnb_ue_list + gue_unassigned + gnb_due, mcup.enb_ue_list + eue_unassigned + enb_due
+    gnb_sc_ue: List[Union[GUserEquipment, DUserEquipment]] = list(mcup.gnb_ue_list + gue_unassigned + gnb_sc_due)
+    enb_sc_ue: List[Union[EUserEquipment, DUserEquipment]] = list(mcup.enb_ue_list + eue_unassigned + enb_sc_due)
+    dc_ue: List[DUserEquipment] = []
+    for due in d_ue_list:
+        assert 1 <= len(set(due.nb_preference)) <= 2
+        if len(set(due.nb_preference)) == 2:
+            dc_ue.append(due)
+            gnb_sc_ue.remove(due)
+            enb_sc_ue.remove(due)
+    assert len(gnb_sc_ue + enb_sc_ue + dc_ue) == len(g_ue_list + e_ue_list + d_ue_list)
+
+    return tuple(gnb_sc_ue), tuple(enb_sc_ue), tuple(dc_ue)
 
 
 def main(data_set: str):
