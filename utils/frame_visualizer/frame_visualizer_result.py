@@ -41,10 +41,10 @@ def run_visualize(data, layer_str, num_iter, algo, file_name):
 
 
 if __name__ == '__main__':
-    file_path: str = '../../src/simulation/graph/0318-004644low_qos/gNBCQI1CQI15_eNBCQI1CQI15'
+    file_path: str = '../../src/simulation/graph/0408-231425avg_deploy/gNBCQI1CQI15_eNBCQI1CQI15'
 
-    algorithm: List[str] = ['DC-RA', 'Intuitive']
-    layer: str = '1layer'
+    algorithm: List[str] = ['DC-RA', 'FRSA', 'MSEMA', 'Intuitive']
+    layer_or_ue: str = '460ue'  # '1layer'
     iteration: int = 1
 
-    visualize_result(file_path, algorithm, layer, iteration)
+    visualize_result(file_path, algorithm, layer_or_ue, iteration)

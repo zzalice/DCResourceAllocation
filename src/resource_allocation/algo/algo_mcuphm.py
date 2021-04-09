@@ -24,7 +24,7 @@ class McupHm:
 
         # count how many RB in a layer
         count_rb_bu: int = Numerology.N0.count_bu if nb.nb_type == NodeBType.G else LTEResourceBlock.E.count_bu
-        count_frame_rb: float = (nb.frame.frame_freq * nb.frame.frame_time) / count_rb_bu
+        count_frame_rb: float = (nb.frame.frame_freq * nb.frame.frame_time * nb.frame.max_layer) / count_rb_bu
 
         if nb.nb_type == NodeBType.G:
             self.gnb_max_serve = floor(count_frame_rb / count_ue_rb)
