@@ -212,18 +212,19 @@ class AllocateUEListSameNumerology(AllocateUEList):
         """Check the next RB in the same layer."""
         self.assert_undo_function()
         # continuous RB
-        bu.j += numerology.time
-        if bu.j + numerology.time > self.nb.frame.frame_time:
+        next_bu: RBIndex = RBIndex(layer=bu.layer, i=bu.i, j=bu.j)
+        next_bu.j += numerology.time
+        if next_bu.j + numerology.time > self.nb.frame.frame_time:
             # next row
-            bu.j = 0
-            bu.i += numerology.freq
-            if bu.i + numerology.freq > self.nb.frame.frame_freq:
+            next_bu.j = 0
+            next_bu.i += numerology.freq
+            if next_bu.i + numerology.freq > self.nb.frame.frame_freq:
                 return None
-        assert (0 <= bu.i + numerology.freq <= self.nb.frame.frame_freq) and (
-                0 <= bu.j + numerology.time <= self.nb.frame.frame_time), 'RB index out of bound'
+        assert (0 <= next_bu.i + numerology.freq <= self.nb.frame.frame_freq) and (
+                0 <= next_bu.j + numerology.time <= self.nb.frame.frame_time), 'RB index out of bound'
 
-        if self.is_available_rb(bu, numerology, self.nb):
-            return bu
+        if self.is_available_rb(next_bu, numerology, self.nb):
+            return next_bu
         else:
             return None
 
