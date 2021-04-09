@@ -25,4 +25,4 @@ class EUserEquipment(UserEquipment):
 
         # for MCUP
         self.connection_preference: int = 1
-        self.nb_preference: List[int] = [0]  # 0 represent eNB, 1 represent gNB.
+        self.nb_preference: List[NodeBType] = [NodeBType.E]
