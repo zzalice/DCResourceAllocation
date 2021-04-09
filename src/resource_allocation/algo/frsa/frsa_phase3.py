@@ -7,7 +7,6 @@ from src.resource_allocation.ds.eutran import ENodeB, EUserEquipment
 from src.resource_allocation.ds.ngran import DUserEquipment, GNodeB, GUserEquipment
 from src.resource_allocation.ds.ue import UserEquipment
 from src.resource_allocation.ds.undo import Undo
-from src.resource_allocation.ds.util_enum import NodeBType
 
 UE = Union[UserEquipment, DUserEquipment, GUserEquipment, EUserEquipment]
 
@@ -18,10 +17,10 @@ class FRSAPhase3(Undo):
         self.nb: Union[GNodeB, ENodeB] = nb
         self.channel_model: ChannelModel = channel_model
 
-    def adjust_mcs(self, allocated_ue: Tuple[UE]):  # TODO: adjust effected UEs
+    def adjust_mcs(self, allocated_ue: Tuple[UE, ...]):  # TODO: adjust effected UEs
         for ue in allocated_ue:
             self.channel_model.sinr_ue(ue)
             AdjustMCS().remove_from_tail(ue)
 
-    def allocate_new_ue(self, unallocated_ue: Tuple[UE], allocated_ue: Tuple[UE]):
+    def allocate_new_ue(self, unallocated_ue: Tuple[UE, ...], allocated_ue: Tuple[UE, ...]):
         AllocateUEList(self.nb, unallocated_ue, allocated_ue, self.channel_model).allocate(allow_lower_than_cqi0=False)

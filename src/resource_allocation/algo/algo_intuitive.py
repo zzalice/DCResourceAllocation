@@ -11,7 +11,7 @@ UE = Union[UserEquipment, GUserEquipment, DUserEquipment, EUserEquipment]
 
 
 class Intuitive(AllocateUEList):
-    def __init__(self, nb: Union[GNodeB, ENodeB], ue_to_allocate: Tuple[UE], allocated_ue: Tuple[UE],
+    def __init__(self, nb: Union[GNodeB, ENodeB], ue_to_allocate: Tuple[UE, ...], allocated_ue: Tuple[UE, ...],
                  channel_model: ChannelModel):
         super().__init__(nb=nb, ue_to_allocate=ue_to_allocate, allocated_ue=allocated_ue, channel_model=channel_model)
 
