@@ -99,12 +99,15 @@ class AllocateUEList(Undo):
         self.assert_undo_function()
         adjust_mcs: AdjustMCS = AdjustMCS()
         if not allow_lower_mcs:
-            has_positive_effect: bool = adjust_mcs.remove_worst_rb(ue, allow_lower_mcs=False)
+            has_positive_effect: bool = adjust_mcs.remove_from_tail(ue, allow_lower_mcs=False)
         elif not allow_lower_than_cqi0:
-            has_positive_effect: bool = adjust_mcs.remove_worst_rb(ue, allow_lower_than_cqi0=False,
-                                                                   channel_model=self.channel_model)
+            has_positive_effect: bool = adjust_mcs.remove_from_tail(ue,
+                                                                    allow_lower_mcs=True, allow_lower_than_cqi0=False,
+                                                                    channel_model=self.channel_model)
         else:
-            has_positive_effect: bool = adjust_mcs.remove_worst_rb(ue)  # ue can be removed
+            # ue can be removed
+            has_positive_effect: bool = adjust_mcs.remove_from_tail(ue,
+                                                                    allow_lower_mcs=True, allow_lower_than_cqi0=True)
         self.append_undo(lambda a_m=adjust_mcs: a_m.undo(), lambda a_m=adjust_mcs: a_m.purge_undo())
         return has_positive_effect
 
@@ -360,12 +363,12 @@ class AllocateUEListSameNumerology(AllocateUEList):
                     return False
                 assert len(bu.lapped_numerology) <= 1, 'Only lap with same numerology.'
                 if i == starting_bu.i and j == starting_bu.j:
-                    if not(not bu.overlapped_rb or (
+                    if not (not bu.overlapped_rb or (
                             bu.lapped_numerology[0] == numerology and bu.lapped_is_upper_left)):
                         # not (if the BU hasn't been used by any UE or is using the same numerology)
                         return False
                 else:
-                    if not(not bu.overlapped_rb or (
+                    if not (not bu.overlapped_rb or (
                             bu.lapped_numerology[0] == numerology and not bu.lapped_is_upper_left)):
                         return False
                 assert len(set(bu.lapped_numerology + (numerology,))) <= 1, 'Only lap with same numerology.'

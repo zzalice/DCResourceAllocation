@@ -17,8 +17,7 @@ class AllocateUE(Undo):  # TODO: move to new_ue.py
     :return: If the allocation has succeed.
     """
 
-    def __init__(self, ue: UserEquipment, spaces: Tuple[Space, ...],
-                 channel_model: ChannelModel):
+    def __init__(self, ue: UserEquipment, spaces: Tuple[Space, ...], channel_model: ChannelModel):
         super().__init__()
         self.ue: UserEquipment = ue
         assert len(
@@ -104,7 +103,7 @@ class NewResource(Undo):
                               same_numerology: bool = False, func_is_available_rb: Callable = None
                               ) -> Union[ResourceBlock, bool]:
         """
-        
+        Design for single and dual connection UE.
         :param ue: The UE to add a new RB.
         :param channel_model: For the new RB.
         :param same_numerology: If is True, add a RB has the same numerology with other layers or any layer is empty.

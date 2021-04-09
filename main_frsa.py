@@ -65,7 +65,7 @@ def frsa(data_set: str, visualize_the_algo: bool = False) -> Tuple[
 
     # DC UEs must connect to two BSs
     for due in dc_ue_list:
-        if not due.cross_nb:
+        if not due.cross_nb and due.is_allocated:
             due.remove_ue()
 
     if visualize_the_algo:
@@ -76,5 +76,5 @@ def frsa(data_set: str, visualize_the_algo: bool = False) -> Tuple[
 
 
 if __name__ == '__main__':
-    file_path: str = '0409-143305test_mcup/4layer/5'
+    file_path: str = '0409-205405test_mcup/4layer/5'
     frsa(file_path, visualize_the_algo=True)
