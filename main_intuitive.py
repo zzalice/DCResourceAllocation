@@ -23,10 +23,15 @@ def intuitive_resource_allocation(data_set, visualize_the_algo: bool = False) ->
 
     # main
     Intuitive(g_nb, g_ue_list + d_ue_list, tuple(), channel_model).allocate(allow_lower_mcs=False)
-    gue_allocated, gue_unallocated = divide_ue(g_ue_list)
-    due_allocated, due_unallocated = divide_ue(d_ue_list)
-    Intuitive(e_nb, e_ue_list + due_unallocated, gue_allocated + due_allocated, channel_model).allocate(
+    gue_allocated, _ = divide_ue(g_ue_list)
+    due_allocated, _ = divide_ue(d_ue_list)
+    Intuitive(e_nb, e_ue_list + due_allocated, gue_allocated + due_allocated, channel_model).allocate(
         allow_lower_mcs=False)
+
+    # DC UEs must connect to two BSs
+    for due in due_allocated:
+        if not due.cross_nb and due.is_allocated:
+            due.remove_ue()
 
     if visualize_the_algo:
         visualize_phase_uncategorized_ue(visualization_file_path, 'wb',

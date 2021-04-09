@@ -4,8 +4,8 @@ from datetime import datetime
 from typing import List, Tuple
 
 from main_mcuphm import mcup_hm
-from src.resource_allocation.algo.algo_intuitive import Intuitive
 from src.resource_allocation.algo.algo_msema import Msema
+from src.resource_allocation.algo.new_ue import AllocateUEList
 from src.resource_allocation.algo.utils import divide_ue
 from src.resource_allocation.ds.eutran import ENodeB, EUserEquipment
 from src.resource_allocation.ds.ngran import DUserEquipment, GNodeB, GUserEquipment
@@ -32,7 +32,7 @@ def msema_rb_ra(data_set: str, visualize_the_algo: bool = False) -> Tuple[
     # eNB resource allocation
     gnb_sc_allocated, _ = divide_ue(gnb_sc_ue_list)
     dc_ue_allocated, _ = divide_ue(dc_ue_list)
-    Intuitive(e_nb, dc_ue_allocated + enb_sc_ue_list, gnb_sc_allocated + dc_ue_allocated, channel_model).allocate(
+    AllocateUEList(e_nb, dc_ue_allocated + enb_sc_ue_list, gnb_sc_allocated + dc_ue_allocated, channel_model).allocate(
         allow_lower_mcs=False)
 
     if visualize_the_algo:
@@ -43,5 +43,5 @@ def msema_rb_ra(data_set: str, visualize_the_algo: bool = False) -> Tuple[
 
 
 if __name__ == '__main__':
-    file_path: str = '0409-205405test_mcup/4layer/5'
+    file_path: str = '0409-215232debug/300ue/0'
     msema_rb_ra(file_path, visualize_the_algo=True)
