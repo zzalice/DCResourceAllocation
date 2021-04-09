@@ -58,7 +58,7 @@ def frsa(data_set: str, visualize_the_algo: bool = False) -> Tuple[
     g_phase3.allocate_new_ue(gnb_unallocated, gnb_allocated)
 
     # eNB resource allocation
-    gnb_sc_allocated, gnb_sc_unallocated = divide_ue(gnb_sc_ue_list)
+    gnb_sc_allocated, _ = divide_ue(gnb_sc_ue_list)
     dc_ue_allocated, dc_ue_unallocated = divide_ue(dc_ue_list)
     Intuitive(e_nb, dc_ue_allocated + enb_sc_ue_list, gnb_sc_allocated + dc_ue_allocated, channel_model).allocate(
         allow_lower_mcs=False)
