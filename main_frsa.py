@@ -60,9 +60,13 @@ def frsa(data_set: str, visualize_the_algo: bool = False) -> Tuple[
     # eNB resource allocation
     gnb_sc_allocated, gnb_sc_unallocated = divide_ue(gnb_sc_ue_list)
     dc_ue_allocated, dc_ue_unallocated = divide_ue(dc_ue_list)
-    # FIXME dc_ue_allocated +
-    Intuitive(e_nb, enb_sc_ue_list, gnb_sc_allocated + dc_ue_allocated, channel_model).allocate(
+    Intuitive(e_nb, dc_ue_allocated + enb_sc_ue_list, gnb_sc_allocated + dc_ue_allocated, channel_model).allocate(
         allow_lower_mcs=False)
+
+    # DC UEs must connect to two BSs
+    for due in dc_ue_list:
+        if not due.cross_nb:
+            due.remove_ue()
 
     if visualize_the_algo:
         visualize_phase_uncategorized_ue(visualization_file_path, 'ab+',

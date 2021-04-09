@@ -30,7 +30,7 @@ class AllocateUEList(Undo):
         spaces: Tuple[Space] = self.update_empty_space(nb=self.nb)
         while self.ue_to_allocate:
             ue: UE = self.ue_to_allocate.pop()
-            assert not ue.is_allocated
+            # assert not ue.is_allocated    # TODO: refactor, for MCUP combine RA algorithms
             for space in spaces:
                 # from tests.assertion import check_undo_copy
                 # copy_ue = check_undo_copy([ue] + self.gue_allocated + self.due_allocated + self.eue_allocated)

@@ -39,7 +39,7 @@ class AllocateUE(Undo):  # TODO: move to new_ue.py
         return is_succeed
 
     def _allocate(self) -> bool:
-        assert self.ue.calc_throughput() < self.ue.request_data_rate
+        # assert self.ue.calc_throughput() < self.ue.request_data_rate  # TODO: refactor, for MCUP combine RA algorithms
         nb_info: Union[GNBInfo, ENBInfo] = (
             self.ue.gnb_info if self.spaces[0].layer.nodeb.nb_type == NodeBType.G else self.ue.enb_info)
         bu_i: int = -1
