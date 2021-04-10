@@ -63,18 +63,12 @@ class IterateAlgo:
         return True
 
     def create_file(self, main_topic: Tuple[str, List[int]], folder_description: str) -> str:
-        # copy data parameter
-        from shutil import copyfile
-        copyfile(f'{os.path.dirname(__file__)}/data/{self.folder_data}/{main_topic[1][-1]}{folder_description}/parameter_data.txt',
-                 f'{os.path.dirname(__file__)}/graph/{self.folder_data}/parameter_data.txt')
-
-        # generate graph parameter file
         parameter = {'iteration': self.iteration, main_topic[0]: main_topic[1], 'data folder': self.folder_data,
                      'gNB MCS': [G_MCS.get_worst().name, G_MCS.get_best().name],
                      'eNB MCS': [E_MCS.get_worst().name, E_MCS.get_best().name]}
 
         folder_graph: str = f'{os.path.dirname(__file__)}/graph/{self.folder_data}/gNB{parameter["gNB MCS"][0]}{parameter["gNB MCS"][1]}_eNB{parameter["eNB MCS"][0]}{parameter["eNB MCS"][1]}'
-        self._new_directory(folder_graph)
+        self._new_directory(folder_graph, main_topic, folder_description)
         self.gen_txt_parameter(parameter, folder_graph)
 
         file_result: str = f'{folder_graph}/result.P'
@@ -82,10 +76,15 @@ class IterateAlgo:
             pickle.dump(parameter, f)
         return file_result
 
-    @staticmethod
-    def _new_directory(path):
+    def _new_directory(self, path, main_topic: Tuple[str, List[int]], folder_description: str):
         if not os.path.exists(path):
             os.makedirs(path)
+
+        # copy data parameter
+        from shutil import copyfile
+        copyfile(
+            f'{os.path.dirname(__file__)}/data/{self.folder_data}/{main_topic[1][-1]}{folder_description}/parameter_data.txt',
+            f'{os.path.dirname(__file__)}/graph/{self.folder_data}/parameter_data.txt')
 
     @staticmethod
     def gen_txt_parameter(parameter, output_file_path: str):
