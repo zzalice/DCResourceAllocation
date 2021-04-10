@@ -80,8 +80,8 @@ def bar_chart_grouped_stacked(title: str, x_label: str, y_label: str, output_fil
     dfall: List[pandas.DataFrame] = []
     for algo in labels:
         dfall.append(pandas.DataFrame(data[algo],
-                                      index=[i + ' layer' for i in x_index],
-                                      columns=[i.replace('_', ' ') for i in stack_label]))
+                                      index=[i for i in x_index],
+                                      columns=[i for i in stack_label]))
 
     n_df = len(dfall)
     n_col = len(dfall[0].columns)
@@ -89,7 +89,7 @@ def bar_chart_grouped_stacked(title: str, x_label: str, y_label: str, output_fil
     axe = plt.subplot(111)
 
     for df in dfall:  # for each data frame
-        axe = df.plot(kind="bar", linewidth=0, stacked=True, ax=axe, legend=False, grid=False)  # make bar plots
+        axe = df.plot(kind="bar", linewidth=0, stacked=True, ax=axe, legend=False, grid=False, colormap='Blues')  # make bar plots
 
     h, l = axe.get_legend_handles_labels()  # get the handles we want to modify
     for i in range(0, n_df * n_col, n_col):  # len(h) = n_col * n_df
@@ -101,6 +101,7 @@ def bar_chart_grouped_stacked(title: str, x_label: str, y_label: str, output_fil
 
     axe.set_xticks((np.arange(0, 2 * n_ind, 2) + 1 / float(n_df + 1)) / 2.)
     axe.set_xticklabels(df.index, rotation=0)
+    axe.set_xlabel(x_label)
     axe.set_ylabel(y_label)
     axe.set_title(title)
 
@@ -109,9 +110,9 @@ def bar_chart_grouped_stacked(title: str, x_label: str, y_label: str, output_fil
     for i in range(n_df):
         n.append(axe.bar(0, 0, color="gray", hatch=H * i))
 
-    l1 = axe.legend(h[:n_col], l[:n_col], loc=[1.01, 0.5])
+    l1 = axe.legend(h[:n_col], l[:n_col], loc=[1.01, 0.25])
     if labels is not None:
-        l2 = plt.legend(n, labels, loc=[1.01, 0.1])
+        l2 = plt.legend(n, labels, loc=[1.01, 0.0])
     axe.add_artist(l1)
 
     plt.tight_layout()
@@ -172,7 +173,7 @@ if __name__ == '__main__':
     # bar_chart_grouped_stacked([df1, df2, df3], ["df1", "df2", "df3"])
 
     ##########################################
-    file_path: str = '0410-010147avg_deploy/gNBCQI1CQI15_eNBCQI1CQI15/The number of overlapped UE_Percentage of BU(%)_0410-1334.json'
+    file_path: str = '0410-094738high_qos_700ue/gNBCQI1CQI7_eNBCQI1CQI7/num_of_allocated_ue_0410-1417.json'
     with open(file_path, 'r') as f:
         d = json.load(f)
-        bar_chart(d[0], d[1], d[2], d[3], d[4], d[5], d[6])
+        bar_chart_grouped_stacked(d[0], d[1], d[2], d[3], d[4], d[5], d[6], d[7], d[8])

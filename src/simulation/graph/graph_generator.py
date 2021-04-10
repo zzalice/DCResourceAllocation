@@ -1,5 +1,6 @@
 import os
 import pickle
+import re
 from datetime import datetime
 from typing import Any, Dict, List, Tuple, Union
 
@@ -69,7 +70,7 @@ class GraphGenerator:
                         elif graph_type == 'increasing ue':
                             self.gen_sys_throughput_increasing_ue(kwargs['iteration'], kwargs['total_ue'], file_path)
                         elif graph_type == 'NOMA':
-                            self.gen_noma(kwargs['iteration'], kwargs['layer_or_ue'], kwargs['algorithm'], file_path)
+                            self.gen_noma_overlap_status(kwargs['iteration'], kwargs['layer_or_ue'], kwargs['algorithm'], file_path)
                         break
 
     # ==================================================================================================================
@@ -356,18 +357,24 @@ class GraphGenerator:
                         cqi[layer][freq][time]: int = 0
         return cqi
 
-    def gen_noma(self, iteration: int, layer_or_ue: str, algorithm: List[str], output_file_path: str):
+    def gen_noma_overlap_status(self, iteration: int, layer_or_ue: str, algorithm: List[str], output_file_path: str):
         assert self.collect_data, "Can't find layer_or_ue."
-
-        # X: The overlapped layer, 0 ~ frame.max_layer. Y: The number of BU using curtain CQI
-        count_bu: List[int] = []  # FIXME
 
         # X: The overlapped layer, 0 ~ frame.max_layer. Y: The number of BU / the number of BU in a layer, float
         data_count_layer: Dict[str, List[int]] = {}
+        #                      algo layer(count overlapped UE)
+        # X: The overlapped layer, 0 ~ frame.max_layer. Y: The number of BU using curtain CQI
+        data_count_bu: Dict[str, List[List[int]]] = {}
+        #                   algo layer CQI
+        gnb_cqi: str = re.search('gNBCQI(\\d+)CQI(\\d+)', output_file_path).group()
+        cqi = [int(re.findall('CQI(\\d+)', gnb_cqi).pop(0)), int(re.findall('CQI(\\d+)', gnb_cqi).pop(1))]
+
+        # data
         for algo in self.collect_data:
             if algo not in algorithm:
                 continue
             data_count_layer[algo] = [0 for _ in range(self.collect_data['gnb_info']['max_layer'] + 1)]
+            data_count_bu[algo] = [[0 for _ in range(cqi[1])] for _ in range(self.collect_data['gnb_info']['max_layer'])]
             for i in range(iteration):
                 frame: List[List[List[List[int]]]] = self.collect_data[algo][i]
                 for f in range(self.collect_data['gnb_info']['freq']):
@@ -377,19 +384,30 @@ class GraphGenerator:
                             if frame[l][f][t] > 0:     # BU in layer l is used
                                 count_lapped += 1
                         data_count_layer[algo][count_lapped] += 1     # tmp_count of UEs lap on BU(f, t)
+
+                        for l in range(self.collect_data['gnb_info']['max_layer']):
+                            if frame[l][f][t] > 0:     # BU in layer l is used
+                                data_count_bu[algo][count_lapped - 1][frame[l][f][t] - 1] += 1
+
             count_bu_flat: int = self.collect_data['gnb_info']['freq'] * self.collect_data['gnb_info']['time']
-            for x in range(len(data_count_layer[algo])):
+            for x in range(self.collect_data['gnb_info']['max_layer'] + 1):
                 data_count_layer[algo][x] /= (count_bu_flat * iteration)
+            for x in range(len(data_count_bu[algo])):
+                for c in range(self.collect_data['gnb_info']['max_layer']):
+                    data_count_bu[algo][x][c] /= iteration
             assert False not in [data_count_layer[algo][x] <= 1 for x in range(len(data_count_layer[algo]))], 'Data gathering error.'
 
         bar_chart('Frame overlap',
                   'The number of overlapped UE', [i for i in range(self.collect_data['gnb_info']['max_layer'] + 1)],
                   'Percentage of BU(%)', data_count_layer,
                   output_file_path, {'iteration': iteration, 'layer_or_ue': layer_or_ue})
-
-    def count_layer(self):
-        # FIXME
-        pass
+        bar_chart_grouped_stacked(f'The MCS used in a frame of {layer_or_ue}',
+                                  'The number of overlapped UE', 'The number BU',
+                                  f'{output_file_path}/mcs_used_in_frame{datetime.today().strftime("%m%d-%H%M")}',
+                                  {'iteration': iteration, 'layer_or_ue': layer_or_ue},
+                                  data_count_bu,
+                                  [str(i + 1) for i in range(self.collect_data['gnb_info']['max_layer'])],
+                                  ['CQI' + str(i) for i in range(cqi[0], cqi[1] + 1)], algorithm)
 
     # ==================================================================================================================
     def _increase_iter(self, key: Union[str, int], iteration: int):
