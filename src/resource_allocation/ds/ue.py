@@ -77,7 +77,7 @@ class UserEquipment:
 
         self._throughput = self.calc_throughput()
 
-    def calc_throughput(self) -> float:     # TODO: use this
+    def calc_throughput(self) -> float:
         """ Won't change any value in UserEquipment. """
         tmp_throughput: float = 0.0
         if hasattr(self, 'gnb_info') and self.gnb_info.rb:

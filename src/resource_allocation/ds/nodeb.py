@@ -33,7 +33,7 @@ class _NBInfoWithinUE:
         assert self.nb is not None
         return self.nb.nb_type
 
-    def update_mcs(self):   # TODO: use this
+    def update_mcs(self):
         assert self.rb, "Updating a BS that has no RB allocated."
         self.mcs = min(self.rb, key=lambda b: b.mcs.value).mcs
 

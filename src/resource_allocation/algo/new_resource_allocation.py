@@ -80,7 +80,7 @@ class AllocateUE(Undo):  # TODO: move to new_ue.py
             self.append_undo(lambda: self.channel_model.undo(), lambda: self.channel_model.purge_undo())
             if rb.mcs is (G_MCS if nb_info.nb_type == NodeBType.G else E_MCS).CQI0:
                 # SINR out of range
-                return False  # TODO: DC-RA 可以只刪掉這個rb，繼續試下一個位子(非is_to_next_space=True)，其他algo不變
+                return False  # FIXME: DC-RA另寫AllocateUE，只刪掉這個rb，繼續試下一個位子
 
             # check if the allocated RBs fulfill request data rate
             if self.ue.calc_throughput() >= self.ue.request_data_rate:
