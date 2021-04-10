@@ -44,6 +44,7 @@ def bar_chart(title: str, x_label: str, x_tick_labels: List[Any], y_label: str, 
 
     # Add some text for labels, title and custom x-axis tick labels, etc.
     ax.set_title(title)
+    ax.set_xlabel(x_label)
     ax.set_ylabel(y_label)
     ax.set_xticks(x)
     ax.set_xticklabels(x_tick_labels)
@@ -169,4 +170,9 @@ if __name__ == '__main__':
     #                    index=["A", "B", "C", "D"],
     #                    columns=["I", "J", "K", "L", "M"])
     # bar_chart_grouped_stacked([df1, df2, df3], ["df1", "df2", "df3"])
-    pass
+
+    ##########################################
+    file_path: str = '0410-010147avg_deploy/gNBCQI1CQI15_eNBCQI1CQI15/The number of overlapped UE_Percentage of BU(%)_0410-1334.json'
+    with open(file_path, 'r') as f:
+        d = json.load(f)
+        bar_chart(d[0], d[1], d[2], d[3], d[4], d[5], d[6])

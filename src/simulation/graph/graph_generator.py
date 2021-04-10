@@ -5,10 +5,14 @@ from typing import Any, Dict, List, Tuple, Union
 
 from src.resource_allocation.algo.utils import bpframe_to_mbps, calc_system_throughput_uncategorized_ue
 from src.resource_allocation.ds.eutran import ENodeB, EUserEquipment
+from src.resource_allocation.ds.frame import BaseUnit
 from src.resource_allocation.ds.ngran import DUserEquipment, GNodeB, GUserEquipment
 from src.resource_allocation.ds.ue import UserEquipment
 from src.resource_allocation.ds.util_enum import UEType
 from src.simulation.graph.util_graph import bar_chart, bar_chart_grouped_stacked, line_chart, scatter_chart
+
+RESULT = Dict[str, Dict[str, Tuple[GNodeB, ENodeB, List[DUserEquipment], List[GUserEquipment], List[EUserEquipment]]]
+]  # layer/ue    algo
 
 
 class GraphGenerator:
@@ -37,17 +41,18 @@ class GraphGenerator:
 
                 while True:
                     try:
-                        #                 layer     algo
-                        algo_result: Dict[str, Dict[str, Tuple[GNodeB, ENodeB, List[
-                            DUserEquipment], List[GUserEquipment], List[EUserEquipment]]]] = pickle.load(f)
+                        algo_result: RESULT = pickle.load(f)
                         if graph_type == 'sys throughput - layer' or graph_type == 'increasing ue':
                             self.collect_sys_throughput(kwargs['iteration'], algo_result)
                         elif graph_type == 'used percentage':
                             self.collect_used_percentage(kwargs['iteration'], algo_result)
                         elif graph_type == 'deployment':
-                            self.collect_depolyment(kwargs['iteration'], algo_result)
+                            self.collect_deployment(kwargs['iteration'], algo_result)
                         elif graph_type == 'allocated ue' or graph_type == 'total_allocated_ue':
                             self.collect_allocated_ue(kwargs['iteration'], algo_result)
+                        elif graph_type == 'NOMA':
+                            self.collect_noma(kwargs['iteration'], kwargs['layer_or_ue'], kwargs['algorithm'],
+                                              algo_result)
                     except EOFError:
                         if graph_type == 'sys throughput - layer':
                             self.gen_sys_throughput_layer(kwargs['iteration'], kwargs['layers'], file_path)
@@ -63,11 +68,12 @@ class GraphGenerator:
                                                   ue_label=('total',))
                         elif graph_type == 'increasing ue':
                             self.gen_sys_throughput_increasing_ue(kwargs['iteration'], kwargs['total_ue'], file_path)
+                        elif graph_type == 'NOMA':
+                            self.gen_noma(kwargs['iteration'], kwargs['layer_or_ue'], kwargs['algorithm'], file_path)
                         break
 
     # ==================================================================================================================
-    def collect_sys_throughput(self, iteration: int, result: Dict[str, Dict[str, Tuple[GNodeB, ENodeB, List[
-        DUserEquipment], List[GUserEquipment], List[EUserEquipment]]]]):
+    def collect_sys_throughput(self, iteration: int, result: RESULT):
         # collect_data: Dict[str, Dict[str, float]
         #                    layer     algo sum of system throughput
         self.frame_time: int = next(iter(next(iter(result.values())).values()))[0].frame.frame_time
@@ -119,8 +125,7 @@ class GraphGenerator:
                    output_file_path, {'iteration': iteration})
 
     # ==================================================================================================================
-    def collect_used_percentage(self, iteration: int, result: Dict[str, Dict[str, Tuple[GNodeB, ENodeB, List[
-        DUserEquipment], List[GUserEquipment], List[EUserEquipment]]]]):
+    def collect_used_percentage(self, iteration: int, result: RESULT):
         # collect_data: Dict[str, Dict[str, [int,        int]]
         #                    layer     algo  used BU     number of BU in gNBs
         for max_layer_str in result:  # only one
@@ -169,8 +174,7 @@ class GraphGenerator:
                   output_file_path, {'iteration': iteration})
 
     # ==================================================================================================================
-    def collect_depolyment(self, iteration: int, result: Dict[str, Dict[str, Tuple[GNodeB, ENodeB, List[
-        DUserEquipment], List[GUserEquipment], List[EUserEquipment]]]]):
+    def collect_deployment(self, iteration: int, result: RESULT):
         # collect_data: Dict[str, Dict[str, Dict[str, Any]]
         #                    layer     algo      nb   [nb_radius, nb_coordinate]
         #                                        ue   [[ue.x, ue.y], ...]
@@ -236,8 +240,7 @@ class GraphGenerator:
         return x, y, color
 
     # ==================================================================================================================
-    def collect_allocated_ue(self, iteration: int, result: Dict[str, Dict[str, Tuple[GNodeB, ENodeB, List[
-        DUserEquipment], List[GUserEquipment], List[EUserEquipment]]]]):
+    def collect_allocated_ue(self, iteration: int, result: RESULT):
         # collect_data: Dict[str, Dict[str, Dict[str, int]]
         #                    layer     algo,     ue   num of allocated ue
         for layer in result:  # only one
@@ -311,7 +314,84 @@ class GraphGenerator:
                                   algo_label)
 
     # ==================================================================================================================
+    def collect_noma(self, iteration: int, layer_or_ue: str, algorithm: List[str], result: RESULT):
+        # collect_data: Dict[str, List[List[List[List[int]]], ...]]
+        #                    algo iter layer freq time CQI index, '0' for empty
+        for topic in result:  # only one. e.g. '300ue' or '1layer'
+            if topic != layer_or_ue:
+                continue
+            self._increase_iter(topic, iteration)
+            try:
+                del self.collect_data[topic]
+            except KeyError:
+                pass
+            for algo in result[topic]:
+                if algo not in algorithm:
+                    continue
+                gnb: GNodeB = result[topic][algo][0]
+                try:
+                    self.collect_data[algo].append(self.collect_cqi(gnb))
+                except KeyError:
+                    self.collect_data[algo] = [self.collect_cqi(gnb)]
+                try:
+                    assert self.collect_data['gnb_info'] == {'max_layer': gnb.frame.max_layer,
+                                                             'freq': gnb.frame.frame_freq, 'time': gnb.frame.frame_time
+                                                             }, 'The result will be incomparable.'
+                except KeyError:
+                    self.collect_data['gnb_info'] = {'max_layer': gnb.frame.max_layer,
+                                                     'freq': gnb.frame.frame_freq, 'time': gnb.frame.frame_time}
 
+    @staticmethod
+    def collect_cqi(gnb: GNodeB) -> List[List[List[List[int]]]]:
+        cqi: List[List[List[List[int]]]] = [
+            [[[] for _ in range(gnb.frame.frame_time)] for _ in range(gnb.frame.frame_freq)] for _ in
+            range(gnb.frame.max_layer)]
+        for layer in range(gnb.frame.max_layer):
+            for freq in range(gnb.frame.frame_freq):
+                for time in range(gnb.frame.frame_time):
+                    bu: BaseUnit = gnb.frame.layer[layer].bu[freq][time]
+                    if bu.within_rb:
+                        cqi[layer][freq][time]: int = int(bu.within_rb.mcs.name[3:])
+                    else:
+                        cqi[layer][freq][time]: int = 0
+        return cqi
+
+    def gen_noma(self, iteration: int, layer_or_ue: str, algorithm: List[str], output_file_path: str):
+        assert self.collect_data, "Can't find layer_or_ue."
+
+        # X: The overlapped layer, 0 ~ frame.max_layer. Y: The number of BU using curtain CQI
+        count_bu: List[int] = []  # FIXME
+
+        # X: The overlapped layer, 0 ~ frame.max_layer. Y: The number of BU / the number of BU in a layer, float
+        data_count_layer: Dict[str, List[int]] = {}
+        for algo in self.collect_data:
+            if algo not in algorithm:
+                continue
+            data_count_layer[algo] = [0 for _ in range(self.collect_data['gnb_info']['max_layer'] + 1)]
+            for i in range(iteration):
+                frame: List[List[List[List[int]]]] = self.collect_data[algo][i]
+                for f in range(self.collect_data['gnb_info']['freq']):
+                    for t in range(self.collect_data['gnb_info']['time']):
+                        count_lapped: int = 0
+                        for l in range(self.collect_data['gnb_info']['max_layer']):
+                            if frame[l][f][t] > 0:     # BU in layer l is used
+                                count_lapped += 1
+                        data_count_layer[algo][count_lapped] += 1     # tmp_count of UEs lap on BU(f, t)
+            count_bu_flat: int = self.collect_data['gnb_info']['freq'] * self.collect_data['gnb_info']['time']
+            for x in range(len(data_count_layer[algo])):
+                data_count_layer[algo][x] /= (count_bu_flat * iteration)
+            assert False not in [data_count_layer[algo][x] <= 1 for x in range(len(data_count_layer[algo]))], 'Data gathering error.'
+
+        bar_chart('Frame overlap',
+                  'The number of overlapped UE', [i for i in range(self.collect_data['gnb_info']['max_layer'] + 1)],
+                  'Percentage of BU(%)', data_count_layer,
+                  output_file_path, {'iteration': iteration, 'layer_or_ue': layer_or_ue})
+
+    def count_layer(self):
+        # FIXME
+        pass
+
+    # ==================================================================================================================
     def _increase_iter(self, key: Union[str, int], iteration: int):
         try:
             if self.count_iter[key] >= iteration:
