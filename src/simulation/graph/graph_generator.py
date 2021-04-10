@@ -397,7 +397,7 @@ class GraphGenerator:
                     data_count_bu[algo][x][c] /= iteration
             assert False not in [data_count_layer[algo][x] <= 1 for x in range(len(data_count_layer[algo]))], 'Data gathering error.'
 
-        bar_chart('Frame overlap',
+        bar_chart('Frame overlap of {layer_or_ue}',
                   'The number of overlapped UE', [i for i in range(self.collect_data['gnb_info']['max_layer'] + 1)],
                   'Percentage of BU(%)', data_count_layer,
                   output_file_path, {'iteration': iteration, 'layer_or_ue': layer_or_ue})
