@@ -26,7 +26,7 @@ class IterateAlgo:
         self.iter(('total ue', total_ue), 'ue')
 
     def iter(self, topic: Tuple[str, List[int]], folder_description: str):
-        file_result: str = self.create_file(topic)
+        file_result: str = self.create_file(topic, folder_description)
 
         program_start_time = time.time()
         for m in topic[1]:
@@ -62,7 +62,13 @@ class IterateAlgo:
         print("--- Total %s min ---" % round((time.time() - program_start_time) / 60, 3))
         return True
 
-    def create_file(self, main_topic: Tuple[str, List[int]]) -> str:
+    def create_file(self, main_topic: Tuple[str, List[int]], folder_description: str) -> str:
+        # copy data parameter
+        from shutil import copyfile
+        copyfile(f'{os.path.dirname(__file__)}/data/{self.folder_data}/{main_topic[1][-1]}{folder_description}/parameter_data.txt',
+                 f'{os.path.dirname(__file__)}/graph/{self.folder_data}/parameter_data.txt')
+
+        # generate graph parameter file
         parameter = {'iteration': self.iteration, main_topic[0]: main_topic[1], 'data folder': self.folder_data,
                      'gNB MCS': [G_MCS.get_worst().name, G_MCS.get_best().name],
                      'eNB MCS': [E_MCS.get_worst().name, E_MCS.get_best().name]}
