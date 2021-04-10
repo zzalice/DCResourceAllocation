@@ -74,7 +74,7 @@ if __name__ == '__main__':
                 'gnb_layer': 5, 'inr_discount': 0.5,
                 'enb_freq': 200, 'enb_time': 8, 'enb_radius': 0.5, 'enb_coordinate': (0.0, 0.0), 'enb_tx_power': 46,
 
-                'cochannel_bandwidth': 25,
+                'cochannel_bandwidth': 0,
                 'worsen_threshold': -100_000_000  # bps
                 # range of MCS: in file resource_allocation/ds/util_enum.py
                 }
