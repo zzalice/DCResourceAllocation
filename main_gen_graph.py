@@ -13,9 +13,9 @@ if __name__ == '__main__':
     i: int = 10  # <-- change
 
     # ---Graphs for ue---
-    # ut: List[int] = [60, 80, 100, 120, 140, 160, 180, 200]  # <-- change
-    # IterateAlgo(iteration=i, folder_data=f_data).iter_ue(total_ue=ut)
-    # GraphGenerator(iteration=i, total_ue=ut, graph_type='increasing ue', folder_result=(f'{f_data}/{f_mcs}',))
+    ut: List[int] = [60, 80, 100, 120, 140, 160, 180, 200]  # <-- change
+    IterateAlgo(iteration=i, folder_data=f_data).iter_ue(total_ue=ut)
+    GraphGenerator(iteration=i, total_ue=ut, graph_type='increasing ue', folder_result=(f'{f_data}/{f_mcs}',))
 
     # ---Graphs for layer---
     # l: List[int] = [1, 2, 3, 4, 5]  # <-- change
@@ -27,6 +27,6 @@ if __name__ == '__main__':
     # GraphGenerator(iteration=i, layers=l, graph_type='total_allocated_ue', folder_result=(f'{f_data}/{f_mcs}',))
 
     # ---Graphs for NOMA and INI---
-    layer_or_ue: str = '300ue'  # '300ue' or '3layer' <-- change
-    algo: List[str] = ['DC-RA', 'FRSA', 'MSEMA', 'Intuitive']
-    GraphGenerator(iteration=i, layer_or_ue=layer_or_ue, algorithm=algo, graph_type='NOMA', folder_result=(f'{f_data}/{f_mcs}',))
+    # layer_or_ue: str = '300ue'  # '300ue' or '3layer' <-- change
+    # algo: List[str] = ['DC-RA', 'FRSA', 'MSEMA', 'Intuitive']
+    # GraphGenerator(iteration=i, layer_or_ue=layer_or_ue, algorithm=algo, graph_type='NOMA', folder_result=(f'{f_data}/{f_mcs}',))
