@@ -55,10 +55,9 @@ def bar_chart(title: str, x_label: str, x_tick_labels: List[Any], y_label: str, 
 
     fig.tight_layout()
 
-    file_name: str = f'{x_label}_{y_label}_{datetime.today().strftime("%m%d-%H%M")}'
-    plt.savefig(f'{output_file_path}/{file_name}.png')
+    plt.savefig(f'{output_file_path}.png')
     plt.show()
-    dump_json(f'{output_file_path}/{file_name}',
+    dump_json(f'{output_file_path}',
               [title, x_label, x_tick_labels, y_label, data, output_file_path, parameter])
 
 

@@ -169,10 +169,11 @@ class GraphGenerator:
                     except KeyError:
                         percentages[algo] = [percent]
 
-        bar_chart('Frame used',
-                  'The number of layer in a gNB', x_labels,
-                  'Frame Usage(%)', percentages,
-                  output_file_path, {'iteration': iteration})
+        x_label: str = 'The number of layer in a gNB'
+        y_label: str = 'Frame Usage(%)'
+        bar_chart('Frame used', x_label, x_labels, y_label, percentages,
+                  f'{output_file_path}/{x_label}_{y_label}_{datetime.today().strftime("%m%d-%H%M")}',
+                  {'iteration': iteration})
 
     # ==================================================================================================================
     def collect_deployment(self, iteration: int, result: RESULT):
@@ -281,7 +282,7 @@ class GraphGenerator:
 
     def gen_allocated_ue(self, iteration: int, layers: List[int], output_file_path: str,
                          ue_label: Tuple[str, ...],
-                         algo_label: Tuple[str, ...] = ('DC-RA', 'FRSA', 'Intuitive')):
+                         algo_label: Tuple[str, ...] = ('DC-RA', 'FRSA', 'MSEMA', 'Intuitive')):
         """
         :param iteration:
         :param layers: The display order of the number of layers in gNB
@@ -400,10 +401,10 @@ class GraphGenerator:
         bar_chart(f'Frame overlap of {layer_or_ue}',
                   'The number of overlapped UE', [i for i in range(self.collect_data['gnb_info']['max_layer'] + 1)],
                   'Percentage of BU(%)', data_count_layer,
-                  output_file_path, {'iteration': iteration, 'layer_or_ue': layer_or_ue})
+                  f'{output_file_path}/noma_lap_{layer_or_ue}_{datetime.today().strftime("%m%d-%H%M")}', {'iteration': iteration, 'layer_or_ue': layer_or_ue})
         bar_chart_grouped_stacked(f'The MCS used in a frame of {layer_or_ue}',
                                   'The number of overlapped UE', 'The number BU',
-                                  f'{output_file_path}/mcs_used_in_frame{datetime.today().strftime("%m%d-%H%M")}',
+                                  f'{output_file_path}/noma_mcs_{layer_or_ue}_{datetime.today().strftime("%m%d-%H%M")}',
                                   {'iteration': iteration, 'layer_or_ue': layer_or_ue},
                                   data_count_bu,
                                   [str(i + 1) for i in range(self.collect_data['gnb_info']['max_layer'])],
