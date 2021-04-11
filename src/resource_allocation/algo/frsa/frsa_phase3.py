@@ -23,11 +23,16 @@ class FRSAPhase3(Undo):
             AdjustMCS().remove_from_tail(ue)
             self.adjust_effected_ue(allocated_ue)
 
-    @staticmethod
-    def adjust_effected_ue(allocated_ue: Tuple[UE]):
-        for ue in allocated_ue:
-            if ue.is_to_recalculate_mcs:
-                AdjustMCS().remove_from_tail(ue)
+    def adjust_effected_ue(self, allocated_ue: Tuple[UE]):
+        while True:
+            is_all_adjusted: bool = True
+            for ue in allocated_ue:
+                if ue.is_to_recalculate_mcs:
+                    is_all_adjusted: bool = False
+                    self.channel_model.sinr_ue(ue)
+                    AdjustMCS().remove_from_tail(ue)
+            if is_all_adjusted:
+                return True
 
     def allocate_new_ue(self, unallocated_ue: Tuple[UE, ...], allocated_ue: Tuple[UE, ...]):
         AllocateUEList(self.nb, unallocated_ue, allocated_ue, self.channel_model).allocate(allow_lower_than_cqi0=False)
