@@ -23,6 +23,8 @@ class Phase3(Undo):
         self.enb: ENodeB = enb
         self.channel_model: ChannelModel = channel_model
 
+        self.throughput_threshold: int = 10  # bit per frame
+
     def phase2_ue_adjust_mcs(self, nb_type: NodeBType, zones: List[List[Zone]]):
         """
         Adjust the MCS of the allocated UEs in Phase 2.
@@ -65,40 +67,20 @@ class Phase3(Undo):
                 position[rb.numerology].append(LappingPosition([rb.i_start, rb.j_start], rb.numerology))
 
     def allocate_new_ue(self, nb_type: NodeBType, ue_to_allocate: Tuple[UserEquipment],
-                        ue_allocated: Tuple[UserEquipment], worsen_threshold: float = 0.0):
+                        allocated_ue: Tuple[UserEquipment], worsen_threshold: float = 0.0):
         nb: Union[GNodeB, ENodeB] = self.gnb if nb_type == NodeBType.G else self.enb
-        ue_to_allocate: List[UserEquipment] = list(ue_to_allocate)
-        ue_allocated: List[UserEquipment] = list(ue_allocated)
-
+        unallocated_ue: List[UserEquipment] = list(ue_to_allocate)
+        unallocated_next_round: List[UserEquipment] = []
+        allocated_ue: List[UserEquipment] = list(allocated_ue)
         spaces: List[Space] = self.update_empty_space(nb)
-
-        while ue_to_allocate:
-            ue: UserEquipment = ue_to_allocate.pop()
-            origin_sys_throughput: float = calc_system_throughput(ue_allocated)
-            ue_allocated.append(ue)
+        system_throughput: float = calc_system_throughput(tuple(allocated_ue))
+        while (unallocated_ue or unallocated_next_round) and spaces:
+            ue: UserEquipment = unallocated_ue.pop(0)
             is_allocated: bool = False
             for space in spaces:
                 # from utils.assertion import check_undo_copy
                 # copy_ue = check_undo_copy(ue_allocated)
-                self.start_func_undo()
-
-                # allocate new ue
-                allocate_ue: AllocateUE = AllocateUE(ue, (space,), self.channel_model)
-                is_allocated: bool = allocate_ue.allocate()
-                self.append_undo(lambda a_u=allocate_ue: a_u.undo(), lambda a_u=allocate_ue: a_u.purge_undo())
-
-                if is_allocated and ue.ue_type == UEType.D:
-                    dc: DualConnection = DualConnection(ue, self.channel_model)
-                    is_cut: bool = dc.cutting(ue.gnb_info if nb_type == NodeBType.G else ue.enb_info)
-                    if is_cut:
-                        self.append_undo(lambda d=dc: d.undo(), lambda d=dc: d.purge_undo())
-
-                # the effected UEs
-                if is_allocated:
-                    is_allocated: bool = self.adjust_mcs_allocated_ues(ue_allocated,
-                                                                       origin_sys_throughput, worsen_threshold)
-                self.end_func_undo()
-
+                is_allocated: bool = self.allocate(ue, (space,), nb_type, allocated_ue, worsen_threshold)
                 if is_allocated:
                     spaces: List[Space] = self.update_empty_space(nb)
                     self.purge_undo()
@@ -109,15 +91,43 @@ class Phase3(Undo):
                     # check_undo_compare(ue_allocated, copy_ue)
                 # from utils.assertion import assert_is_empty
                 # assert_is_empty(spaces, ue, is_allocated)
-            if not is_allocated:
-                ue_allocated.remove(ue)
+            (allocated_ue if is_allocated else unallocated_next_round).append(ue)
+
+            if not unallocated_ue:  # is empty  TODO: similar to AllocateUEList
+                new_system_throughput: float = calc_system_throughput(tuple(allocated_ue))
+                if (new_system_throughput - system_throughput) <= self.throughput_threshold:
+                    break
+                unallocated_ue: List[UserEquipment] = unallocated_next_round
+                unallocated_next_round: List[UserEquipment] = []
+                system_throughput: float = new_system_throughput
+
+    @Undo.undo_func_decorator
+    def allocate(self, ue: UserEquipment, spaces: Tuple[Space, ...], nb_type: NodeBType,
+                 ue_allocated: List[UserEquipment], worsen_threshold: float) -> bool:
+        # allocate new ue
+        allocate_ue: AllocateUE = AllocateUE(ue, spaces, self.channel_model)
+        is_allocated: bool = allocate_ue.allocate()
+        self.append_undo(lambda a_u=allocate_ue: a_u.undo(), lambda a_u=allocate_ue: a_u.purge_undo())
+
+        if is_allocated and ue.ue_type == UEType.D:
+            dc: DualConnection = DualConnection(ue, self.channel_model)
+            is_cut: bool = dc.cutting(ue.gnb_info if nb_type == NodeBType.G else ue.enb_info)
+            if is_cut:
+                self.append_undo(lambda d=dc: d.undo(), lambda d=dc: d.purge_undo())
+
+        # the effected UEs
+        if is_allocated:
+            origin_sys_throughput: float = calc_system_throughput(tuple(ue_allocated))
+            is_allocated: bool = self.adjust_mcs_allocated_ues([ue] + ue_allocated,
+                                                               origin_sys_throughput, worsen_threshold)
+        return is_allocated
 
     def adjust_mcs_allocated_ues(self, ue_allocated: List[UserEquipment],
                                  origin_sys_throughput, worsen_threshold) -> bool:
         self.assert_undo_function()
         while True:
             # check if the new movement lowers down the system throughput
-            if not (calc_system_throughput(ue_allocated) - origin_sys_throughput) >= worsen_threshold:
+            if not (calc_system_throughput(tuple(ue_allocated)) - origin_sys_throughput) >= worsen_threshold:
                 return False
 
             # main

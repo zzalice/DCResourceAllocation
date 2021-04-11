@@ -4,6 +4,7 @@ from src.channel_model.adjust_mcs import AdjustMCS
 from src.channel_model.sinr import ChannelModel
 from src.resource_allocation.algo.new_resource_allocation import AllocateUE
 from src.resource_allocation.algo.util_type import RBIndex
+from src.resource_allocation.algo.utils import calc_system_throughput
 from src.resource_allocation.ds.eutran import ENodeB, EUserEquipment
 from src.resource_allocation.ds.frame import BaseUnit, Layer
 from src.resource_allocation.ds.ngran import DUserEquipment, GNodeB, GUserEquipment
@@ -22,21 +23,27 @@ class AllocateUEList(Undo):
                  channel_model: ChannelModel):
         super().__init__()
         self.nb: Union[GNodeB, ENodeB] = nb
-        self.ue_to_allocate: List[UE] = list(ue_to_allocate)
+        self.unallocated_ue: List[UE] = list(ue_to_allocate)
+        self.unallocated_next_round: List[UE] = []
         self.allocated_ue: List[UE] = list(allocated_ue)  # including UEs in another BS(for co-channel area adjustment)
         self.channel_model: ChannelModel = channel_model
 
+        self.throughput_threshold: int = 10  # bit per frame
+
     def allocate(self, allow_lower_mcs: bool = True, allow_lower_than_cqi0: bool = True):
         spaces: Tuple[Space] = self.update_empty_space(nb=self.nb)
-        while self.ue_to_allocate:
-            ue: UE = self.ue_to_allocate.pop()
+        self.unallocated_next_round: List[UE] = []
+        system_throughput: float = calc_system_throughput(tuple(self.allocated_ue))
+        while (self.unallocated_ue or self.unallocated_next_round) and spaces:
+            # there are unallocated UE and empty space
+            ue: UE = self.unallocated_ue.pop(0)
+            is_allocated: bool = False
             # assert not ue.is_allocated    # TODO: refactor, for MCUP combine RA algorithms
             for space in spaces:
                 # from tests.assertion import check_undo_copy
                 # copy_ue = check_undo_copy([ue] + self.gue_allocated + self.due_allocated + self.eue_allocated)
                 is_allocated: bool = self._allocate(ue, (space,), allow_lower_mcs, allow_lower_than_cqi0)
                 if is_allocated:
-                    self.allocated_ue.append(ue)
                     spaces: Tuple[Space] = self.update_empty_space(nb=self.nb)
                     self.purge_undo()
                     break
@@ -46,6 +53,15 @@ class AllocateUEList(Undo):
                     # check_undo_compare([ue] + self.gue_allocated + self.due_allocated + self.eue_allocated, copy_ue)
                 # from tests.assertion import assert_is_empty
                 # assert_is_empty(spaces, ue, is_allocated)
+            (self.allocated_ue if is_allocated else self.unallocated_next_round).append(ue)
+
+            if not self.unallocated_ue:  # is empty
+                new_system_throughput: float = calc_system_throughput(tuple(self.allocated_ue))
+                if (new_system_throughput - system_throughput) <= self.throughput_threshold:
+                    break  # system throughput was not improved
+                self.unallocated_ue: List[UE] = self.unallocated_next_round
+                self.unallocated_next_round: List[UE] = []
+                system_throughput: float = new_system_throughput
 
     @Undo.undo_func_decorator
     def _allocate(self, ue, spaces: Tuple[Space, ...], allow_lower_mcs, allow_lower_than_cqi0) -> bool:
@@ -88,6 +104,9 @@ class AllocateUEList(Undo):
                     self.append_undo(lambda: self.channel_model.undo(), lambda: self.channel_model.purge_undo())
 
                     has_positive_effect: bool = self.adjust_mcs(ue, allow_lower_mcs, allow_lower_than_cqi0)
+                    if allow_lower_mcs and allow_lower_than_cqi0 and not ue.is_allocated:  # the ue can be removed
+                        self.allocated_ue.remove(ue)
+                        self.unallocated_next_round.append(ue)
 
                     if not has_positive_effect:
                         # the mcs of the ue is lowered down by another UE.

@@ -21,7 +21,7 @@ def divide_ue(ue_list: Tuple[UserEquipment, ...], is_assert: bool = True) -> Tup
     return tuple(allocated_ue), tuple(unallocated_ue)
 
 
-def calc_system_throughput(ue_allocated: Tuple[UserEquipment], is_assert: bool = True) -> float:
+def calc_system_throughput(ue_allocated: Tuple[UserEquipment, ...], is_assert: bool = True) -> float:
     system_throughput: float = 0.0
     for ue in ue_allocated:
         if is_assert:
