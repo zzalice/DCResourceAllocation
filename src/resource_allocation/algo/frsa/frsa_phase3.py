@@ -1,4 +1,4 @@
-from typing import Tuple, Union
+from typing import List, Tuple, Union
 
 from src.channel_model.adjust_mcs import AdjustMCS
 from src.channel_model.sinr import ChannelModel
@@ -17,13 +17,14 @@ class FRSAPhase3(Undo):
         self.nb: Union[GNodeB, ENodeB] = nb
         self.channel_model: ChannelModel = channel_model
 
-    def adjust_mcs(self, allocated_ue: Tuple[UE, ...]):
+    def adjust_mcs_allocated_in_phase2(self, allocated_ue: Tuple[UE, ...]):
+        allocated_ue: List[UE] = list(allocated_ue)
         for ue in allocated_ue:
             self.channel_model.sinr_ue(ue)
             AdjustMCS().remove_from_tail(ue)
             self.adjust_effected_ue(allocated_ue)
 
-    def adjust_effected_ue(self, allocated_ue: Tuple[UE]):
+    def adjust_effected_ue(self, allocated_ue: List[UE]):
         while True:
             is_all_adjusted: bool = True
             for ue in allocated_ue:
@@ -31,6 +32,8 @@ class FRSAPhase3(Undo):
                     is_all_adjusted: bool = False
                     self.channel_model.sinr_ue(ue)
                     AdjustMCS().remove_from_tail(ue)
+                    if not ue.is_allocated:
+                        allocated_ue.remove(ue)
             if is_all_adjusted:
                 return True
 

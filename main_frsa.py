@@ -53,7 +53,7 @@ def frsa(data_set: str, visualize_the_algo: bool = False) -> Tuple[
                                          "phase2", g_nb, e_nb, g_ue_list, d_ue_list, e_ue_list, is_assert=False)
 
     g_phase3: FRSAPhase3 = FRSAPhase3(g_nb, channel_model)
-    g_phase3.adjust_mcs(gnb_allocated)
+    g_phase3.adjust_mcs_allocated_in_phase2(gnb_allocated)
     gnb_allocated, gnb_unallocated = divide_ue(dc_ue_list + gnb_sc_ue_list)
     g_phase3.allocate_new_ue(gnb_unallocated, gnb_allocated)
 

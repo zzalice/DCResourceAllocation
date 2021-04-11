@@ -53,7 +53,7 @@ class Phase3(Undo):
                     AdjustMCS().from_lapped_rb(ue, position[ue.numerology_in_use], self.channel_model)
                     self.marking_occupied_position(ue.gnb_info.rb, position)
 
-        # FIXME: 受影響的UE還要調整，要重新統計position
+        # FIXME: 受影響的UE還要調整，要重新統計position。留意是否有UE已被移除
 
     @staticmethod
     def marking_occupied_position(rb_list: List[ResourceBlock], position: Dict[Numerology, LappingPositionList]):
