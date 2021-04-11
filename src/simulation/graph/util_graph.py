@@ -75,8 +75,9 @@ def bar_chart_auto_label(rects, ax):
 
 def bar_chart_grouped_stacked(title: str, x_label: str, y_label: str, output_file_path: str, parameter: Dict,
                               data: Dict[str, List[List[float]]], x_index: List[str], stack_label: List[str],
-                              labels=None, H="/"):
+                              labels=None, H="/", color_gradient: bool = False):
     # https://stackoverflow.com/questions/22787209/how-to-have-clusters-of-stacked-bars-with-python-pandas
+    # Colormap: https://matplotlib.org/stable/tutorials/colors/colormaps.html
     dfall: List[pandas.DataFrame] = []
     for algo in labels:
         dfall.append(pandas.DataFrame(data[algo],
@@ -89,7 +90,8 @@ def bar_chart_grouped_stacked(title: str, x_label: str, y_label: str, output_fil
     axe = plt.subplot(111)
 
     for df in dfall:  # for each data frame
-        axe = df.plot(kind="bar", linewidth=0, stacked=True, ax=axe, legend=False, grid=False, colormap='Blues')  # make bar plots
+        axe = df.plot(kind="bar", linewidth=0, stacked=True, ax=axe, legend=False, grid=False,
+                      colormap='Blues' if color_gradient else None)  # make bar plots
 
     h, l = axe.get_legend_handles_labels()  # get the handles we want to modify
     for i in range(0, n_df * n_col, n_col):  # len(h) = n_col * n_df

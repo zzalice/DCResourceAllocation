@@ -397,7 +397,7 @@ class GraphGenerator:
                     data_count_bu[algo][x][c] /= iteration
             assert False not in [data_count_layer[algo][x] <= 1 for x in range(len(data_count_layer[algo]))], 'Data gathering error.'
 
-        bar_chart('Frame overlap of {layer_or_ue}',
+        bar_chart(f'Frame overlap of {layer_or_ue}',
                   'The number of overlapped UE', [i for i in range(self.collect_data['gnb_info']['max_layer'] + 1)],
                   'Percentage of BU(%)', data_count_layer,
                   output_file_path, {'iteration': iteration, 'layer_or_ue': layer_or_ue})
@@ -407,7 +407,7 @@ class GraphGenerator:
                                   {'iteration': iteration, 'layer_or_ue': layer_or_ue},
                                   data_count_bu,
                                   [str(i + 1) for i in range(self.collect_data['gnb_info']['max_layer'])],
-                                  ['CQI' + str(i) for i in range(cqi[0], cqi[1] + 1)], algorithm)
+                                  ['CQI' + str(i) for i in range(cqi[0], cqi[1] + 1)], algorithm, color_gradient=True)
 
     # ==================================================================================================================
     def _increase_iter(self, key: Union[str, int], iteration: int):
