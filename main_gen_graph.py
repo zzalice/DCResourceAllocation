@@ -27,6 +27,14 @@ if __name__ == '__main__':
     # GraphGenerator(iteration=i, layers=l, graph_type='total_allocated_ue', folder_result=(f'{f_data}/{f_mcs}',))
 
     # ---Graphs for NOMA and INI---
-    # layer_or_ue: str = '300ue'  # '300ue' or '3layer' <-- change
-    # algo: List[str] = ['DC-RA', 'FRSA', 'MSEMA', 'Intuitive']
-    # GraphGenerator(iteration=i, layer_or_ue=layer_or_ue, algorithm=algo, graph_type='NOMA', folder_result=(f'{f_data}/{f_mcs}',))
+    layer_or_ue: int = 0  # 0 for layer, 1 for ue     <-- change
+    algo: List[str] = ['DC-RA', 'FRSA', 'MSEMA', 'Intuitive']  # <-- change
+
+    if layer_or_ue == 0:
+        layer_or_ue: List[str] = [str(x) + 'layer' for x in l]
+    elif layer_or_ue == 1:
+        layer_or_ue: List[str] = [str(x) + 'ue' for x in ut]
+    else:
+        raise AssertionError
+    for l_o_u in layer_or_ue:
+        GraphGenerator(iteration=i, layer_or_ue=l_o_u, algorithm=algo, graph_type='NOMA', folder_result=(f'{f_data}/{f_mcs}',))
