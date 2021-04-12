@@ -375,33 +375,35 @@ class GraphGenerator:
             if algo not in algorithm:
                 continue
             data_count_layer[algo] = [0 for _ in range(self.collect_data['gnb_info']['max_layer'] + 1)]
-            data_count_bu[algo] = [[0 for _ in range(cqi[1])] for _ in range(self.collect_data['gnb_info']['max_layer'])]
+            data_count_bu[algo] = [[0 for _ in range(cqi[1] - cqi[0] + 1)] for _ in
+                                   range(self.collect_data['gnb_info']['max_layer'])]
             for i in range(iteration):
                 frame: List[List[List[List[int]]]] = self.collect_data[algo][i]
                 for f in range(self.collect_data['gnb_info']['freq']):
                     for t in range(self.collect_data['gnb_info']['time']):
                         count_lapped: int = 0
                         for l in range(self.collect_data['gnb_info']['max_layer']):
-                            if frame[l][f][t] > 0:     # BU in layer l is used
+                            if frame[l][f][t] > 0:  # BU in layer l is used
                                 count_lapped += 1
-                        data_count_layer[algo][count_lapped] += 1     # tmp_count of UEs lap on BU(f, t)
+                        data_count_layer[algo][count_lapped] += 1  # tmp_count of UEs lap on BU(f, t)
 
                         for l in range(self.collect_data['gnb_info']['max_layer']):
-                            if frame[l][f][t] > 0:     # BU in layer l is used
-                                data_count_bu[algo][count_lapped - 1][frame[l][f][t] - 1] += 1
+                            if frame[l][f][t] > 0:  # BU in layer l is used
+                                data_count_bu[algo][count_lapped - 1][frame[l][f][t] - 1 - cqi[0]] += 1
 
             count_bu_flat: int = self.collect_data['gnb_info']['freq'] * self.collect_data['gnb_info']['time']
             for x in range(self.collect_data['gnb_info']['max_layer'] + 1):
                 data_count_layer[algo][x] /= (count_bu_flat * iteration)
-            for x in range(len(data_count_bu[algo])):
-                for c in range(self.collect_data['gnb_info']['max_layer']):
+            for x in range(self.collect_data['gnb_info']['max_layer']):
+                for c in range(cqi[1] - cqi[0] + 1):
                     data_count_bu[algo][x][c] /= iteration
             assert False not in [data_count_layer[algo][x] <= 1 for x in range(len(data_count_layer[algo]))], 'Data gathering error.'
 
         bar_chart(f'Frame overlap of {layer_or_ue}',
                   'The number of overlapped UE', [i for i in range(self.collect_data['gnb_info']['max_layer'] + 1)],
                   'Percentage of BU(%)', data_count_layer,
-                  f'{output_file_path}/noma_lap_{layer_or_ue}_{datetime.today().strftime("%m%d-%H%M")}', {'iteration': iteration, 'layer_or_ue': layer_or_ue})
+                  f'{output_file_path}/noma_lap_{layer_or_ue}_{datetime.today().strftime("%m%d-%H%M")}',
+                  {'iteration': iteration, 'layer_or_ue': layer_or_ue})
         bar_chart_grouped_stacked(f'The MCS used in a frame of {layer_or_ue}',
                                   'The number of overlapped UE', 'The number BU',
                                   f'{output_file_path}/noma_mcs_{layer_or_ue}_{datetime.today().strftime("%m%d-%H%M")}',
