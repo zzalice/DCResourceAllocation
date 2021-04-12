@@ -154,7 +154,7 @@ class AdjustMCS(Undo):
 
     def from_highest_mcs(self, ue: UE, ue_rb_list: List[ResourceBlock], channel_model: ChannelModel):
         ue_rb_list.sort(key=lambda x: x.mcs.value, reverse=True)
-        return self.pick_in_order(ue, ue_rb_list, channel_model)
+        self.pick_in_order(ue, ue_rb_list, channel_model)
 
     def from_lapped_rb(self, ue: UE, rb_position: LappingPositionList, channel_model: ChannelModel):
         """
@@ -222,13 +222,7 @@ class AdjustMCS(Undo):
                     qos_fulfilled: bool = True
                 pointer += 1
 
-        if qos_fulfilled:
-            assert count_rb == len(nb_info.rb)
-            nb_info.mcs = current_mcs
-            ue.update_throughput()
-            ue.is_to_recalculate_mcs = False
-            return count_rb
-        elif count_rb == 0 and pointer == len(rb_list):
+        if count_rb == 0 and pointer == len(rb_list):
             # the RBs in rb_list are all CQI 0
             ue.remove_ue()
             return count_rb
@@ -236,14 +230,24 @@ class AdjustMCS(Undo):
             # need more RBs
             for _ in range(count_rb, current_mcs.calc_required_rb_count(ue.request_data_rate)):
                 # add continuous RBs
-                if NewResource().add_one_continuous_rb(ue, channel_model):
+                if rb := NewResource().add_one_continuous_rb(ue, channel_model):
                     count_rb += 1
+                    if rb.mcs.efficiency < current_mcs.efficiency:
+                        current_mcs: Union[G_MCS, E_MCS] = rb.mcs
                 else:  # no continuous empty space or ue overlapped with itself or the MCS of new RB is out of range
                     ue.remove_ue()
                     return 0
+            # assert throughput滿足QoS
+            qos_fulfilled: bool = True
+
+        if qos_fulfilled:
+            assert count_rb == len(nb_info.rb)
+            nb_info.update_mcs()
+            assert current_mcs == nb_info.mcs
+            ue.update_throughput()
+            ue.is_to_recalculate_mcs = False
             return count_rb
-        else:
-            raise AssertionError
+        raise AssertionError
 
     @Undo.undo_func_decorator
     def remove_from_tail(self, ue: UE, allow_lower_mcs: bool = True, allow_lower_than_cqi0: bool = True,

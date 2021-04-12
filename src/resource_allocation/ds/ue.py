@@ -76,6 +76,7 @@ class UserEquipment:
                 assert self.enb_info.mcs is None and not self.enb_info.rb, "The MCS is not up-to-date."
 
         self._throughput = self.calc_throughput()
+        assert self._throughput >= self.request_data_rate
 
     def calc_throughput(self) -> float:
         """ Won't change any value in UserEquipment. """
