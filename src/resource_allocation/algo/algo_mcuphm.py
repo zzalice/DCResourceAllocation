@@ -19,7 +19,7 @@ class McupHm:
         # count how many RB a UE will need
         qos: List[float] = [i / (1000 // (nb.frame.frame_time // 8)) for i in qos]  # bps to bit per frame
         qos_avg: float = (qos[0] + qos[1]) / 2  # bit per frame
-        rate_rb: float = G_MCS.CQI15.value if nb.nb_type == NodeBType.G else E_MCS.CQI15.value  # bit per RB
+        rate_rb: float = G_MCS.get_best().value if nb.nb_type == NodeBType.G else E_MCS.get_best().value  # bit per RB
         count_ue_rb: int = ceil(qos_avg / rate_rb)
 
         # count how many RB in a layer
