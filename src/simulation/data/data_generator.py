@@ -137,18 +137,18 @@ class DataGenerator:
 
                 f'gNB-------\n' +
                 f'max layer: {self.gnb_layer}\n' +
-                f'radius: {self.gnb_radius}\n' +
-                f'coordinate: {self.gnb_coordinate}\n' +
                 f'frame, freq(in BU): {self.gnb_freq}\n' +
                 f'frame, time(in BU): {self.gnb_time}\n' +
+                f'radius: {self.gnb_radius}\n' +
+                f'coordinate: {self.gnb_coordinate}\n' +
                 f'tx power: {self.gnb_tx_power}\n' +
                 f'inr discount: {self.inr_discount}\n\n' +
 
                 f'eNB-------\n' +
-                f'radius: {self.enb_radius}\n' +
-                f'coordinate: {self.enb_coordinate}\n' +
                 f'frame, freq(in BU): {self.enb_freq}\n' +
                 f'frame, time(in BU): {self.enb_time}\n' +
+                f'radius: {self.enb_radius}\n' +
+                f'coordinate: {self.enb_coordinate}\n' +
                 f'tx power: {self.enb_tx_power}\n\n' +
 
                 f'co-channel BW(in BU): {self.cochannel_bandwidth}\n' +

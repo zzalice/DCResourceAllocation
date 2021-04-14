@@ -50,10 +50,11 @@ if __name__ == '__main__':
     # for i in num_of_layer:
     #     para = {'output_file_path': f'{output_folder}/{i}layer',
     # # --- for ue ---
-    # # due:gue:eue_num = 3:4:17   when radius are 0.5 and 0.3
-    # # due:gue:eue_num = 2:3:6    when radius are 0.5 and 0.4
+    # # due:gue:eue_num = 3:4:17   when radius 0.5 and 0.3, coordinate gNB (0.5, 0)
+    # # due:gue:eue_num = 2:3:6    when radius 0.5 and 0.4, coordinate gNB (0.5, 0)
+    # # due:gue:eue_num = 29:21:49    when radius 0.5 and 0.4, coordinate gNB (0.4, 0)
     num_of_total_ue = [60, 80, 100, 120, 140, 160, 180, 200]  # <--- change
-    proportion_of_ue = [2, 3, 6]  # for radius 0.4   <--- change
+    proportion_of_ue = [2, 3, 6]  # <--- change
     num_of_ue = calc_num_ue(num_of_total_ue, proportion_of_ue)
     for i in num_of_ue:
         para = {'output_file_path': f'{output_folder}/{i["total"]}ue',
