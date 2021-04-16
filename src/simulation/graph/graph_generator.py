@@ -87,7 +87,8 @@ class GraphGenerator:
         for layer_or_total_ue in result:  # only one
             l_or_u: str = layer_or_total_ue.replace('layer', '')
             l_or_u: int = int(l_or_u.replace('ue', ''))
-            self._increase_iter(l_or_u, iteration)
+            if not self._increase_iter(l_or_u, iteration):
+                return True
             for algo in result[layer_or_total_ue]:
                 allocated_ue, unallocated_ue = divide_ue(result[layer_or_total_ue][algo][2] +
                                                          result[layer_or_total_ue][algo][3] +
@@ -135,17 +136,20 @@ class GraphGenerator:
                    output_file_path, {'iteration': iteration})
 
         if collect_unallocated_ue:
-            avg_unallocated_ue: Dict[str, List[float]] = {algo: [] for algo in next(iter(self.collect_data.values()))}
-            #                        algo      avg unallocated ue
-            for t in total_ue:
-                for algo in self.collect_data[t]:
-                    self.collect_data[t][algo] /= iteration
-                    avg_unallocated_ue[algo].append(self.collect_data[t][algo])
-            bar_chart('',
-                      'The number of UE', total_ue,
-                      'The number of unallocated UE', avg_unallocated_ue,
-                      f'{output_file_path}/unallocatedUE_numOfUE_{datetime.today().strftime("%m%d-%H%M")}',
-                      {'iteration': iteration})
+            self.gen_unallocated_ue(total_ue, iteration, output_file_path)
+
+    def gen_unallocated_ue(self, total_ue: List[int], iteration: int, output_file_path: str):
+        avg_unallocated_ue: Dict[str, List[float]] = {algo: [] for algo in next(iter(self.collect_data2.values()))}
+        #                        algo      avg unallocated ue
+        for t in total_ue:
+            for algo in self.collect_data2[t]:
+                self.collect_data2[t][algo] /= iteration
+                avg_unallocated_ue[algo].append(self.collect_data2[t][algo])
+        bar_chart('',
+                  'The number of UE', total_ue,
+                  'The number of unallocated UE', avg_unallocated_ue,
+                  f'{output_file_path}/unallocatedUE_numOfUE_{datetime.today().strftime("%m%d-%H%M")}',
+                  {'iteration': iteration})
 
     # ==================================================================================================================
     def collect_used_percentage(self, iteration: int, result: RESULT):
@@ -153,7 +157,8 @@ class GraphGenerator:
         #                    layer     algo  used BU     number of BU in gNBs
         for max_layer_str in result:  # only one
             l: int = int(max_layer_str.replace('layer', ''))
-            self._increase_iter(l, iteration)
+            if not self._increase_iter(l, iteration):
+                return True
             for algo in result[max_layer_str]:
                 gnb: GNodeB = result[max_layer_str][algo][0]
                 assert l == gnb.frame.max_layer
@@ -204,7 +209,8 @@ class GraphGenerator:
         #                                        ue   [[ue.x, ue.y], ...]
         for layer in result:  # only one
             l: int = int(layer.replace('layer', ''))
-            self._increase_iter(l, iteration)
+            if not self._increase_iter(l, iteration):
+                return True
             for algo in result[layer]:
                 try:
                     self.collect_data[l][algo]['allocated_ue'].extend(self.purge_ue(
@@ -269,7 +275,8 @@ class GraphGenerator:
         #                    layer     algo,     ue   num of allocated ue
         for layer in result:  # only one
             l: int = int(layer.replace('layer', ''))
-            self._increase_iter(l, iteration)
+            if not self._increase_iter(l, iteration):
+                return True
             for algo in result[layer]:
                 try:
                     self.count_allocated_ue(result[layer][algo][2], result[layer][algo][3], result[layer][algo][4],
@@ -344,7 +351,8 @@ class GraphGenerator:
         for topic in result:  # only one. e.g. '300ue' or '1layer'
             if topic != layer_or_ue:
                 continue
-            self._increase_iter(topic, iteration)
+            if not self._increase_iter(topic, iteration):
+                return True
             try:
                 del self.collect_data[topic]
             except KeyError:
@@ -435,16 +443,24 @@ class GraphGenerator:
                                   ['CQI' + str(i) for i in range(cqi[0], cqi[1] + 1)], algorithm, color_gradient=True)
 
     # ==================================================================================================================
-    def _increase_iter(self, key: Union[str, int], iteration: int):
+    def _increase_iter(self, key: Union[str, int], iteration: int) -> bool:
+        """
+        Monitors the iteration.
+        :param key: Layer, number of UE, etc.
+        :param iteration: The limit of the iteration.
+        :return: If returns False means the iteration of data collection has reached the request.
+        """
         try:
             if self.count_iter[key] >= iteration:
-                return True
+                return False
             else:
                 self.count_iter[key] += 1
+                return True
         except KeyError:
             self.count_iter[key] = 1
             self.collect_data[key] = {}
             self.collect_data2[key] = {}
+            return True
 
     @staticmethod
     def _read_data(pickle_data: Dict[str, Dict[str, List[
