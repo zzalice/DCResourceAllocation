@@ -43,7 +43,7 @@ def run_visualize(data, layer_str, num_iter, algo, file_name):
 if __name__ == '__main__':
     file_path: str = '../../src/simulation/graph/0408-231425avg_deploy/gNBCQI1CQI15_eNBCQI1CQI15'
 
-    algorithm: List[str] = ['DC-RA', 'FRSA', 'MSEMA', 'Intuitive']
+    algorithm: List[str] = ['DC-RA', 'FRSA', 'MSEMA', 'Baseline']
     layer_or_ue: str = '460ue'  # '1layer'
     iteration: int = 1
 

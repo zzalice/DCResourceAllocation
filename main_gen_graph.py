@@ -34,7 +34,7 @@ if __name__ == '__main__':
     # ---Graphs for NOMA and INI---
     """
     layer_or_ue: int = 0  # 0 for layer, 1 for ue     <-- change
-    algo: List[str] = ['DC-RA', 'FRSA', 'MSEMA', 'Intuitive']  # <-- change
+    algo: List[str] = ['DC-RA', 'FRSA', 'MSEMA', 'Baseline']  # <-- change
 
     if layer_or_ue == 0:
         layer_or_ue: List[str] = [str(x) + 'layer' for x in l]

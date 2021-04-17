@@ -202,7 +202,7 @@ def visualize(file_name_visualized: Optional[str],
 
 if __name__ == '__main__':
     file_to_visualize = "vis_" + datetime.today().strftime('%Y%m%d')
-    # file_to_visualize = "vis_intuitive_" + datetime.today().strftime('%Y%m%d')
+    # file_to_visualize = "vis_baseline_" + datetime.today().strftime('%Y%m%d')
     # file_to_visualize = "vis_frsa_" + datetime.today().strftime('%Y%m%d')
     # file_to_visualize = "vis_msema_" + datetime.today().strftime('%Y%m%d')
 

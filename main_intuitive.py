@@ -14,7 +14,7 @@ from utils.pickle_generator import visualize_phase_uncategorized_ue
 def intuitive_resource_allocation(data_set, visualize_the_algo: bool = False) -> Tuple[
     GNodeB, ENodeB, List[DUserEquipment], List[GUserEquipment], List[EUserEquipment]]:
     dirname = os.path.dirname(__file__)
-    file_name_vis = "vis_intuitive_" + datetime.today().strftime('%Y%m%d') + ".P"
+    file_name_vis = "vis_baseline_" + datetime.today().strftime('%Y%m%d') + ".P"
     visualization_file_path = os.path.join(dirname, 'utils/frame_visualizer', file_name_vis)
 
     data_set_file_path = os.path.join(dirname, 'src/simulation/data', data_set + '.P')
@@ -35,7 +35,7 @@ def intuitive_resource_allocation(data_set, visualize_the_algo: bool = False) ->
 
     if visualize_the_algo:
         visualize_phase_uncategorized_ue(visualization_file_path, 'wb',
-                                         "intuitive", g_nb, e_nb, g_ue_list, d_ue_list, e_ue_list)
+                                         "baseline", g_nb, e_nb, g_ue_list, d_ue_list, e_ue_list)
     return g_nb, e_nb, d_ue_list, g_ue_list, e_ue_list
 
 

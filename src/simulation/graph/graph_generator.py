@@ -2,7 +2,7 @@ import os
 import pickle
 import re
 from datetime import datetime
-from typing import Any, Dict, List, Tuple, Union
+from typing import Dict, List, Tuple, Union
 
 from src.resource_allocation.algo.utils import bpframe_to_mbps, calc_system_throughput, divide_ue
 from src.resource_allocation.ds.eutran import ENodeB, EUserEquipment
@@ -191,7 +191,7 @@ class GraphGenerator:
         #           e.g. ['1 layer', '2 layer', '3 layer']
         # percentages: Dict[str, List[float]]
         #                   algo      percentage
-        #              e.g. {'DC-RA': [0.98, 0.55, 0.32], 'Intuitive': [0.97, 0.44, 0.22]}
+        #              e.g. {'DC-RA': [0.98, 0.55, 0.32], 'Baseline': [0.97, 0.44, 0.22]}
         x_labels: List[str] = []
         percentages: Dict[str, List[float]] = {}
         for layer in self.collect_data:
@@ -320,7 +320,7 @@ class GraphGenerator:
 
     def gen_allocated_ue(self, iteration: int, layers: List[int], output_file_path: str,
                          ue_label: Tuple[str, ...],
-                         algo_label: Tuple[str, ...] = ('DC-RA', 'FRSA', 'MSEMA', 'Intuitive')):
+                         algo_label: Tuple[str, ...] = ('DC-RA', 'FRSA', 'MSEMA', 'Baseline')):
         """
         :param iteration:
         :param layers: The display order of the number of layers in gNB

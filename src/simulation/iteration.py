@@ -55,10 +55,10 @@ class IterateAlgo:
                 result['MSEMA'] = msema_rb_ra(file_data)
                 print("--- %s min MSEMA ---" % round((time.time() - start_time) / 60, 3))
 
-                # Intuitive
+                # Baseline
                 start_time = time.time()
-                result['Intuitive'] = intuitive_resource_allocation(file_data)
-                print("--- %s min Intui ---" % round((time.time() - start_time) / 60, 3))
+                result['Baseline'] = intuitive_resource_allocation(file_data)
+                print("--- %s min Base ---" % round((time.time() - start_time) / 60, 3))
 
                 with open(file_result, 'ab+') as f:
                     pickle.dump({f'{m}{folder_description}': result}, f)
