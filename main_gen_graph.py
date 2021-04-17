@@ -13,9 +13,13 @@ if __name__ == '__main__':
     i: int = 10  # <-- change
 
     # ---Graphs for ue---
-    ut: List[int] = [300, 400, 500, 600, 700, 800, 900]  # <-- change
-    IterateAlgo(iteration=i, folder_data=f_data).iter_ue(total_ue=ut)
-    GraphGenerator(iteration=i, total_ue=ut, graph_type='increasing ue', collect_unallo_ue=True, folder_result=(f'{f_data}/{f_mcs}',))
+    # ut: List[int] = [300, 400, 500, 600, 700, 800, 900]  # <-- change
+    # IterateAlgo(iteration=i, folder_data=f_data).iter_ue(total_ue=ut)
+    # GraphGenerator(iteration=i, total_ue=ut, graph_type='increasing ue', collect_unallo_ue=True, folder_result=(f'{f_data}/{f_mcs}',))
+
+    # ---Graphs for due to all---
+    p_due: List[int] = [i for i in range(10, 91, 10)]  # <-- change
+    IterateAlgo(iteration=i, folder_data=f_data).iter_due_to_all(due_proportion=p_due)
 
     # ---Graphs for layer---
     # l: List[int] = [1, 2, 3, 4, 5]  # <-- change

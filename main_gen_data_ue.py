@@ -27,9 +27,6 @@ def calc_num_ue(total: List[int], proportion) -> List[Dict[str, int]]:
 
 def gen_data_number_ue(num_of_total_ue: List[int], proportion_of_ue: List[int],
                        parameter: Dict[str, Any], folder: str):
-    # due:gue:eue_num = 3:4:17   when radius 0.5 and 0.3, coordinate gNB (0.5, 0)
-    # due:gue:eue_num = 2:3:6    when radius 0.5 and 0.4, coordinate gNB (0.5, 0)
-    # due:gue:eue_num = 29:21:49    when radius 0.5 and 0.4, coordinate gNB (0.4, 0)
     num_of_ue = calc_num_ue(num_of_total_ue, proportion_of_ue)
     for i in num_of_ue:
         parameter['output_file_path'] = f'{folder}/{i["total"]}ue'
@@ -40,9 +37,40 @@ def gen_data_number_ue(num_of_total_ue: List[int], proportion_of_ue: List[int],
         main_gen_data(parameter)
 
 
+def calc_fixed_due_avg_deploy_others(total_ue: int, due_to_all: List[int], gue_to_eue: List[int]
+                                     ) -> List[Dict[str, int]]:
+    result: List[Dict[str, int]] = []
+    for p in due_to_all:
+        due_num = math.ceil(total_ue * (p / 100))
+        gue_num = math.ceil((total_ue - due_num) * (gue_to_eue[0] / (gue_to_eue[0] + gue_to_eue[1])))
+        eue_num = math.ceil((total_ue - due_num) * (gue_to_eue[1] / (gue_to_eue[0] + gue_to_eue[1])))
+        result.append({'proportion': p, 'due': due_num, 'gue': gue_num, 'eue': eue_num})
+    return result
+
+
+def gen_data_due_to_all(num_of_total_ue: int, proportion_due_to_all: List[int], proportion_gue_to_eue: List[int],
+                        parameter: Dict[str, Any], folder: str):
+    """
+    :param num_of_total_ue:
+    :param proportion_due_to_all: Default as %.
+    :param proportion_gue_to_eue: The proportion of gUE:eUE. Better be average deploy.
+    :param parameter:
+    :param folder:
+    :return:
+    """
+    assert 0 <= proportion_due_to_all[0] and proportion_due_to_all[-1] <= 100
+    num_of_ue = calc_fixed_due_avg_deploy_others(num_of_total_ue, proportion_due_to_all, proportion_gue_to_eue)
+    for i in num_of_ue:
+        parameter['output_file_path'] = f'{folder}/{i["proportion"]}p_due'
+        parameter['due_num'] = i['due']
+        parameter['gue_num'] = i['gue']
+        parameter['eue_num'] = i['eue']
+
+        main_gen_data(parameter)
+
+
 if __name__ == '__main__':
-    date: str = datetime.today().strftime("%m%d-%H%M%S")
-    output_folder: str = f'{date}avg_deploy'  # <--- change
+    output_folder: str = 'avg_deploy'  # <--- change
     para = {'iteration': 100,
             'due_qos': [16_000, 100_000],
             'due_hotspots': (),  # e.g. ((-0.15, 0.0, 0.15, 75),) => (x, y, radius, #ue)
@@ -62,8 +90,11 @@ if __name__ == '__main__':
             # range of MCS: in file resource_allocation/ds/util_enum.py
             }
 
-    # due:gue:eue_num = 3:4:17   when radius 0.5 and 0.3, coordinate gNB (0.5, 0)
-    # due:gue:eue_num = 2:3:6    when radius 0.5 and 0.4, coordinate gNB (0.5, 0)
-    # due:gue:eue_num = 29:21:49    when radius 0.5 and 0.4, coordinate gNB (0.4, 0)
-    gen_data_number_ue(num_of_total_ue=[300, 400, 500, 600, 700, 800, 900],
-                       proportion_of_ue=[2, 3, 6], parameter=para, folder=output_folder)
+    # # due:gue:eue_num = 3:4:17    when radius 0.5 and 0.3, coordinate gNB (0.5, 0)
+    # # due:gue:eue_num = 2:3:6     when radius 0.5 and 0.4, coordinate gNB (0.5, 0)
+    # # due:gue:eue_num = 29:21:49  when radius 0.5 and 0.4, coordinate gNB (0.4, 0)
+    # gen_data_number_ue(num_of_total_ue=[300, 400, 500, 600, 700, 800, 900],
+    #                    proportion_of_ue=[2, 3, 6], parameter=para, folder=f'{datetime.today().strftime("%m%d-%H%M%S")}{output_folder}')
+    gen_data_due_to_all(num_of_total_ue=600,
+                        proportion_due_to_all=[i for i in range(10, 91, 10)],  # [30, 40, 50] means 0.3, 0.4, 0.5
+                        proportion_gue_to_eue=[3, 6], parameter=para, folder=f'{datetime.today().strftime("%m%d-%H%M%S")}{output_folder}')

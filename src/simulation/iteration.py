@@ -25,6 +25,9 @@ class IterateAlgo:
     def iter_ue(self, total_ue: List[int]):
         self.iter(('total ue', total_ue), 'ue')
 
+    def iter_due_to_all(self, due_proportion: List[int]):
+        self.iter(('due to all', due_proportion), 'p_due')
+
     def iter(self, topic: Tuple[str, List[int]], folder_description: str):
         file_result: str = self.create_file(topic, folder_description)
 
