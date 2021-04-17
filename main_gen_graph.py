@@ -20,6 +20,7 @@ if __name__ == '__main__':
     # ---Graphs for due to all---
     p_due: List[int] = [i for i in range(10, 91, 10)]  # <-- change
     IterateAlgo(iteration=i, folder_data=f_data).iter_due_to_all(due_proportion=p_due)
+    GraphGenerator(iteration=i, percentage=p_due, graph_type='due to all', folder_result=(f'{f_data}/{f_mcs}',))
 
     # ---Graphs for layer---
     # l: List[int] = [1, 2, 3, 4, 5]  # <-- change
