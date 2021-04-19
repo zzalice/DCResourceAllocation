@@ -27,6 +27,7 @@ def intuitive_resource_allocation(data_set, visualize_the_algo: bool = False) ->
     due_allocated, _ = divide_ue(d_ue_list)
     Intuitive(e_nb, e_ue_list + due_allocated, gue_allocated + due_allocated, channel_model).allocate(
         allow_lower_mcs=False)
+    # FIXME: don't force cross BS. Cross when run out of space
 
     # DC UEs must connect to two BSs
     for due in due_allocated:

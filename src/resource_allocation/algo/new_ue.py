@@ -19,8 +19,14 @@ UE = Union[UserEquipment, GUserEquipment, EUserEquipment, DUserEquipment]
 
 
 class AllocateUEList(Undo):
-    def __init__(self, nb: Union[GNodeB, ENodeB], ue_to_allocate: Tuple[UE], allocated_ue: Tuple[UE],
+    def __init__(self, nb: Union[GNodeB, ENodeB], ue_to_allocate: Tuple[UE, ...], allocated_ue: Tuple[UE, ...],
                  channel_model: ChannelModel):
+        """
+        :param nb:
+        :param ue_to_allocate: In the order to allocate. The algorithm will pop from first element.
+        :param allocated_ue:
+        :param channel_model:
+        """
         super().__init__()
         self.nb: Union[GNodeB, ENodeB] = nb
         self.unallocated_ue: List[UE] = list(ue_to_allocate)
