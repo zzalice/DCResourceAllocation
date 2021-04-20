@@ -2,11 +2,11 @@ from typing import List, Tuple, Union
 
 from src.channel_model.sinr import ChannelModel
 from src.resource_allocation.algo.new_ue import AllocateUEList, AllocateUEListSameNumerology
+from src.resource_allocation.algo.utils import sort_by_channel_quality
 from src.resource_allocation.ds.eutran import ENodeB, EUserEquipment
 from src.resource_allocation.ds.ngran import DUserEquipment, GNodeB, GUserEquipment
 from src.resource_allocation.ds.ue import UserEquipment
 from src.resource_allocation.ds.undo import Undo
-from src.resource_allocation.ds.util_enum import NodeBType, UEType
 
 UE = Union[UserEquipment, GUserEquipment, EUserEquipment, DUserEquipment]
 
@@ -28,7 +28,7 @@ class Msema(Undo):
         self.unallocated_ue: List[UE] = list(ue_list)
 
         # lap with same numerology or unused BU in any layer
-        self.sort_by_channel_quality()  # from good channel quality
+        self.unallocated_ue: List[UE] = sort_by_channel_quality(self.unallocated_ue, self.nb.nb_type)
         same_numerology: AllocateUEListSameNumerology = AllocateUEListSameNumerology(self.nb,
                                                                                      tuple(self.unallocated_ue),
                                                                                      tuple(self.allocated_ue),
@@ -38,17 +38,6 @@ class Msema(Undo):
         self.unallocated_ue = same_numerology.unallocated_ue
 
         # allocate to any empty space
-        self.sort_by_channel_quality()  # from good channel quality
+        self.unallocated_ue: List[UE] = sort_by_channel_quality(self.unallocated_ue, self.nb.nb_type)
         AllocateUEList(self.nb, tuple(self.unallocated_ue), tuple(self.allocated_ue), self.channel_model).allocate(
             allow_lower_than_cqi0=False)
-
-    def sort_by_channel_quality(self):
-        self.unallocated_ue.sort(key=lambda x: x.request_data_rate, reverse=True)
-        if self.nb.nb_type == NodeBType.G:
-            assert UEType.E not in [ue.ue_type for ue in self.unallocated_ue]
-            self.unallocated_ue.sort(key=lambda x: x.coordinate.distance_gnb)
-        elif self.nb.nb_type == NodeBType.E:
-            assert UEType.G not in [ue.ue_type for ue in self.unallocated_ue]
-            self.unallocated_ue.sort(key=lambda x: x.coordinate.distance_enb)
-        else:
-            raise AssertionError

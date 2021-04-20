@@ -4,7 +4,7 @@ from src.channel_model.adjust_mcs import AdjustMCS
 from src.channel_model.sinr import ChannelModel
 from src.resource_allocation.algo.new_resource_allocation import AllocateUE
 from src.resource_allocation.algo.util_type import RBIndex
-from src.resource_allocation.algo.utils import calc_system_throughput
+from src.resource_allocation.algo.utils import calc_system_throughput, sort_by_channel_quality
 from src.resource_allocation.ds.eutran import ENodeB, EUserEquipment
 from src.resource_allocation.ds.frame import BaseUnit, Layer
 from src.resource_allocation.ds.ngran import DUserEquipment, GNodeB, GUserEquipment
@@ -401,3 +401,18 @@ class AllocateUEListSameNumerology(AllocateUEList):
                 assert (not bu.overlapped_ue) or (
                         len(bu.lapped_numerology) == 1), 'Should be either empty in any layer or used.'
         return True
+
+
+class ForceDC(AllocateUEList):
+    def __init__(self, nb: Union[GNodeB, ENodeB], ue_to_allocate: Tuple[UE, ...], allocated_ue: Tuple[UE, ...],
+                 channel_model: ChannelModel):
+        ue_to_allocate: List[UE] = sort_by_channel_quality(list(ue_to_allocate), nb.nb_type)
+        super().__init__(nb, tuple(ue_to_allocate), allocated_ue, channel_model)
+
+    @staticmethod
+    def force_dc(dc_ue_list: Tuple[DUserEquipment, ...]):
+        assert len({ue.ue_type for ue in dc_ue_list}) <= 1
+        # DC UEs must connect to two BSs
+        for due in dc_ue_list:
+            if not due.cross_nb and due.is_allocated:
+                due.remove_ue()

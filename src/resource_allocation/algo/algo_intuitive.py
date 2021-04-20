@@ -2,11 +2,11 @@ from typing import List, Optional, Tuple, Union
 
 from src.channel_model.sinr import ChannelModel
 from src.resource_allocation.algo.new_ue import AllocateUEList
+from src.resource_allocation.algo.utils import sort_by_channel_quality
 from src.resource_allocation.ds.eutran import ENodeB, EUserEquipment
 from src.resource_allocation.ds.ngran import DUserEquipment, GNodeB, GUserEquipment
 from src.resource_allocation.ds.space import empty_space, Space
 from src.resource_allocation.ds.ue import UserEquipment
-from src.resource_allocation.ds.util_enum import NodeBType
 
 UE = Union[UserEquipment, GUserEquipment, DUserEquipment, EUserEquipment]
 
@@ -14,15 +14,8 @@ UE = Union[UserEquipment, GUserEquipment, DUserEquipment, EUserEquipment]
 class Intuitive(AllocateUEList):
     def __init__(self, nb: Union[GNodeB, ENodeB], ue_to_allocate: Tuple[UE, ...], allocated_ue: Tuple[UE, ...],
                  channel_model: ChannelModel):
-        # sort by channel quality
-        if nb.nb_type == NodeBType.G:
-            ue_to_allocate: List[UE] = sorted(ue_to_allocate, key=lambda x: x.coordinate.distance_gnb)
-        elif nb.nb_type == NodeBType.E:
-            ue_to_allocate: List[UE] = sorted(ue_to_allocate, key=lambda x: x.coordinate.distance_enb)
-        else:
-            raise AssertionError
-        super().__init__(
-            nb=nb, ue_to_allocate=tuple(ue_to_allocate), allocated_ue=allocated_ue, channel_model=channel_model)
+        ue_to_allocate: List[UE] = sort_by_channel_quality(list(ue_to_allocate), nb.nb_type)
+        super().__init__(nb, tuple(ue_to_allocate), allocated_ue, channel_model)
 
     @staticmethod
     def update_empty_space(nb: Union[GNodeB, ENodeB]):
