@@ -78,6 +78,10 @@ class LTEResourceBlock(_Numerology):
 
 
 class _MCS(Enum):
+    @property
+    def index(self) -> int:
+        return int(self.name.replace('CQI', ''))
+
     def calc_required_rb_count(self, request_data_rate: float) -> int:
         if self.value == 0.0:
             return 0

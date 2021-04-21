@@ -55,8 +55,9 @@ class GraphGenerator:
                         elif graph_type == 'allocated ue' or graph_type == 'total_allocated_ue':
                             self.collect_allocated_ue(kwargs['iteration'], algo_result)
                         elif graph_type == 'NOMA':
-                            self.collect_noma(kwargs['iteration'], kwargs['layer_or_ue'], kwargs['algorithm'],
-                                              algo_result)
+                            self.collect_noma(kwargs['iteration'], kwargs['layer_or_ue'], kwargs['algorithm'], algo_result)
+                        elif graph_type == 'CQI':
+                            self.collect_ue_cqi(kwargs['iteration'], kwargs['layer_or_ue'], kwargs['algorithm'], algo_result, file_path)
                     except EOFError:
                         if graph_type == 'sys throughput - layer':
                             self.gen_sys_throughput_layer(kwargs['iteration'], kwargs['layers'], file_path)
@@ -69,13 +70,13 @@ class GraphGenerator:
                         elif graph_type == 'deployment':
                             self.gen_deployment(kwargs['iteration'], kwargs['layers'], file_path)
                         elif graph_type == 'allocated ue':
-                            self.gen_allocated_ue(kwargs['iteration'], kwargs['layers'], file_path,
-                                                  ue_label=('eUE', 'dUE_in_eNB', 'gUE', 'dUE_in_gNB', 'dUE_cross_BS'))
+                            self.gen_allocated_ue(kwargs['iteration'], kwargs['layers'], file_path, ue_label=('eUE', 'dUE_in_eNB', 'gUE', 'dUE_in_gNB', 'dUE_cross_BS'))
                         elif graph_type == 'total_allocated_ue':
-                            self.gen_allocated_ue(kwargs['iteration'], kwargs['layers'], file_path,
-                                                  ue_label=('total',))
+                            self.gen_allocated_ue(kwargs['iteration'], kwargs['layers'], file_path, ue_label=('total',))
                         elif graph_type == 'NOMA':
                             self.gen_noma_overlap_status(kwargs['iteration'], kwargs['layer_or_ue'], kwargs['algorithm'], file_path)
+                        elif graph_type == 'CQI':
+                            self.gen_ue_cqi(kwargs['iteration'], kwargs['layer_or_ue'], file_path)
                         break
 
     # ==================================================================================================================
@@ -406,8 +407,7 @@ class GraphGenerator:
         # X: The overlapped layer, 0 ~ frame.max_layer. Y: The number of BU using curtain CQI
         data_count_bu: Dict[str, List[List[int]]] = {}
         #                   algo layer CQI
-        gnb_cqi: str = re.search('gNBCQI(\\d+)CQI(\\d+)', output_file_path).group()
-        cqi = [int(re.findall('CQI(\\d+)', gnb_cqi).pop(0)), int(re.findall('CQI(\\d+)', gnb_cqi).pop(1))]
+        cqi = self.get_cqi(output_file_path, 'gNB')
 
         # data
         for algo in self.collect_data:
@@ -452,6 +452,76 @@ class GraphGenerator:
                                   ['CQI' + str(i) for i in range(cqi[0], cqi[1] + 1)], algorithm, color_gradient=True)
 
     # ==================================================================================================================
+    def collect_ue_cqi(self, iteration: int, layer_or_ue: str, algorithm: List[str], result: RESULT, output_file_path: str):
+        # collect_data: Dict[str, Dict[str, List[int]]]
+        #                    algo      NB   CQI  number of allocated ue using the CQI
+        for topic in result:  # only one. e.g. '300ue' or '1layer'
+            if topic != layer_or_ue:
+                continue
+            if not self._increase_iter(topic, iteration):
+                return True
+            try:
+                del self.collect_data[topic]
+            except KeyError:
+                pass
+            for algo in result[topic]:
+                if algo not in algorithm:
+                    continue
+
+                gnb_cqi: List[int] = self.get_cqi(output_file_path, 'gNB')
+                enb_cqi: List[int] = self.get_cqi(output_file_path, 'eNB')
+                try:
+                    self._collect_ue_cqi(algo, gnb_cqi, enb_cqi,
+                                         result[topic][algo][2], result[topic][algo][3], result[topic][algo][4])
+                except KeyError:
+                    self.collect_data[algo] = {'gNB': [0 for _ in range(gnb_cqi[1] - gnb_cqi[0] + 1)],
+                                               'eNB': [0 for _ in range(enb_cqi[1] - enb_cqi[0] + 1)]}
+                    self._collect_ue_cqi(algo, gnb_cqi, enb_cqi,
+                                         result[topic][algo][2], result[topic][algo][3], result[topic][algo][4])
+
+    def _collect_ue_cqi(self, algo: str, gnb_cqi: List[int], enb_cqi: List[int],
+                        due_list: List[DUserEquipment], gue_list: List[GUserEquipment], eue_list: List[EUserEquipment]):
+        # gNB
+        for ue in filter(lambda x: x.is_allocated, due_list + gue_list):
+            if ue.ue_type == UEType.D and not ue.gnb_info.rb:   # dUE not allocated to gNB
+                continue
+            assert ue.gnb_info.mcs, "UE status wasn't updated."
+            self.collect_data[algo]['gNB'][ue.gnb_info.mcs.index - gnb_cqi[0]] += 1
+
+        # eNB
+        for ue in filter(lambda x: x.is_allocated, due_list + eue_list):
+            if ue.ue_type == UEType.D and not ue.enb_info.rb:  # dUE not allocated to eNB
+                continue
+            assert ue.enb_info.mcs, "UE status wasn't updated."
+            self.collect_data[algo]['eNB'][ue.enb_info.mcs.index - enb_cqi[0]] += 1
+
+    def gen_ue_cqi(self, iteration: int, layer_or_ue: str, output_file_path: str):
+        # avg
+        gnb_cqi_data: Dict[str, List[float]] = {}
+        enb_cqi_data: Dict[str, List[float]] = {}
+        for algo in self.collect_data:
+            gnb_cqi_data[algo] = []
+            enb_cqi_data[algo] = []
+            for nb in self.collect_data[algo]:
+                for ue_of_cqi in self.collect_data[algo][nb]:
+                    ue_of_cqi /= iteration
+                    (gnb_cqi_data[algo] if nb == 'gNB' else enb_cqi_data[algo]).append(ue_of_cqi)
+
+        # draw two graphs
+        gnb_cqi: List[int] = self.get_cqi(output_file_path, 'gNB')
+        enb_cqi: List[int] = self.get_cqi(output_file_path, 'eNB')
+        bar_chart(f'The CQI in {layer_or_ue}',
+                  'The available CQI in gNB', [str(i) for i in range(gnb_cqi[0], gnb_cqi[1]+1)],
+                  'The number of allocated UE', gnb_cqi_data,
+                  f'{output_file_path}/cqi_{layer_or_ue}_gNB_{datetime.today().strftime("%m%d-%H%M")}',
+                  {'iteration': iteration, 'layer_or_ue': layer_or_ue})
+        bar_chart(f'The CQI in {layer_or_ue}',
+                  'The available CQI in eNB', [str(i) for i in range(enb_cqi[0], enb_cqi[1]+1)],
+                  'The number of allocated UE', enb_cqi_data,
+                  f'{output_file_path}/cqi_{layer_or_ue}_eNB_{datetime.today().strftime("%m%d-%H%M")}',
+                  {'iteration': iteration, 'layer_or_ue': layer_or_ue})
+
+    # ==================================================================================================================
     def _increase_iter(self, key: Union[str, int], iteration: int) -> bool:
         """
         Monitors the iteration.
@@ -470,3 +540,9 @@ class GraphGenerator:
             self.collect_data[key] = {}
             self.collect_data2[key] = {}
             return True
+
+    @staticmethod
+    def get_cqi(output_file_path: str, nb: str = 'gNB') -> List[int]:
+        nb_cqi: str = re.search(nb + 'CQI(\\d+)CQI(\\d+)', output_file_path).group()
+        find_all = re.findall('CQI(\\d+)', nb_cqi)
+        return [int(find_all.pop(0)), int(find_all.pop(0))]
