@@ -47,6 +47,5 @@ if __name__ == '__main__':
     algo: List[str] = ['DC-RA', 'FRSA', 'MSEMA', 'Baseline']  # <-- change
 
     layer_or_ue: List[str] = layer_or_ue(l_or_u, l, ut)
-    for m in layer_or_ue:
-        # GraphGenerator(iteration=i, graph_type='NOMA', layer_or_ue=m, algorithm=algo, folder_result=(f'{f_data}/{f_mcs}',))
-        GraphGenerator(iteration=i, graph_type='CQI', layer_or_ue=m, algorithm=algo, folder_result=(f'{f_data}/{f_mcs}',))
+    # GraphGenerator(iteration=i, graph_type='NOMA', layer_or_ue=layer_or_ue, algorithm=algo, folder_result=(f'{f_data}/{f_mcs}',))
+    GraphGenerator(iteration=i, graph_type='CQI', layer_or_ue=layer_or_ue, algorithm=algo, folder_result=(f'{f_data}/{f_mcs}',))

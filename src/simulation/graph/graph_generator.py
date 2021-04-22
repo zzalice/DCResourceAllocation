@@ -74,9 +74,9 @@ class GraphGenerator:
                         elif graph_type == 'total_allocated_ue':
                             self.gen_allocated_ue(kwargs['iteration'], kwargs['layers'], file_path, ue_label=('total',))
                         elif graph_type == 'NOMA':
-                            self.gen_noma_overlap_status(kwargs['iteration'], kwargs['layer_or_ue'], kwargs['algorithm'], file_path)
+                            self.gen_noma_overlap_status(kwargs['iteration'], kwargs['algorithm'], file_path)
                         elif graph_type == 'CQI':
-                            self.gen_ue_cqi(kwargs['iteration'], kwargs['layer_or_ue'], file_path)
+                            self.gen_ue_cqi(kwargs['iteration'], file_path)
                         break
 
     # ==================================================================================================================
@@ -355,32 +355,28 @@ class GraphGenerator:
                                   algo_label)
 
     # ==================================================================================================================
-    def collect_noma(self, iteration: int, layer_or_ue: str, algorithm: List[str], result: RESULT):
+    def collect_noma(self, iteration: int, layer_or_ue: List[str], algorithm: List[str], result: RESULT):
         # collect_data: Dict[str, List[List[List[List[int]]], ...]]
         #                    algo iter layer freq time CQI index, '0' for empty
         for topic in result:  # only one. e.g. '300ue' or '1layer'
-            if topic != layer_or_ue:
+            if topic not in layer_or_ue:
                 continue
             if not self._increase_iter(topic, iteration):
                 return True
-            try:
-                del self.collect_data[topic]
-            except KeyError:
-                pass
             for algo in result[topic]:
                 if algo not in algorithm:
                     continue
                 gnb: GNodeB = result[topic][algo][0]
                 try:
-                    self.collect_data[algo].append(self.collect_cqi(gnb))
+                    self.collect_data[topic][algo].append(self.collect_cqi(gnb))
                 except KeyError:
-                    self.collect_data[algo] = [self.collect_cqi(gnb)]
+                    self.collect_data[topic][algo] = [self.collect_cqi(gnb)]
                 try:
-                    assert self.collect_data['gnb_info'] == {'max_layer': gnb.frame.max_layer,
+                    assert self.collect_data[topic]['gnb_info'] == {'max_layer': gnb.frame.max_layer,
                                                              'freq': gnb.frame.frame_freq, 'time': gnb.frame.frame_time
                                                              }, 'The result will be incomparable.'
                 except KeyError:
-                    self.collect_data['gnb_info'] = {'max_layer': gnb.frame.max_layer,
+                    self.collect_data[topic]['gnb_info'] = {'max_layer': gnb.frame.max_layer,
                                                      'freq': gnb.frame.frame_freq, 'time': gnb.frame.frame_time}
 
     @staticmethod
@@ -398,7 +394,7 @@ class GraphGenerator:
                         cqi[layer][freq][time]: int = 0
         return cqi
 
-    def gen_noma_overlap_status(self, iteration: int, layer_or_ue: str, algorithm: List[str], output_file_path: str):
+    def gen_noma_overlap_status(self, iteration: int, algorithm: List[str], output_file_path: str):
         assert self.collect_data, "Can't find layer_or_ue."
 
         # X: The overlapped layer, 0 ~ frame.max_layer. Y: The number of BU / the number of BU in a layer, float
@@ -410,60 +406,57 @@ class GraphGenerator:
         cqi = self.get_cqi(output_file_path, 'gNB')
 
         # data
-        for algo in self.collect_data:
-            if algo not in algorithm:
-                continue
-            data_count_layer[algo] = [0 for _ in range(self.collect_data['gnb_info']['max_layer'] + 1)]
-            data_count_bu[algo] = [[0 for _ in range(cqi[1] - cqi[0] + 1)] for _ in
-                                   range(self.collect_data['gnb_info']['max_layer'])]
-            for i in range(iteration):
-                frame: List[List[List[List[int]]]] = self.collect_data[algo][i]
-                for f in range(self.collect_data['gnb_info']['freq']):
-                    for t in range(self.collect_data['gnb_info']['time']):
-                        count_lapped: int = 0
-                        for l in range(self.collect_data['gnb_info']['max_layer']):
-                            if frame[l][f][t] > 0:  # BU in layer l is used
-                                count_lapped += 1
-                        data_count_layer[algo][count_lapped] += 1  # tmp_count of UEs lap on BU(f, t)
+        for topic in self.collect_data:
+            for algo in self.collect_data[topic]:
+                if algo not in algorithm:
+                    continue
+                data_count_layer[algo] = [0 for _ in range(self.collect_data[topic]['gnb_info']['max_layer'] + 1)]
+                data_count_bu[algo] = [[0 for _ in range(cqi[1] - cqi[0] + 1)] for _ in
+                                       range(self.collect_data[topic]['gnb_info']['max_layer'])]
+                for i in range(iteration):
+                    frame: List[List[List[List[int]]]] = self.collect_data[topic][algo][i]
+                    for f in range(self.collect_data[topic]['gnb_info']['freq']):
+                        for t in range(self.collect_data[topic]['gnb_info']['time']):
+                            count_lapped: int = 0
+                            for l in range(self.collect_data[topic]['gnb_info']['max_layer']):
+                                if frame[l][f][t] > 0:  # BU in layer l is used
+                                    count_lapped += 1
+                            data_count_layer[algo][count_lapped] += 1  # tmp_count of UEs lap on BU(f, t)
 
-                        for l in range(self.collect_data['gnb_info']['max_layer']):
-                            if frame[l][f][t] > 0:  # BU in layer l is used
-                                data_count_bu[algo][count_lapped - 1][frame[l][f][t] - 1 - cqi[0]] += 1
+                            for l in range(self.collect_data[topic]['gnb_info']['max_layer']):
+                                if frame[l][f][t] > 0:  # BU in layer l is used
+                                    data_count_bu[algo][count_lapped - 1][frame[l][f][t] - 1 - cqi[0]] += 1
 
-            count_bu_flat: int = self.collect_data['gnb_info']['freq'] * self.collect_data['gnb_info']['time']
-            for x in range(self.collect_data['gnb_info']['max_layer'] + 1):
-                data_count_layer[algo][x] /= (count_bu_flat * iteration)
-            for x in range(self.collect_data['gnb_info']['max_layer']):
-                for c in range(cqi[1] - cqi[0] + 1):
-                    data_count_bu[algo][x][c] /= iteration
-            assert False not in [data_count_layer[algo][x] <= 1 for x in range(len(data_count_layer[algo]))], 'Data gathering error.'
+                count_bu_flat: int = self.collect_data[topic]['gnb_info']['freq'] * self.collect_data[topic]['gnb_info']['time']
+                for x in range(self.collect_data[topic]['gnb_info']['max_layer'] + 1):
+                    data_count_layer[algo][x] /= (count_bu_flat * iteration)
+                for x in range(self.collect_data[topic]['gnb_info']['max_layer']):
+                    for c in range(cqi[1] - cqi[0] + 1):
+                        data_count_bu[algo][x][c] /= iteration
+                assert False not in [data_count_layer[algo][x] <= 1 for x in range(len(data_count_layer[algo]))], 'Data gathering error.'
 
-        bar_chart(f'Frame overlap of {layer_or_ue}',
-                  'The number of overlapped UE', [i for i in range(self.collect_data['gnb_info']['max_layer'] + 1)],
-                  'Percentage of BU(%)', data_count_layer,
-                  f'{output_file_path}/noma_lap_{layer_or_ue}_{datetime.today().strftime("%m%d-%H%M")}',
-                  {'iteration': iteration, 'layer_or_ue': layer_or_ue})
-        bar_chart_grouped_stacked(f'The MCS used in a frame of {layer_or_ue}',
-                                  'The number of overlapped UE', 'The number BU',
-                                  f'{output_file_path}/noma_mcs_{layer_or_ue}_{datetime.today().strftime("%m%d-%H%M")}',
-                                  {'iteration': iteration, 'layer_or_ue': layer_or_ue},
-                                  data_count_bu,
-                                  [str(i + 1) for i in range(self.collect_data['gnb_info']['max_layer'])],
-                                  ['CQI' + str(i) for i in range(cqi[0], cqi[1] + 1)], algorithm, color_gradient=True)
+            bar_chart(f'Frame overlap of {topic}',
+                      'The number of overlapped UE', [i for i in range(self.collect_data[topic]['gnb_info']['max_layer'] + 1)],
+                      'Percentage of BU(%)', data_count_layer,
+                      f'{output_file_path}/noma_lap_{topic}_{datetime.today().strftime("%m%d-%H%M")}',
+                      {'iteration': iteration, 'layer_or_ue': topic})
+            bar_chart_grouped_stacked(f'The MCS used in a frame of {topic}',
+                                      'The number of overlapped UE', 'The number BU',
+                                      f'{output_file_path}/noma_mcs_{topic}_{datetime.today().strftime("%m%d-%H%M")}',
+                                      {'iteration': iteration, 'layer_or_ue': topic},
+                                      data_count_bu,
+                                      [str(i + 1) for i in range(self.collect_data[topic]['gnb_info']['max_layer'])],
+                                      ['CQI' + str(i) for i in range(cqi[0], cqi[1] + 1)], algorithm, color_gradient=True)
 
     # ==================================================================================================================
-    def collect_ue_cqi(self, iteration: int, layer_or_ue: str, algorithm: List[str], result: RESULT, output_file_path: str):
+    def collect_ue_cqi(self, iteration: int, layer_or_ue: List[str], algorithm: List[str], result: RESULT, output_file_path: str):
         # collect_data: Dict[str, Dict[str, List[int]]]
         #                    algo      NB   CQI  number of allocated ue using the CQI
         for topic in result:  # only one. e.g. '300ue' or '1layer'
-            if topic != layer_or_ue:
+            if topic not in layer_or_ue:
                 continue
             if not self._increase_iter(topic, iteration):
                 return True
-            try:
-                del self.collect_data[topic]
-            except KeyError:
-                pass
             for algo in result[topic]:
                 if algo not in algorithm:
                     continue
@@ -471,55 +464,56 @@ class GraphGenerator:
                 gnb_cqi: List[int] = self.get_cqi(output_file_path, 'gNB')
                 enb_cqi: List[int] = self.get_cqi(output_file_path, 'eNB')
                 try:
-                    self._collect_ue_cqi(algo, gnb_cqi, enb_cqi,
+                    self._collect_ue_cqi(topic, algo, gnb_cqi, enb_cqi,
                                          result[topic][algo][2], result[topic][algo][3], result[topic][algo][4])
                 except KeyError:
-                    self.collect_data[algo] = {'gNB': [0 for _ in range(gnb_cqi[1] - gnb_cqi[0] + 1)],
-                                               'eNB': [0 for _ in range(enb_cqi[1] - enb_cqi[0] + 1)]}
-                    self._collect_ue_cqi(algo, gnb_cqi, enb_cqi,
+                    self.collect_data[topic][algo] = {'gNB': [0 for _ in range(gnb_cqi[1] - gnb_cqi[0] + 1)],
+                                                      'eNB': [0 for _ in range(enb_cqi[1] - enb_cqi[0] + 1)]}
+                    self._collect_ue_cqi(topic, algo, gnb_cqi, enb_cqi,
                                          result[topic][algo][2], result[topic][algo][3], result[topic][algo][4])
 
-    def _collect_ue_cqi(self, algo: str, gnb_cqi: List[int], enb_cqi: List[int],
+    def _collect_ue_cqi(self, topic: str, algo: str, gnb_cqi: List[int], enb_cqi: List[int],
                         due_list: List[DUserEquipment], gue_list: List[GUserEquipment], eue_list: List[EUserEquipment]):
         # gNB
         for ue in filter(lambda x: x.is_allocated, due_list + gue_list):
             if ue.ue_type == UEType.D and not ue.gnb_info.rb:   # dUE not allocated to gNB
                 continue
             assert ue.gnb_info.mcs, "UE status wasn't updated."
-            self.collect_data[algo]['gNB'][ue.gnb_info.mcs.index - gnb_cqi[0]] += 1
+            self.collect_data[topic][algo]['gNB'][ue.gnb_info.mcs.index - gnb_cqi[0]] += 1
 
         # eNB
         for ue in filter(lambda x: x.is_allocated, due_list + eue_list):
             if ue.ue_type == UEType.D and not ue.enb_info.rb:  # dUE not allocated to eNB
                 continue
             assert ue.enb_info.mcs, "UE status wasn't updated."
-            self.collect_data[algo]['eNB'][ue.enb_info.mcs.index - enb_cqi[0]] += 1
+            self.collect_data[topic][algo]['eNB'][ue.enb_info.mcs.index - enb_cqi[0]] += 1
 
-    def gen_ue_cqi(self, iteration: int, layer_or_ue: str, output_file_path: str):
+    def gen_ue_cqi(self, iteration: int, output_file_path: str):
         # avg
         gnb_cqi_data: Dict[str, List[float]] = {}
         enb_cqi_data: Dict[str, List[float]] = {}
-        for algo in self.collect_data:
-            gnb_cqi_data[algo] = []
-            enb_cqi_data[algo] = []
-            for nb in self.collect_data[algo]:
-                for ue_of_cqi in self.collect_data[algo][nb]:
-                    ue_of_cqi /= iteration
-                    (gnb_cqi_data[algo] if nb == 'gNB' else enb_cqi_data[algo]).append(ue_of_cqi)
+        for topic in self.collect_data:
+            for algo in self.collect_data[topic]:
+                gnb_cqi_data[algo] = []
+                enb_cqi_data[algo] = []
+                for nb in self.collect_data[topic][algo]:
+                    for ue_of_cqi in self.collect_data[topic][algo][nb]:
+                        ue_of_cqi /= iteration
+                        (gnb_cqi_data[algo] if nb == 'gNB' else enb_cqi_data[algo]).append(ue_of_cqi)
 
-        # draw two graphs
-        gnb_cqi: List[int] = self.get_cqi(output_file_path, 'gNB')
-        enb_cqi: List[int] = self.get_cqi(output_file_path, 'eNB')
-        bar_chart(f'The CQI in {layer_or_ue}',
-                  'The available CQI in gNB', [str(i) for i in range(gnb_cqi[0], gnb_cqi[1]+1)],
-                  'The number of allocated UE', gnb_cqi_data,
-                  f'{output_file_path}/cqi_{layer_or_ue}_gNB_{datetime.today().strftime("%m%d-%H%M")}',
-                  {'iteration': iteration, 'layer_or_ue': layer_or_ue})
-        bar_chart(f'The CQI in {layer_or_ue}',
-                  'The available CQI in eNB', [str(i) for i in range(enb_cqi[0], enb_cqi[1]+1)],
-                  'The number of allocated UE', enb_cqi_data,
-                  f'{output_file_path}/cqi_{layer_or_ue}_eNB_{datetime.today().strftime("%m%d-%H%M")}',
-                  {'iteration': iteration, 'layer_or_ue': layer_or_ue})
+            # draw two graphs
+            gnb_cqi: List[int] = self.get_cqi(output_file_path, 'gNB')
+            enb_cqi: List[int] = self.get_cqi(output_file_path, 'eNB')
+            bar_chart(f'The CQI in {topic}',
+                      'The available CQI in gNB', [str(i) for i in range(gnb_cqi[0], gnb_cqi[1]+1)],
+                      'The number of allocated UE', gnb_cqi_data,
+                      f'{output_file_path}/cqi_{topic}_gNB_{datetime.today().strftime("%m%d-%H%M")}',
+                      {'iteration': iteration, 'layer_or_ue': topic})
+            bar_chart(f'The CQI in {topic}',
+                      'The available CQI in eNB', [str(i) for i in range(enb_cqi[0], enb_cqi[1]+1)],
+                      'The number of allocated UE', enb_cqi_data,
+                      f'{output_file_path}/cqi_{topic}_eNB_{datetime.today().strftime("%m%d-%H%M")}',
+                      {'iteration': iteration, 'layer_or_ue': topic})
 
     # ==================================================================================================================
     def _increase_iter(self, key: Union[str, int], iteration: int) -> bool:
