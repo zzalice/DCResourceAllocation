@@ -73,7 +73,7 @@ if __name__ == '__main__':
     output_folder: str = 'avg_deploy'  # <--- change
     para = {'iteration': 100,
             'due_qos': [16_000, 100_000],
-            'due_hotspots': (),  # e.g. ((-0.15, 0.0, 0.15, 75),) => (x, y, radius, #ue)
+            'due_hotspots': (),  # e.g. ((-0.15, 0.0, 0.15, 75),) => (x, y, radius, #ue) FIXME: Input the "proportion" of UE in hotspot
             'gue_qos': [16_000, 100_000],
             'gue_hotspots': (),
             'eue_qos': [16_000, 100_000],

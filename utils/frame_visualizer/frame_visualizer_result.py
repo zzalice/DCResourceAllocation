@@ -45,6 +45,6 @@ if __name__ == '__main__':
 
     algorithm: List[str] = ['DC-RA', 'FRSA', 'MSEMA', 'Baseline']
     layer_or_ue: str = '460ue'  # '1layer'
-    iteration: int = 1
+    iteration: int = 1  # the index, name of .P file
 
     visualize_result(file_path, algorithm, layer_or_ue, iteration)

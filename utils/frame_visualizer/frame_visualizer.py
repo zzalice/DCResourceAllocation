@@ -137,7 +137,8 @@ class FrameRenderer:
                 self.gen_layer(g_frame[_s].layer[l], float_left=True)
 
             # eFrame
-            self.gen_layer(e_frame[_s].layer[0])
+            if e_frame[_s].frame_freq > 0:
+                self.gen_layer(e_frame[_s].layer[0])
 
             # ue
             self.body.append(
