@@ -70,10 +70,10 @@ def gen_data_due_to_all(num_of_total_ue: int, proportion_due_to_all: List[int], 
 
 
 if __name__ == '__main__':
-    output_folder: str = 'avg_deploy'  # <--- change
+    output_folder: str = 'test_hotspot'  # <--- change
     para = {'iteration': 100,
             'due_qos': [16_000, 100_000],
-            'due_hotspots': (),  # e.g. ((-0.15, 0.0, 0.15, 75),) => (x, y, radius, #ue) FIXME: Input the "proportion" of UE in hotspot
+            'due_hotspots': (),  # e.g. ((0.4, 0.0, 0.09, 0.4),) => (x, y, radius, proportion of ue)
             'gue_qos': [16_000, 100_000],
             'gue_hotspots': (),
             'eue_qos': [16_000, 100_000],
