@@ -73,7 +73,7 @@ if __name__ == '__main__':
     output_folder: str = 'test_hotspot'  # <--- change
     para = {'iteration': 100,
             'due_qos': [16_000, 100_000],
-            'due_hotspots': (),  # e.g. ((0.4, 0.0, 0.09, 0.4),) => (x, y, radius, proportion of ue)
+            'due_hotspots': (),  # e.g. ((0.4, 0.0, 0.09, 0.4),) => (x, y, radius, proportion of ue) FIXME: current hotspot will not be avg deploy for the system outside hotspots
             'gue_qos': [16_000, 100_000],
             'gue_hotspots': (),
             'eue_qos': [16_000, 100_000],

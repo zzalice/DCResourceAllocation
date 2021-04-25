@@ -1,8 +1,10 @@
 import json
+import math
 import os
 import pickle
+import threading
 import time
-from typing import Dict, List, Tuple
+from typing import Any, Dict, List, Tuple
 
 from main import dc_resource_allocation
 from main_frsa import frsa
@@ -19,24 +21,45 @@ class IterateAlgo:
         self.iteration: int = iteration
         self.folder_data: str = folder_data
 
+        self.topic: Dict[str, Any] = {'topic': '', 'item': [], 'folder description': ''}
+        self.folder_graph: str = ''
+
     def iter_layer(self, layers: List[int]):
-        self.iter(('layers', layers), 'layer')
+        self.topic: Dict[str, Any] = {'topic': 'layers', 'item': layers, 'folder description': 'layer'}
+        self.large_iter()
 
     def iter_ue(self, total_ue: List[int]):
-        self.iter(('total ue', total_ue), 'ue')
+        self.topic: Dict[str, Any] = {'topic': 'total ue', 'item': total_ue, 'folder description': 'ue'}
+        self.large_iter()
 
     def iter_due_to_all(self, due_proportion: List[int]):
-        self.iter(('due to all', due_proportion), 'p_due')
+        self.topic: Dict[str, Any] = {'topic': 'due to all', 'item': due_proportion, 'folder description': 'p_due'}
+        self.large_iter()
 
-    def iter(self, topic: Tuple[str, List[int]], folder_description: str):
-        file_result: str = self.create_file(topic, folder_description)
-
+    def large_iter(self):
+        self.new_directory()
+        threads = []
         program_start_time = time.time()
-        for m in topic[1]:
+        for i in range(math.ceil(self.iteration / 10)):
+            iter_lower_bound = i * 10
+            iter_higher_bound = iter_lower_bound + 9 if iter_lower_bound + 9 < self.iteration else self.iteration - 1
+            t = threading.Thread(target=self.iter,
+                                 args=(iter_lower_bound, iter_higher_bound))
+            t.start()
+            threads.append(t)
+        for t in threads:
+            t.join()
+        print("--- Total %s min ---" % round((time.time() - program_start_time) / 60, 1))
+        self.gen_txt_parameter()
+
+    def iter(self, iter_lower_bound: int, iter_higher_bound: int):
+        filename_result: str = self.create_file(iter_lower_bound, iter_higher_bound)
+
+        for m in self.topic['item']:
             print(f'm: {m}')
-            for i in range(self.iteration):
+            for i in range(iter_lower_bound, iter_higher_bound + 1):
                 print(f'i: {i}')
-                file_data: str = f'{self.folder_data}/{m}{folder_description}/{i}'
+                file_data: str = f'{self.folder_data}/{m}{self.topic["folder description"]}/{i}'
                 result: Dict[
                     str, Tuple[GNodeB, ENodeB, List[DUserEquipment], List[GUserEquipment], List[EUserEquipment]]] = {}
 
@@ -60,36 +83,43 @@ class IterateAlgo:
                 result['Baseline'] = intuitive_resource_allocation(file_data)
                 print("--- %s min Base ---" % round((time.time() - start_time) / 60, 3))
 
-                with open(file_result, 'ab+') as f:
-                    pickle.dump({f'{m}{folder_description}': result}, f)
-        print("--- Total %s min ---" % round((time.time() - program_start_time) / 60, 3))
+                with open(filename_result, 'ab+') as f:
+                    pickle.dump({f'{m}{self.topic["folder description"]}': result}, f)
         return True
 
-    def create_file(self, main_topic: Tuple[str, List[int]], folder_description: str) -> str:
-        parameter = {'iteration': self.iteration, main_topic[0]: main_topic[1], 'data folder': self.folder_data,
-                     'gNB MCS': [G_MCS.get_worst().name, G_MCS.get_best().name],
-                     'eNB MCS': [E_MCS.get_worst().name, E_MCS.get_best().name]}
+    def create_file(self, iter_lower_bound: int, iter_higher_bound: int) -> str:
+        assert self.folder_graph != '', 'Run new_directory first.'
 
-        folder_graph: str = f'{os.path.dirname(__file__)}/graph/{self.folder_data}/gNB{parameter["gNB MCS"][0]}{parameter["gNB MCS"][1]}_eNB{parameter["eNB MCS"][0]}{parameter["eNB MCS"][1]}'
-        self._new_directory(folder_graph, main_topic, folder_description)
-        self.gen_txt_parameter(parameter, folder_graph)
+        filename_result: str = f'{self.folder_graph}/result{iter_lower_bound}-{iter_higher_bound}.P'
+        with open(filename_result, 'wb') as f:
+            pickle.dump(self.parameter, f)
+        return filename_result
 
-        file_result: str = f'{folder_graph}/result.P'
-        with open(file_result, 'wb') as f:
-            pickle.dump(parameter, f)
-        return file_result
+    def new_directory(self):
+        self.folder_graph: str = f'{os.path.dirname(__file__)}/graph/{self.folder_data}/gNB{self.parameter["gNB MCS"][0]}{self.parameter["gNB MCS"][1]}_eNB{self.parameter["eNB MCS"][0]}{self.parameter["eNB MCS"][1]}'
 
-    def _new_directory(self, path, main_topic: Tuple[str, List[int]], folder_description: str):
-        if not os.path.exists(path):
-            os.makedirs(path)
+        if os.path.exists(self.folder_graph):
+            return True
+        else:
+            os.makedirs(self.folder_graph)
 
         # copy data parameter
         from shutil import copyfile
         copyfile(
-            f'{os.path.dirname(__file__)}/data/{self.folder_data}/{main_topic[1][-1]}{folder_description}/parameter_data.txt',
+            f'{os.path.dirname(__file__)}/data/{self.folder_data}/{self.topic["item"][-1]}{self.topic["folder description"]}/parameter_data.txt',
             f'{os.path.dirname(__file__)}/graph/{self.folder_data}/parameter_data.txt')
 
-    @staticmethod
-    def gen_txt_parameter(parameter, output_file_path: str):
-        with open(f'{output_file_path}/parameter_iteration.txt', 'w') as f:
-            json.dump(parameter, f)
+    def gen_txt_parameter(self):
+        assert self.folder_graph != '', 'Run new_directory first.'
+
+        with open(f'{self.folder_graph}/parameter_iteration.txt', 'w') as f:
+            json.dump(self.parameter, f)
+
+    @property
+    def parameter(self) -> Dict[str, Any]:
+        parameter = {'iteration': self.iteration,
+                     self.topic['topic']: self.topic['item'],
+                     'data folder': self.folder_data,
+                     'gNB MCS': [G_MCS.get_worst().name, G_MCS.get_best().name],
+                     'eNB MCS': [E_MCS.get_worst().name, E_MCS.get_best().name]}
+        return parameter
