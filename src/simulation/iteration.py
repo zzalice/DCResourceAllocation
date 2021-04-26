@@ -37,12 +37,15 @@ class IterateAlgo:
         self.large_iter()
 
     def large_iter(self):
+        each_file_run: int = 1
+        assert each_file_run > 0, 'Value Error.'
+
         self.new_directory()
         threads = []
         program_start_time = time.time()
-        for i in range(math.ceil(self.iteration / 10)):
-            iter_lower_bound = i * 10
-            iter_higher_bound = iter_lower_bound + 9 if iter_lower_bound + 9 < self.iteration else self.iteration - 1
+        for i in range(math.ceil(self.iteration / each_file_run)):
+            iter_lower_bound = i * each_file_run
+            iter_higher_bound = iter_lower_bound + (each_file_run - 1) if iter_lower_bound + (each_file_run - 1) < self.iteration else self.iteration - 1
             t = threading.Thread(target=self.iter,
                                  args=(iter_lower_bound, iter_higher_bound))
             t.start()
