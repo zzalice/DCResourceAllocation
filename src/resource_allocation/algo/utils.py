@@ -1,4 +1,4 @@
-from typing import List, Tuple, Union
+from typing import Dict, List, Tuple, Union
 
 from src.resource_allocation.ds.eutran import EUserEquipment
 from src.resource_allocation.ds.ngran import DUserEquipment, GUserEquipment
@@ -22,12 +22,30 @@ def divide_ue(ue_list: Tuple[UE, ...], is_assert: bool = True) -> Tuple[Tuple[UE
     return tuple(allocated_ue), tuple(unallocated_ue)
 
 
+def divide_ue_json(ue_list: List[Dict]) -> Tuple[Tuple[Dict, ...], Tuple[Dict, ...]]:
+    allocated_ue: List[Dict] = []
+    unallocated_ue: List[Dict] = []
+    for ue in ue_list:
+        if ue['is_allocated']:
+            allocated_ue.append(ue)
+        else:
+            unallocated_ue.append(ue)
+    return tuple(allocated_ue), tuple(unallocated_ue)
+
+
 def calc_system_throughput(ue_allocated: Tuple[UE, ...], is_assert: bool = True) -> float:
     system_throughput: float = 0.0
     for ue in ue_allocated:
         if is_assert:
             assert_throughput(ue)
         system_throughput += ue.throughput
+    return system_throughput  # bit per frame
+
+
+def calc_system_throughput_json(ue_allocated: Tuple[Dict, ...]) -> float:
+    system_throughput: float = 0.0
+    for ue in ue_allocated:
+        system_throughput += ue['throughput']
     return system_throughput  # bit per frame
 
 
