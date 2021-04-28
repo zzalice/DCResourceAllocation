@@ -263,8 +263,7 @@ class AdjustMCS(Undo):
         :param func_is_available_rb: The function of checking is overlapping with same numerology.
         :return: If the adjustment is completed.
         """
-        assert (allow_lower_than_cqi0 is False and channel_model is not None) or (
-                allow_lower_than_cqi0 is True and channel_model is None)
+        assert (allow_lower_than_cqi0 is False and channel_model is not None) or (allow_lower_than_cqi0 is True)
         assert not new_same_numerology_rb or (new_same_numerology_rb and (func_is_available_rb is not None) and (
                 allow_lower_mcs and channel_model is not None)), 'Missing requirements for adding same numerology RB.'
         assert ue.is_allocated

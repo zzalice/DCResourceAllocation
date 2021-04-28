@@ -132,7 +132,8 @@ class AllocateUEList(Undo):
         else:
             # ue can be removed
             has_positive_effect: bool = adjust_mcs.remove_from_tail(ue,
-                                                                    allow_lower_mcs=True, allow_lower_than_cqi0=True)
+                                                                    allow_lower_mcs=True, allow_lower_than_cqi0=True,
+                                                                    channel_model=self.channel_model)
         self.append_undo(lambda a_m=adjust_mcs: a_m.undo(), lambda a_m=adjust_mcs: a_m.purge_undo())
         return has_positive_effect
 

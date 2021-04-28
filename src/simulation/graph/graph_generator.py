@@ -583,6 +583,6 @@ class GraphGenerator:
                 # e.g. 90 >= 90 when we ran 100 iterations but only want to draw the chart of the first 90 data.
                 break
             result_filename: str = next(
-                f for f in filenames if f == f'result{iteration_range[i]}-{iteration_range[i + 1]}.P')
+                f for f in filenames if f == f'result{iteration_range[i]}-{iteration_range[i + 1]}.P')  # FIXME 如果資料夾中有多組result間距
             result_file_to_read.append(result_filename) if result_filename else None
         return result_file_to_read
