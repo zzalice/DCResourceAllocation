@@ -21,7 +21,7 @@ class FRSAPhase3(Undo):
         allocated_ue: List[UE] = list(allocated_ue)
         for ue in allocated_ue:
             self.channel_model.sinr_ue(ue)
-            AdjustMCS().remove_from_tail(ue)
+            AdjustMCS().remove_from_tail(ue, channel_model=self.channel_model)
             self.adjust_effected_ue(allocated_ue)
 
     def adjust_effected_ue(self, allocated_ue: List[UE]):
@@ -31,7 +31,7 @@ class FRSAPhase3(Undo):
                 if ue.is_to_recalculate_mcs:
                     is_all_adjusted: bool = False
                     self.channel_model.sinr_ue(ue)
-                    AdjustMCS().remove_from_tail(ue)
+                    AdjustMCS().remove_from_tail(ue, channel_model=self.channel_model)
                     if not ue.is_allocated:
                         allocated_ue.remove(ue)
             if is_all_adjusted:
