@@ -95,7 +95,7 @@ class DualConnection(Undo):
 
     def adjust_mcs(self):
         adjust_mcs: AdjustMCS = AdjustMCS()
-        adjust_mcs.remove_worst_rb(self.ue)
+        adjust_mcs.remove_worst_rb(self.ue, channel_model=self.channel_model)
         self.append_undo(lambda a_m=adjust_mcs: a_m.undo(), lambda a_m=adjust_mcs: a_m.purge_undo())
         if not self.ue.is_allocated:
             raise AssertionError
