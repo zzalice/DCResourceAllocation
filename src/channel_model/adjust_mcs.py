@@ -41,8 +41,7 @@ class AdjustMCS(Undo):
         :param channel_model: If the algorithm allows the ue to add more RBs, channel_model will have to be passed in.
         :return: If the adjustment has succeed.
         """
-        assert (allow_lower_than_cqi0 is False and channel_model is not None) or (
-                allow_lower_than_cqi0 is True and channel_model is None)
+        assert (allow_lower_than_cqi0 is False and channel_model is not None) or (allow_lower_than_cqi0 is True)
         for nb_info in ['gnb_info', 'enb_info']:
             if hasattr(ue, nb_info):
                 ue_nb_info: Union[GNBInfo, ENBInfo] = getattr(ue, nb_info)

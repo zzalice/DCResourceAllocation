@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from typing import List, Optional, Set, Tuple, TYPE_CHECKING, Union
+from typing import Any, Dict, List, Optional, Set, Tuple, TYPE_CHECKING, Union
 
 from .rb import ResourceBlock
 from .undo import Undo
@@ -40,6 +40,16 @@ class Frame:
     @cochannel_offset.setter
     def cochannel_offset(self, value):
         self._cochannel_offset = value
+
+    def to_json(self) -> Dict[str, Any]:
+        frame: Dict[str, Any] = {
+            'frame_freq': self.frame_freq,
+            'frame_time': self.frame_time,
+            'max_layer': self.max_layer,
+            'layer': []}
+        for layer in self.layer:
+            frame['layer'].append(layer.to_json())
+        return frame
 
 
 class Layer(Undo):
@@ -158,6 +168,16 @@ class Layer(Undo):
     def bu_status_cache_is_valid(self, value: bool):
         assert value is False, "Only the property bu_status may update the bu status and set _cache_is_valid to True."
         self._cache_is_valid: bool = value
+
+    def to_json(self) -> Dict[str, Any]:
+        layer: Dict[str, Any] = {
+            'bu_status': self.bu_status,
+            'bu': [[] for _ in range(self.FREQ)]
+        }
+        for i in range(self.FREQ):
+            for j in range(self.TIME):
+                layer['bu'][i].append(self.bu[i][j].to_json())
+        return layer
 
 
 class BaseUnit(Undo):
@@ -336,3 +356,11 @@ class BaseUnit(Undo):
     @property
     def layer(self) -> Layer:
         return self._layer
+
+    def to_json(self) -> Dict[str, Any]:
+        bu: Dict[str, Any] = {
+            'lapped_numerology': [n.name for n in self.lapped_numerology],
+            'is_cochannel': self.is_cochannel,
+            'is_used': self.is_used
+        }
+        return bu
