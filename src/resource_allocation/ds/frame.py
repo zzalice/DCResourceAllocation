@@ -361,6 +361,7 @@ class BaseUnit(Undo):
         bu: Dict[str, Any] = {
             'lapped_numerology': [n.name for n in self.lapped_numerology],
             'is_cochannel': self.is_cochannel,
-            'is_used': self.is_used
+            'is_used': self.is_used,
+            'within_rb': self.within_rb.to_json() if self.within_rb else None
         }
         return bu

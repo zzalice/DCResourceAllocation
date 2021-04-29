@@ -116,6 +116,8 @@ class UserEquipment:
         ue: Dict[str, Any] = {
             'uuid': self.uuid.hex,
             'request_data_rate': self.request_data_rate,
+            'x': self.coordinate.x,
+            'y': self.coordinate.y,
             'distance_gnb': self.coordinate.distance_gnb,
             'distance_enb': self.coordinate.distance_enb,
             'ue_type': self.ue_type.name,

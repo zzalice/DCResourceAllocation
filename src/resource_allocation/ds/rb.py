@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from typing import Optional, Tuple, TYPE_CHECKING, Union
+from typing import Any, Dict, Optional, Tuple, TYPE_CHECKING, Union
 
 from .undo import Undo
 from .util_enum import E_MCS, G_MCS, NodeBType, Numerology
@@ -85,3 +85,10 @@ class ResourceBlock(Undo):
     @property
     def j_end(self) -> int:
         return self.position[3]
+
+    def to_json(self) -> Dict[str, Any]:
+        rb: Dict[str, Any] = {
+            'numerology': self.numerology.name if self.numerology else None,
+            'mcs': self.mcs.index if self.mcs else None
+        }
+        return rb
