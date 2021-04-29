@@ -34,15 +34,15 @@ class IterateAlgo:
         self.large_iter()
 
     def large_iter(self):
-        each_file_run: int = 10
-        assert each_file_run > 0, 'Value Error.'
+        each_thread_run: int = 10
+        assert each_thread_run > 0, 'Value Error.'
 
         self.new_directory()
         threads = []
         program_start_time = time.time()
-        for i in range(math.ceil(self.iteration / each_file_run)):
-            iter_lower_bound = i * each_file_run
-            iter_higher_bound = iter_lower_bound + (each_file_run - 1) if iter_lower_bound + (each_file_run - 1) < self.iteration else self.iteration - 1
+        for i in range(math.ceil(self.iteration / each_thread_run)):
+            iter_lower_bound = i * each_thread_run
+            iter_higher_bound = iter_lower_bound + (each_thread_run - 1) if iter_lower_bound + (each_thread_run - 1) < self.iteration else self.iteration - 1
             t = threading.Thread(target=self.iter,
                                  args=(iter_lower_bound, iter_higher_bound))
             t.start()
@@ -75,8 +75,8 @@ class IterateAlgo:
     def run_algorithm(algo_name: str, func_algo: Callable, file_data):
         start_time = time.time()
         result = func_algo(file_data)
-        json_result = [result[0].frame.to_json(),
-                       result[1].frame.to_json(),
+        json_result = [result[0].to_json(),
+                       result[1].to_json(),
                        [due.to_json() for due in result[2]],
                        [gue.to_json() for gue in result[3]],
                        [eue.to_json() for eue in result[4]]]

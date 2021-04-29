@@ -6,15 +6,11 @@ from os import walk
 from typing import Dict, List, Tuple, Union
 
 from src.resource_allocation.algo.utils import bpframe_to_mbps, calc_system_throughput_json, divide_ue_json
-from src.resource_allocation.ds.eutran import ENodeB, EUserEquipment
-from src.resource_allocation.ds.frame import BaseUnit
-from src.resource_allocation.ds.ngran import DUserEquipment, GNodeB, GUserEquipment
-from src.resource_allocation.ds.ue import UserEquipment
 from src.resource_allocation.ds.util_enum import UEType
 from src.simulation.graph.util_graph import bar_chart, bar_chart_grouped_stacked, line_chart, scatter_chart
 
-RESULT = Dict[str, Dict[str, Tuple[Dict, Dict, List[Dict], List[Dict], List[Dict]]]
-]           # layer/ue  algo       gNB   eNB   dUE         gUE         eUE
+"""           layer/ue  algo       gNB   eNB   dUE         gUE         eUE"""
+RESULT = Dict[str, Dict[str, Tuple[Dict, Dict, List[Dict], List[Dict], List[Dict]]]]
 
 
 class GraphGenerator:
@@ -179,15 +175,15 @@ class GraphGenerator:
                 return True
             for algo in result[max_layer_str]:
                 gnb: Dict = result[max_layer_str][algo][0]
-                assert l == gnb['max_layer']
+                assert l == gnb['frame']['max_layer']
 
                 count_used_bu: int = 0
-                for layer in range(gnb['max_layer']):
-                    for i in gnb['layer'][layer]['bu_status']:
+                for layer in range(gnb['frame']['max_layer']):
+                    for i in gnb['frame']['layer'][layer]['bu_status']:
                         for j in i:
                             count_used_bu += 1 if j else 0
 
-                count_bu: int = gnb['frame_time'] * gnb['frame_freq'] * gnb['max_layer']
+                count_bu: int = gnb['frame']['frame_time'] * gnb['frame']['frame_freq'] * gnb['frame']['max_layer']
                 try:
                     self.data[l][algo][0] += count_used_bu
                     self.data[l][algo][1] += count_bu
@@ -231,25 +227,25 @@ class GraphGenerator:
                 return True
             for algo in result[layer]:
                 try:
-                    self.data[l][algo]['allocated_ue'].extend(self.purge_ue(
-                        result[layer][algo][2] + result[layer][algo][3] + result[layer][algo][4]))
+                    self.data[l][algo]['allocated_ue'].extend(
+                        self.purge_ue(result[layer][algo][2] + result[layer][algo][3] + result[layer][algo][4]))
                 except KeyError:
                     self.data[l][algo] = {
-                        'nb_info': [result[layer][algo][0].radius,  # gNB
-                                    [result[layer][algo][0].coordinate.x, result[layer][algo][0].coordinate.y],
-                                    result[layer][algo][1].radius,  # eNB
-                                    [result[layer][algo][1].coordinate.x, result[layer][algo][1].coordinate.y]
+                        'nb_info': [result[layer][algo][0]['radius'],  # gNB
+                                    [result[layer][algo][0]['x'], result[layer][algo][0]['y']],
+                                    result[layer][algo][1]['radius'],  # eNB
+                                    [result[layer][algo][1]['x'], result[layer][algo][1]['y']]
                                     ],
                         'allocated_ue': self.purge_ue(
                             result[layer][algo][2] + result[layer][algo][3] + result[layer][algo][4])}
         return True
 
     @staticmethod
-    def purge_ue(ue_list: List[UserEquipment]) -> List[Tuple[UEType, float, float]]:
+    def purge_ue(ue_list: List[Dict]) -> List[Tuple[UEType, float, float]]:
         purged_ue: List[Tuple[UEType, float, float]] = []
         for ue in ue_list:
-            if ue.is_allocated:
-                purged_ue.append((ue.ue_type, ue.coordinate.x, ue.coordinate.y))
+            if ue['is_allocated']:
+                purged_ue.append((ue['ue_type'], ue['x'], ue['y']))
         return purged_ue
 
     def gen_deployment(self, iteration: int, layers: List[int], output_file_path: str):
@@ -306,26 +302,24 @@ class GraphGenerator:
                                             self.data[l][algo])
 
     @staticmethod
-    def count_allocated_ue(due_list: List[DUserEquipment], gue_list: List[GUserEquipment],
-                           eue_list: List[EUserEquipment], collect_data):
+    def count_allocated_ue(due_list: List[Dict], gue_list: List[Dict], eue_list: List[Dict], collect_data):
         for due in due_list:
-            if due.cross_nb:
+            if due['cross_nb']:
                 collect_data['dUE_cross_BS'] += 1
-                collect_data['total'] += 1
-            elif len(due.gnb_info.rb) > 0:
+            elif due['gnb_info']['mcs']:
+                assert due['is_allocated'], 'Algorithm error.'
                 collect_data['dUE_in_gNB'] += 1
-                collect_data['total'] += 1
-            elif len(due.enb_info.rb) > 0:
+            elif due['enb_info']['mcs']:
+                assert due['is_allocated'], 'Algorithm error.'
                 collect_data['dUE_in_eNB'] += 1
-                collect_data['total'] += 1
         for gue in gue_list:
-            if gue.is_allocated:
+            if gue['is_allocated']:
                 collect_data['gUE'] += 1
-                collect_data['total'] += 1
         for eue in eue_list:
-            if eue.is_allocated:
+            if eue['is_allocated']:
                 collect_data['eUE'] += 1
-                collect_data['total'] += 1
+        collect_data['total'] = collect_data['dUE_cross_BS'] + collect_data['dUE_in_gNB'] + collect_data['dUE_in_eNB'] + \
+                                collect_data['gUE'] + collect_data['eUE']
 
     def gen_allocated_ue(self, iteration: int, layers: List[int], output_file_path: str,
                          ue_label: Tuple[str, ...],
@@ -374,30 +368,32 @@ class GraphGenerator:
             for algo in result[topic]:
                 if algo not in algorithm:
                     continue
-                gnb: GNodeB = result[topic][algo][0]
+                gnb: Dict = result[topic][algo][0]
                 try:
                     self.data[topic][algo].append(self.collect_cqi(gnb))
                 except KeyError:
                     self.data[topic][algo] = [self.collect_cqi(gnb)]
                 try:
-                    assert self.data[topic]['gnb_info'] == {'max_layer': gnb.frame.max_layer,
-                                                            'freq': gnb.frame.frame_freq, 'time': gnb.frame.frame_time
+                    assert self.data[topic]['gnb_info'] == {'max_layer': gnb['frame']['max_layer'],
+                                                            'freq': gnb['frame']['frame_freq'],
+                                                            'time': gnb['frame']['frame_time']
                                                             }, 'The result will be incomparable.'
                 except KeyError:
-                    self.data[topic]['gnb_info'] = {'max_layer': gnb.frame.max_layer,
-                                                    'freq': gnb.frame.frame_freq, 'time': gnb.frame.frame_time}
+                    self.data[topic]['gnb_info'] = {'max_layer': gnb['frame']['max_layer'],
+                                                    'freq': gnb['frame']['frame_freq'],
+                                                    'time': gnb['frame']['frame_time']}
 
     @staticmethod
-    def collect_cqi(gnb: GNodeB) -> List[List[List[List[int]]]]:
+    def collect_cqi(gnb: Dict) -> List[List[List[List[int]]]]:
         cqi: List[List[List[List[int]]]] = [
-            [[[] for _ in range(gnb.frame.frame_time)] for _ in range(gnb.frame.frame_freq)] for _ in
-            range(gnb.frame.max_layer)]
-        for layer in range(gnb.frame.max_layer):
-            for freq in range(gnb.frame.frame_freq):
-                for time in range(gnb.frame.frame_time):
-                    bu: BaseUnit = gnb.frame.layer[layer].bu[freq][time]
-                    if bu.within_rb:
-                        cqi[layer][freq][time]: int = int(bu.within_rb.mcs.name[3:])
+            [[[] for _ in range(gnb['frame']['frame_time'])] for _ in range(gnb['frame']['frame_freq'])] for _ in
+            range(gnb['frame']['max_layer'])]
+        for layer in range(gnb['frame']['max_layer']):
+            for freq in range(gnb['frame']['frame_freq']):
+                for time in range(gnb['frame']['frame_time']):
+                    bu: Dict = gnb['frame']['layer'][layer]['bu'][freq][time]
+                    if bu['within_rb']:
+                        cqi[layer][freq][time]: int = bu['within_rb']['mcs']
                     else:
                         cqi[layer][freq][time]: int = 0
         return cqi
@@ -484,20 +480,20 @@ class GraphGenerator:
                                          result[topic][algo][2], result[topic][algo][3], result[topic][algo][4])
 
     def _collect_ue_cqi(self, topic: str, algo: str, gnb_cqi: List[int], enb_cqi: List[int],
-                        due_list: List[DUserEquipment], gue_list: List[GUserEquipment], eue_list: List[EUserEquipment]):
+                        due_list: List[Dict], gue_list: List[Dict], eue_list: List[Dict]):
         # gNB
         for ue in filter(lambda x: x.is_allocated, due_list + gue_list):
-            if ue.ue_type == UEType.D and not ue.gnb_info.rb:  # dUE not allocated to gNB
+            if ue['ue_type'] == UEType.D and not ue['gnb_info']['rb']:  # dUE not allocated to gNB
                 continue
-            assert ue.gnb_info.mcs, "UE status wasn't updated."
-            self.data[topic][algo]['gNB'][ue.gnb_info.mcs.index - gnb_cqi[0]] += 1
+            assert ue['gnb_info']['mcs'], "UE status wasn't updated."
+            self.data[topic][algo]['gNB'][ue['gnb_info']['mcs'] - gnb_cqi[0]] += 1
 
         # eNB
         for ue in filter(lambda x: x.is_allocated, due_list + eue_list):
-            if ue.ue_type == UEType.D and not ue.enb_info.rb:  # dUE not allocated to eNB
+            if ue['ue_type'] == UEType.D and not ue['enb_info']['rb']:  # dUE not allocated to eNB
                 continue
-            assert ue.enb_info.mcs, "UE status wasn't updated."
-            self.data[topic][algo]['eNB'][ue.enb_info.mcs.index - enb_cqi[0]] += 1
+            assert ue['enb_info']['mcs'], "UE status wasn't updated."
+            self.data[topic][algo]['eNB'][ue['enb_info']['mcs'] - enb_cqi[0]] += 1
 
     def gen_ue_cqi(self, iteration: int, output_file_path: str):
         # avg

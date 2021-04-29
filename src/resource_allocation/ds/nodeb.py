@@ -21,6 +21,15 @@ class NodeB:
 
         self.nb_type: Optional[NodeBType] = None
 
+    def to_json(self) -> Dict[str, Any]:
+        nb: Dict[str, Any] = {
+            'x': self.coordinate.x,
+            'y': self.coordinate.y,
+            'radius': self.radius,
+            'frame': self.frame.to_json()
+        }
+        return nb
+
 
 class _NBInfoWithinUE:
     def __init__(self):
@@ -39,7 +48,9 @@ class _NBInfoWithinUE:
 
     def to_json(self) -> Dict[str, Any]:
         nb_info: Dict[str, Any] = {
-            'mcs': self.mcs.name if self.mcs else None}
+            'mcs': self.mcs.index if self.mcs else None,
+            'rb': [rb.to_json() for rb in self.rb]
+        }
         return nb_info
 
 
