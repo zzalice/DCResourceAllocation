@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from typing import Optional, TYPE_CHECKING
+from typing import Any, Dict, Optional, TYPE_CHECKING
 from uuid import UUID, uuid4
 
 from .nodeb import ENBInfo, GNBInfo
@@ -111,3 +111,25 @@ class UserEquipment:
     @is_to_recalculate_mcs.setter
     def is_to_recalculate_mcs(self, value: bool):
         self._is_to_recalculate_mcs: bool = value
+
+    def to_json(self) -> Dict[str, Any]:
+        ue: Dict[str, Any] = {
+            'uuid': self.uuid.hex,
+            'request_data_rate': self.request_data_rate,
+            'x': self.coordinate.x,
+            'y': self.coordinate.y,
+            'distance_gnb': self.coordinate.distance_gnb,
+            'distance_enb': self.coordinate.distance_enb,
+            'ue_type': self.ue_type.name,
+            'numerology_in_use': self.numerology_in_use.name,
+            'throughput': self.throughput,
+            'is_allocated': self.is_allocated}
+
+        if hasattr(self, 'enb_info'):
+            ue['gnb_info'] = self.enb_info.to_json()
+        if hasattr(self, 'gnb_info'):
+            ue['gnb_info'] = self.gnb_info.to_json()
+        if hasattr(self, 'cross_nb'):
+            ue['cross_nb'] = self.cross_nb
+
+        return ue

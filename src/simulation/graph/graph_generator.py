@@ -1,20 +1,16 @@
+import json
 import os
-import pickle
 import re
 from datetime import datetime
 from os import walk
 from typing import Dict, List, Tuple, Union
 
-from src.resource_allocation.algo.utils import bpframe_to_mbps, calc_system_throughput, divide_ue
-from src.resource_allocation.ds.eutran import ENodeB, EUserEquipment
-from src.resource_allocation.ds.frame import BaseUnit
-from src.resource_allocation.ds.ngran import DUserEquipment, GNodeB, GUserEquipment
-from src.resource_allocation.ds.ue import UserEquipment
+from src.resource_allocation.algo.utils import bpframe_to_mbps, calc_system_throughput_json, divide_ue_json
 from src.resource_allocation.ds.util_enum import UEType
 from src.simulation.graph.util_graph import bar_chart, bar_chart_grouped_stacked, line_chart, scatter_chart
 
-RESULT = Dict[str, Dict[str, Tuple[GNodeB, ENodeB, List[DUserEquipment], List[GUserEquipment], List[EUserEquipment]]]
-]  # layer/ue    algo
+"""           layer/ue  algo       gNB   eNB   dUE         gUE         eUE"""
+RESULT = Dict[str, Dict[str, Tuple[Dict, Dict, List[Dict], List[Dict], List[Dict]]]]
 
 
 class GraphGenerator:
@@ -35,30 +31,18 @@ class GraphGenerator:
     def main(self, graph_type: str, kwargs):
         for file_path in self.output_file_path:
             # gather data
-            files_result: List[str] = self.input_result_files(file_path, kwargs['iteration'])
+            files_result: List[str] = self.input_result_files(f'{file_path}/result', kwargs['iteration'])
             for file_result in files_result:
-                self.read_result(file_path, file_result, graph_type, kwargs)
+                self.read_result(f'{file_path}/result', file_result, graph_type, kwargs)
 
             # draw graphs
             self.gen_graph(graph_type, file_path, kwargs)
         return True
 
     def read_result(self, file_path: str, file_result: str, graph_type: str, kwargs):
-        with open(f'{file_path}/{file_result}', 'rb') as f:
-            information: Dict = pickle.load(f)
-            assert kwargs['iteration'] <= information['iteration']
-            try:
-                for l in kwargs['layers']:
-                    assert l in information['layers']
-            except KeyError:
-                pass
-
-            while True:
-                try:
-                    algo_result: RESULT = pickle.load(f)
-                    self.collect_data(graph_type, algo_result, file_path, kwargs)
-                except EOFError:
-                    break
+        with open(f'{file_path}/{file_result}', 'r') as f:
+            algo_result: RESULT = json.load(f)
+            self.collect_data(graph_type, algo_result, file_path, kwargs)
         return True
 
     def collect_data(self, graph_type: str, algo_result: RESULT, file_path: str, kwargs):
@@ -105,22 +89,22 @@ class GraphGenerator:
         #                          layer/#ue   algo sum of system throughput
         # collect_data2: Dict[Union[str, int], Dict[str, float]]
         #                          layer/#ue   algo sum of #unallocated ue
-        self.frame_time: int = next(iter(next(iter(result.values())).values()))[0].frame.frame_time
+        self.frame_time: int = next(iter(next(iter(result.values())).values()))[0]['frame_time']
 
         for layer_or_total_ue in result:  # only one
             l_or_u: int = int(re.sub('[^0-9]', '', layer_or_total_ue))
             if not self._increase_iter(l_or_u, iteration):
                 return True
             for algo in result[layer_or_total_ue]:
-                allocated_ue, unallocated_ue = divide_ue(result[layer_or_total_ue][algo][2] +
-                                                         result[layer_or_total_ue][algo][3] +
-                                                         result[layer_or_total_ue][algo][4])
+                allocated_ue, unallocated_ue = divide_ue_json(result[layer_or_total_ue][algo][2] +
+                                                              result[layer_or_total_ue][algo][3] +
+                                                              result[layer_or_total_ue][algo][4])
                 try:
-                    self.data[l_or_u][algo] += calc_system_throughput(allocated_ue)
+                    self.data[l_or_u][algo] += calc_system_throughput_json(allocated_ue)
                     if collect_unallocated_ue:
                         self.data2[l_or_u][algo] += len(unallocated_ue)
                 except KeyError:
-                    self.data[l_or_u][algo] = calc_system_throughput(allocated_ue)
+                    self.data[l_or_u][algo] = calc_system_throughput_json(allocated_ue)
                     if collect_unallocated_ue:
                         self.data2[l_or_u][algo] = len(unallocated_ue)
         return True
@@ -190,16 +174,16 @@ class GraphGenerator:
             if not self._increase_iter(l, iteration):
                 return True
             for algo in result[max_layer_str]:
-                gnb: GNodeB = result[max_layer_str][algo][0]
-                assert l == gnb.frame.max_layer
+                gnb: Dict = result[max_layer_str][algo][0]
+                assert l == gnb['frame']['max_layer']
 
                 count_used_bu: int = 0
-                for layer in range(gnb.frame.max_layer):
-                    for i in gnb.frame.layer[layer].bu_status:
+                for layer in range(gnb['frame']['max_layer']):
+                    for i in gnb['frame']['layer'][layer]['bu_status']:
                         for j in i:
                             count_used_bu += 1 if j else 0
 
-                count_bu: int = gnb.frame.frame_time * gnb.frame.frame_freq * gnb.frame.max_layer
+                count_bu: int = gnb['frame']['frame_time'] * gnb['frame']['frame_freq'] * gnb['frame']['max_layer']
                 try:
                     self.data[l][algo][0] += count_used_bu
                     self.data[l][algo][1] += count_bu
@@ -243,25 +227,25 @@ class GraphGenerator:
                 return True
             for algo in result[layer]:
                 try:
-                    self.data[l][algo]['allocated_ue'].extend(self.purge_ue(
-                        result[layer][algo][2] + result[layer][algo][3] + result[layer][algo][4]))
+                    self.data[l][algo]['allocated_ue'].extend(
+                        self.purge_ue(result[layer][algo][2] + result[layer][algo][3] + result[layer][algo][4]))
                 except KeyError:
                     self.data[l][algo] = {
-                        'nb_info': [result[layer][algo][0].radius,  # gNB
-                                    [result[layer][algo][0].coordinate.x, result[layer][algo][0].coordinate.y],
-                                    result[layer][algo][1].radius,  # eNB
-                                    [result[layer][algo][1].coordinate.x, result[layer][algo][1].coordinate.y]
+                        'nb_info': [result[layer][algo][0]['radius'],  # gNB
+                                    [result[layer][algo][0]['x'], result[layer][algo][0]['y']],
+                                    result[layer][algo][1]['radius'],  # eNB
+                                    [result[layer][algo][1]['x'], result[layer][algo][1]['y']]
                                     ],
                         'allocated_ue': self.purge_ue(
                             result[layer][algo][2] + result[layer][algo][3] + result[layer][algo][4])}
         return True
 
     @staticmethod
-    def purge_ue(ue_list: List[UserEquipment]) -> List[Tuple[UEType, float, float]]:
+    def purge_ue(ue_list: List[Dict]) -> List[Tuple[UEType, float, float]]:
         purged_ue: List[Tuple[UEType, float, float]] = []
         for ue in ue_list:
-            if ue.is_allocated:
-                purged_ue.append((ue.ue_type, ue.coordinate.x, ue.coordinate.y))
+            if ue['is_allocated']:
+                purged_ue.append((ue['ue_type'], ue['x'], ue['y']))
         return purged_ue
 
     def gen_deployment(self, iteration: int, layers: List[int], output_file_path: str):
@@ -313,31 +297,29 @@ class GraphGenerator:
                                             self.data[l][algo])
                 except KeyError:
                     self.data[l][algo] = {'dUE_in_gNB': 0, 'dUE_in_eNB': 0, 'dUE_cross_BS': 0,
-                                                  'eUE': 0, 'gUE': 0, 'total': 0}
+                                          'eUE': 0, 'gUE': 0, 'total': 0}
                     self.count_allocated_ue(result[layer][algo][2], result[layer][algo][3], result[layer][algo][4],
                                             self.data[l][algo])
 
     @staticmethod
-    def count_allocated_ue(due_list: List[DUserEquipment], gue_list: List[GUserEquipment],
-                           eue_list: List[EUserEquipment], collect_data):
+    def count_allocated_ue(due_list: List[Dict], gue_list: List[Dict], eue_list: List[Dict], collect_data):
         for due in due_list:
-            if due.cross_nb:
+            if due['cross_nb']:
                 collect_data['dUE_cross_BS'] += 1
-                collect_data['total'] += 1
-            elif len(due.gnb_info.rb) > 0:
+            elif due['gnb_info']['mcs']:
+                assert due['is_allocated'], 'Algorithm error.'
                 collect_data['dUE_in_gNB'] += 1
-                collect_data['total'] += 1
-            elif len(due.enb_info.rb) > 0:
+            elif due['enb_info']['mcs']:
+                assert due['is_allocated'], 'Algorithm error.'
                 collect_data['dUE_in_eNB'] += 1
-                collect_data['total'] += 1
         for gue in gue_list:
-            if gue.is_allocated:
+            if gue['is_allocated']:
                 collect_data['gUE'] += 1
-                collect_data['total'] += 1
         for eue in eue_list:
-            if eue.is_allocated:
+            if eue['is_allocated']:
                 collect_data['eUE'] += 1
-                collect_data['total'] += 1
+        collect_data['total'] = collect_data['dUE_cross_BS'] + collect_data['dUE_in_gNB'] + collect_data['dUE_in_eNB'] + \
+                                collect_data['gUE'] + collect_data['eUE']
 
     def gen_allocated_ue(self, iteration: int, layers: List[int], output_file_path: str,
                          ue_label: Tuple[str, ...],
@@ -386,30 +368,32 @@ class GraphGenerator:
             for algo in result[topic]:
                 if algo not in algorithm:
                     continue
-                gnb: GNodeB = result[topic][algo][0]
+                gnb: Dict = result[topic][algo][0]
                 try:
                     self.data[topic][algo].append(self.collect_cqi(gnb))
                 except KeyError:
                     self.data[topic][algo] = [self.collect_cqi(gnb)]
                 try:
-                    assert self.data[topic]['gnb_info'] == {'max_layer': gnb.frame.max_layer,
-                                                             'freq': gnb.frame.frame_freq, 'time': gnb.frame.frame_time
+                    assert self.data[topic]['gnb_info'] == {'max_layer': gnb['frame']['max_layer'],
+                                                            'freq': gnb['frame']['frame_freq'],
+                                                            'time': gnb['frame']['frame_time']
                                                             }, 'The result will be incomparable.'
                 except KeyError:
-                    self.data[topic]['gnb_info'] = {'max_layer': gnb.frame.max_layer,
-                                                     'freq': gnb.frame.frame_freq, 'time': gnb.frame.frame_time}
+                    self.data[topic]['gnb_info'] = {'max_layer': gnb['frame']['max_layer'],
+                                                    'freq': gnb['frame']['frame_freq'],
+                                                    'time': gnb['frame']['frame_time']}
 
     @staticmethod
-    def collect_cqi(gnb: GNodeB) -> List[List[List[List[int]]]]:
+    def collect_cqi(gnb: Dict) -> List[List[List[List[int]]]]:
         cqi: List[List[List[List[int]]]] = [
-            [[[] for _ in range(gnb.frame.frame_time)] for _ in range(gnb.frame.frame_freq)] for _ in
-            range(gnb.frame.max_layer)]
-        for layer in range(gnb.frame.max_layer):
-            for freq in range(gnb.frame.frame_freq):
-                for time in range(gnb.frame.frame_time):
-                    bu: BaseUnit = gnb.frame.layer[layer].bu[freq][time]
-                    if bu.within_rb:
-                        cqi[layer][freq][time]: int = int(bu.within_rb.mcs.name[3:])
+            [[[] for _ in range(gnb['frame']['frame_time'])] for _ in range(gnb['frame']['frame_freq'])] for _ in
+            range(gnb['frame']['max_layer'])]
+        for layer in range(gnb['frame']['max_layer']):
+            for freq in range(gnb['frame']['frame_freq']):
+                for time in range(gnb['frame']['frame_time']):
+                    bu: Dict = gnb['frame']['layer'][layer]['bu'][freq][time]
+                    if bu['within_rb']:
+                        cqi[layer][freq][time]: int = bu['within_rb']['mcs']
                     else:
                         cqi[layer][freq][time]: int = 0
         return cqi
@@ -453,7 +437,8 @@ class GraphGenerator:
                 for x in range(self.data[topic]['gnb_info']['max_layer']):
                     for c in range(cqi[1] - cqi[0] + 1):
                         data_count_bu[algo][x][c] /= iteration
-                assert False not in [data_count_layer[algo][x] <= 1 for x in range(len(data_count_layer[algo]))], 'Data gathering error.'
+                assert False not in [data_count_layer[algo][x] <= 1 for x in
+                                     range(len(data_count_layer[algo]))], 'Data gathering error.'
 
             bar_chart(f'Frame overlap of {topic}',
                       'The number of overlapped UE', [i for i in range(self.data[topic]['gnb_info']['max_layer'] + 1)],
@@ -466,10 +451,12 @@ class GraphGenerator:
                                       {'iteration': iteration, 'layer_or_ue': topic},
                                       data_count_bu,
                                       [str(i + 1) for i in range(self.data[topic]['gnb_info']['max_layer'])],
-                                      ['CQI' + str(i) for i in range(cqi[0], cqi[1] + 1)], algorithm, color_gradient=True)
+                                      ['CQI' + str(i) for i in range(cqi[0], cqi[1] + 1)], algorithm,
+                                      color_gradient=True)
 
     # ==================================================================================================================
-    def collect_ue_cqi(self, iteration: int, layer_or_ue: List[str], algorithm: List[str], result: RESULT, output_file_path: str):
+    def collect_ue_cqi(self, iteration: int, layer_or_ue: List[str], algorithm: List[str], result: RESULT,
+                       output_file_path: str):
         # collect_data: Dict[str, Dict[str, List[int]]]
         #                    algo      NB   CQI  number of allocated ue using the CQI
         for topic in result:  # only one. e.g. '300ue' or '1layer'
@@ -488,25 +475,25 @@ class GraphGenerator:
                                          result[topic][algo][2], result[topic][algo][3], result[topic][algo][4])
                 except KeyError:
                     self.data[topic][algo] = {'gNB': [0 for _ in range(gnb_cqi[1] - gnb_cqi[0] + 1)],
-                                                      'eNB': [0 for _ in range(enb_cqi[1] - enb_cqi[0] + 1)]}
+                                              'eNB': [0 for _ in range(enb_cqi[1] - enb_cqi[0] + 1)]}
                     self._collect_ue_cqi(topic, algo, gnb_cqi, enb_cqi,
                                          result[topic][algo][2], result[topic][algo][3], result[topic][algo][4])
 
     def _collect_ue_cqi(self, topic: str, algo: str, gnb_cqi: List[int], enb_cqi: List[int],
-                        due_list: List[DUserEquipment], gue_list: List[GUserEquipment], eue_list: List[EUserEquipment]):
+                        due_list: List[Dict], gue_list: List[Dict], eue_list: List[Dict]):
         # gNB
         for ue in filter(lambda x: x.is_allocated, due_list + gue_list):
-            if ue.ue_type == UEType.D and not ue.gnb_info.rb:   # dUE not allocated to gNB
+            if ue['ue_type'] == UEType.D and not ue['gnb_info']['rb']:  # dUE not allocated to gNB
                 continue
-            assert ue.gnb_info.mcs, "UE status wasn't updated."
-            self.data[topic][algo]['gNB'][ue.gnb_info.mcs.index - gnb_cqi[0]] += 1
+            assert ue['gnb_info']['mcs'], "UE status wasn't updated."
+            self.data[topic][algo]['gNB'][ue['gnb_info']['mcs'] - gnb_cqi[0]] += 1
 
         # eNB
         for ue in filter(lambda x: x.is_allocated, due_list + eue_list):
-            if ue.ue_type == UEType.D and not ue.enb_info.rb:  # dUE not allocated to eNB
+            if ue['ue_type'] == UEType.D and not ue['enb_info']['rb']:  # dUE not allocated to eNB
                 continue
-            assert ue.enb_info.mcs, "UE status wasn't updated."
-            self.data[topic][algo]['eNB'][ue.enb_info.mcs.index - enb_cqi[0]] += 1
+            assert ue['enb_info']['mcs'], "UE status wasn't updated."
+            self.data[topic][algo]['eNB'][ue['enb_info']['mcs'] - enb_cqi[0]] += 1
 
     def gen_ue_cqi(self, iteration: int, output_file_path: str):
         # avg
@@ -525,12 +512,12 @@ class GraphGenerator:
             gnb_cqi: List[int] = self.get_cqi(output_file_path, 'gNB')
             enb_cqi: List[int] = self.get_cqi(output_file_path, 'eNB')
             bar_chart(f'The CQI in {topic}',
-                      'The available CQI in gNB', [str(i) for i in range(gnb_cqi[0], gnb_cqi[1]+1)],
+                      'The available CQI in gNB', [str(i) for i in range(gnb_cqi[0], gnb_cqi[1] + 1)],
                       'The number of allocated UE', gnb_cqi_data,
                       f'{output_file_path}/cqi_{topic}_gNB_{datetime.today().strftime("%m%d-%H%M")}',
                       {'iteration': iteration, 'layer_or_ue': topic})
             bar_chart(f'The CQI in {topic}',
-                      'The available CQI in eNB', [str(i) for i in range(enb_cqi[0], enb_cqi[1]+1)],
+                      'The available CQI in eNB', [str(i) for i in range(enb_cqi[0], enb_cqi[1] + 1)],
                       'The number of allocated UE', enb_cqi_data,
                       f'{output_file_path}/cqi_{topic}_eNB_{datetime.today().strftime("%m%d-%H%M")}',
                       {'iteration': iteration, 'layer_or_ue': topic})
@@ -566,23 +553,15 @@ class GraphGenerator:
         """
         :param directory: The directory to result files.
         :param iteration: The iteration to be averaged.
-        :return: A list of SORTED result.P to read.
+        :return: A list of result.json to read. That are within the iteration
         """
-        filenames = next(walk(directory))[2]    # e.g. ['parameter_iteration.txt', 'result10-15.P', 'result0-9.P']
-        iteration_range: List[int] = []
-        for filename in filter(lambda x: 'result' in x, filenames):
-            find_all = re.findall('(\\d+)', filename)
-            while find_all:
-                iteration_range.append(int(find_all.pop()))
-        iteration_range.sort()
-        assert iteration - 1 <= iteration_range[-1], 'The request iteration is higher than the executed results.'
-
+        filenames = next(walk(directory))[2]
+        filename_with_iter: List[str] = [f'iter{i}.json' for i in range(iteration)]
         result_file_to_read: List[str] = []
-        for i in range(0, len(iteration_range), 2):    # e.g. 0, 2 when there is two result.P
-            if iteration_range[i] >= iteration:
-                # e.g. 90 >= 90 when we ran 100 iterations but only want to draw the chart of the first 90 data.
-                break
-            result_filename: str = next(
-                f for f in filenames if f == f'result{iteration_range[i]}-{iteration_range[i + 1]}.P')  # FIXME 如果資料夾中有多組result間距
-            result_file_to_read.append(result_filename) if result_filename else None
+        for i in filename_with_iter:
+            has_found: bool = False
+            for filename in filter(lambda x: i in x, filenames):
+                has_found: bool = True
+                result_file_to_read.append(filename)
+            assert has_found, 'Input iteration is higher than the executed data.'
         return result_file_to_read

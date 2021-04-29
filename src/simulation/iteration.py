@@ -1,17 +1,14 @@
 import json
 import math
 import os
-import pickle
 import threading
 import time
-from typing import Any, Dict, List, Tuple
+from typing import Any, Callable, Dict, List
 
 from main import dc_resource_allocation
 from main_frsa import frsa
 from main_intuitive import intuitive_resource_allocation
 from main_msema import msema_rb_ra
-from src.resource_allocation.ds.eutran import ENodeB, EUserEquipment
-from src.resource_allocation.ds.ngran import DUserEquipment, GNodeB, GUserEquipment
 from src.resource_allocation.ds.util_enum import E_MCS, G_MCS
 
 
@@ -37,15 +34,15 @@ class IterateAlgo:
         self.large_iter()
 
     def large_iter(self):
-        each_file_run: int = 1
-        assert each_file_run > 0, 'Value Error.'
+        each_thread_run: int = 10
+        assert each_thread_run > 0, 'Value Error.'
 
         self.new_directory()
         threads = []
         program_start_time = time.time()
-        for i in range(math.ceil(self.iteration / each_file_run)):
-            iter_lower_bound = i * each_file_run
-            iter_higher_bound = iter_lower_bound + (each_file_run - 1) if iter_lower_bound + (each_file_run - 1) < self.iteration else self.iteration - 1
+        for i in range(math.ceil(self.iteration / each_thread_run)):
+            iter_lower_bound = i * each_thread_run
+            iter_higher_bound = iter_lower_bound + (each_thread_run - 1) if iter_lower_bound + (each_thread_run - 1) < self.iteration else self.iteration - 1
             t = threading.Thread(target=self.iter,
                                  args=(iter_lower_bound, iter_higher_bound))
             t.start()
@@ -56,50 +53,40 @@ class IterateAlgo:
         self.gen_txt_parameter()
 
     def iter(self, iter_lower_bound: int, iter_higher_bound: int):
-        filename_result: str = self.create_file(iter_lower_bound, iter_higher_bound)
-
         for m in self.topic['item']:
             print(f'm: {m}')
             for i in range(iter_lower_bound, iter_higher_bound + 1):
                 print(f'i: {i}')
                 file_data: str = f'{self.folder_data}/{m}{self.topic["folder description"]}/{i}'
-                result: Dict[
-                    str, Tuple[GNodeB, ENodeB, List[DUserEquipment], List[GUserEquipment], List[EUserEquipment]]] = {}
 
-                # DC-RA
-                start_time = time.time()
-                result['DC-RA'] = dc_resource_allocation(file_data)
-                print("--- %s min DC-RA ---" % round((time.time() - start_time) / 60, 3))
+                result = {
+                    'DC-RA': self.run_algorithm('DC-RA', dc_resource_allocation, file_data),
+                    'FRSA': self.run_algorithm('FRSA', frsa, file_data),
+                    'MSEMA': self.run_algorithm('MSEMA', msema_rb_ra, file_data),
+                    'Baseline': self.run_algorithm('Baseline', intuitive_resource_allocation, file_data)
+                }
 
-                # FRSA
-                start_time = time.time()
-                result['FRSA'] = frsa(file_data)
-                print("--- %s min FRSA ---" % round((time.time() - start_time) / 60, 3))
-
-                # MSEMA
-                start_time = time.time()
-                result['MSEMA'] = msema_rb_ra(file_data)
-                print("--- %s min MSEMA ---" % round((time.time() - start_time) / 60, 3))
-
-                # Baseline
-                start_time = time.time()
-                result['Baseline'] = intuitive_resource_allocation(file_data)
-                print("--- %s min Base ---" % round((time.time() - start_time) / 60, 3))
-
-                with open(filename_result, 'ab+') as f:
-                    pickle.dump({f'{m}{self.topic["folder description"]}': result}, f)
+                filename: str = f'{m}{self.topic["folder description"]}_iter{i}.json'
+                with open(f'{self.folder_graph}/{filename}', 'w') as f:
+                    json.dump({f'{m}{self.topic["folder description"]}': result}, f)
         return True
 
-    def create_file(self, iter_lower_bound: int, iter_higher_bound: int) -> str:
-        assert self.folder_graph != '', 'Run new_directory first.'
-
-        filename_result: str = f'{self.folder_graph}/result{iter_lower_bound}-{iter_higher_bound}.P'
-        with open(filename_result, 'wb') as f:
-            pickle.dump(self.parameter, f)
-        return filename_result
+    @staticmethod
+    def run_algorithm(algo_name: str, func_algo: Callable, file_data):
+        start_time = time.time()
+        result = func_algo(file_data)
+        json_result = [result[0].to_json(),
+                       result[1].to_json(),
+                       [due.to_json() for due in result[2]],
+                       [gue.to_json() for gue in result[3]],
+                       [eue.to_json() for eue in result[4]]]
+        print(f'--- {round((time.time() - start_time) / 60, 3)} min {algo_name} ---')
+        return json_result
 
     def new_directory(self):
-        self.folder_graph: str = f'{os.path.dirname(__file__)}/graph/{self.folder_data}/gNB{self.parameter["gNB MCS"][0]}{self.parameter["gNB MCS"][1]}_eNB{self.parameter["eNB MCS"][0]}{self.parameter["eNB MCS"][1]}'
+        self.folder_graph: str = f'{os.path.dirname(__file__)}/graph/{self.folder_data}'
+        self.folder_graph += f'/gNB{self.parameter["gNB MCS"][0]}{self.parameter["gNB MCS"][1]}_eNB{self.parameter["eNB MCS"][0]}{self.parameter["eNB MCS"][1]}'
+        self.folder_graph += f'/result'
 
         if os.path.exists(self.folder_graph):
             return True

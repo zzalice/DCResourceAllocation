@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from typing import List, Optional, TYPE_CHECKING, Union
+from typing import Any, Dict, List, Optional, TYPE_CHECKING, Union
 
 from .frame import Frame
 from .util_enum import E_MCS, G_MCS, NodeBType
@@ -21,6 +21,15 @@ class NodeB:
 
         self.nb_type: Optional[NodeBType] = None
 
+    def to_json(self) -> Dict[str, Any]:
+        nb: Dict[str, Any] = {
+            'x': self.coordinate.x,
+            'y': self.coordinate.y,
+            'radius': self.radius,
+            'frame': self.frame.to_json()
+        }
+        return nb
+
 
 class _NBInfoWithinUE:
     def __init__(self):
@@ -36,6 +45,13 @@ class _NBInfoWithinUE:
     def update_mcs(self):
         assert self.rb, "Updating a BS that has no RB allocated."
         self.mcs = min(self.rb, key=lambda b: b.mcs.value).mcs
+
+    def to_json(self) -> Dict[str, Any]:
+        nb_info: Dict[str, Any] = {
+            'mcs': self.mcs.index if self.mcs else None,
+            'rb': [rb.to_json() for rb in self.rb]
+        }
+        return nb_info
 
 
 class ENBInfo(_NBInfoWithinUE):
