@@ -89,7 +89,7 @@ class GraphGenerator:
         #                          layer/#ue   algo sum of system throughput
         # collect_data2: Dict[Union[str, int], Dict[str, float]]
         #                          layer/#ue   algo sum of #unallocated ue
-        self.frame_time: int = next(iter(next(iter(result.values())).values()))[0]['frame_time']
+        self.frame_time: int = next(iter(next(iter(result.values())).values()))[0]['frame']['frame_time']
 
         for layer_or_total_ue in result:  # only one
             l_or_u: int = int(re.sub('[^0-9]', '', layer_or_total_ue))
@@ -318,8 +318,7 @@ class GraphGenerator:
         for eue in eue_list:
             if eue['is_allocated']:
                 collect_data['eUE'] += 1
-        collect_data['total'] = collect_data['dUE_cross_BS'] + collect_data['dUE_in_gNB'] + collect_data['dUE_in_eNB'] + \
-                                collect_data['gUE'] + collect_data['eUE']
+        collect_data['total'] = collect_data['dUE_cross_BS'] + collect_data['dUE_in_gNB'] + collect_data['dUE_in_eNB'] + collect_data['gUE'] + collect_data['eUE']
 
     def gen_allocated_ue(self, iteration: int, layers: List[int], output_file_path: str,
                          ue_label: Tuple[str, ...],

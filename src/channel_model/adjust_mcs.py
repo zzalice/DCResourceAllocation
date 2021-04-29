@@ -278,9 +278,9 @@ class AdjustMCS(Undo):
                                  new_same_numerology_rb: bool, func_is_available_rb: Callable) -> bool:
         assert ue.is_allocated
         assert ue.ue_type != UEType.D or not ue.cross_nb
-        if ue.gnb_info.rb:  # is allocated to gnb
+        if hasattr(ue, 'gnb_info') and ue.gnb_info.rb:  # is allocated to gnb
             nb_info: GNBInfo = ue.gnb_info
-        elif ue.enb_info.rb:  # is allocated to enb
+        elif hasattr(ue, 'enb_info') and ue.enb_info.rb:  # is allocated to enb
             nb_info: ENBInfo = ue.enb_info
         else:  # is not allocated
             raise AssertionError

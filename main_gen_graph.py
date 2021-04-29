@@ -19,9 +19,9 @@ if __name__ == '__main__':
     MCS parameter can be set in resource_allocation/ds/util_enum.py
     and record in IterateAlgo output pickle.
     """
-    f_data: str = '0410-094738high_qos_700ue'  # <-- change
-    f_mcs: str = 'gNBCQI5CQI7_eNBCQI5CQI7'  # <-- change
-    i: int = 10  # <-- change
+    f_data: str = '0425-103838test_thread'  # <-- change
+    f_mcs: str = 'gNBCQI1CQI15_eNBCQI1CQI15'  # <-- change
+    i: int = 100  # <-- change
 
     # ---Graphs for ue---
     ut: List[int] = [300, 400, 500, 600, 700, 800, 900]  # <-- change
@@ -48,4 +48,4 @@ if __name__ == '__main__':
 
     layer_or_ue: List[str] = layer_or_ue(l_or_u, l, ut)
     # GraphGenerator(iteration=i, graph_type='NOMA', layer_or_ue=layer_or_ue, algorithm=algo, folder_result=(f'{f_data}/{f_mcs}',))
-    GraphGenerator(iteration=i, graph_type='CQI', layer_or_ue=layer_or_ue, algorithm=algo, folder_result=(f'{f_data}/{f_mcs}',))
+    # GraphGenerator(iteration=i, graph_type='CQI', layer_or_ue=layer_or_ue, algorithm=algo, folder_result=(f'{f_data}/{f_mcs}',))
