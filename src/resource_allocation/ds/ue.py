@@ -1,9 +1,10 @@
 from __future__ import annotations
 
-from typing import Any, Dict, Optional, TYPE_CHECKING
+from typing import Any, Dict, List, Optional, TYPE_CHECKING
 from uuid import UUID, uuid4
 
 from .nodeb import ENBInfo, GNBInfo
+from .rb import ResourceBlock
 from .util_enum import Numerology, UEType
 from .util_type import CandidateSet
 
@@ -57,6 +58,21 @@ class UserEquipment:
                 self.gnb_info.rb[0].remove_rb()
             assert not self.gnb_info.rb, "The RB remove failed."
         self.is_to_recalculate_mcs = False
+
+    def highest_frequency_rb(self) -> Optional[ResourceBlock]:
+        last_rb: List[ResourceBlock] = []
+        if hasattr(self, 'gnb_info'):
+            if rb := self.gnb_info.highest_frequency_rb():
+                last_rb.append(rb)
+        if hasattr(self, 'enb_info'):
+            if rb := self.enb_info.highest_frequency_rb():
+                last_rb.append(rb)
+        if last_rb:
+            last_rb.sort(key=lambda x: x.j_start)  # sort by time
+            last_rb.sort(key=lambda x: x.i_start)  # sort by freq
+            return last_rb[-1]
+        else:
+            return None
 
     def update_throughput(self):
         # !! Don't forget to update MCS before calling this method !!

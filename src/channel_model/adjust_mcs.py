@@ -266,83 +266,25 @@ class AdjustMCS(Undo):
         assert not new_same_numerology_rb or (new_same_numerology_rb and (func_is_available_rb is not None) and (
                 allow_lower_mcs and channel_model is not None)), 'Missing requirements for adding same numerology RB.'
         assert ue.is_allocated
-        if ue.ue_type == UEType.D and ue.cross_nb:
-            return self._remove_from_tail_dual(ue, allow_lower_mcs, allow_lower_than_cqi0, channel_model,
-                                               new_same_numerology_rb, func_is_available_rb)
-        else:
-            return self._remove_from_tail_single(ue, allow_lower_mcs, allow_lower_than_cqi0, channel_model,
-                                                 new_same_numerology_rb, func_is_available_rb)
 
-    def _remove_from_tail_single(self, ue: UE, allow_lower_mcs: bool, allow_lower_than_cqi0: bool,
-                                 channel_model: ChannelModel,
-                                 new_same_numerology_rb: bool, func_is_available_rb: Callable) -> bool:
-        assert ue.is_allocated
-        assert ue.ue_type != UEType.D or not ue.cross_nb
-        if hasattr(ue, 'gnb_info') and ue.gnb_info.rb:  # is allocated to gnb
-            nb_info: GNBInfo = ue.gnb_info
-        elif hasattr(ue, 'enb_info') and ue.enb_info.rb:  # is allocated to enb
-            nb_info: ENBInfo = ue.enb_info
-        else:  # is not allocated
-            raise AssertionError
-
-        nb_info.rb.sort(key=lambda x: x.j_start)  # sort by time
-        nb_info.rb.sort(key=lambda x: x.i_start)  # sort by freq
         while True:
-            tmp_ue_throughput: float = self.throughput_ue(nb_info.rb[:-1])  # temporarily remove one RB
-            if tmp_ue_throughput >= ue.request_data_rate:
-                self.append_undo(lambda b=nb_info.rb[-1]: b.undo(), lambda b=nb_info.rb[-1]: b.purge_undo())
-                nb_info.rb[-1].remove_rb()
-            elif self.throughput_ue(nb_info.rb) >= ue.request_data_rate:
-                self.append_undo(lambda n_i=nb_info, origin=nb_info.mcs: setattr(n_i, 'mcs', origin))
-                self.append_undo(lambda origin=ue.throughput: setattr(ue, 'throughput', origin))
-                self.append_undo(
-                    lambda origin=ue.is_to_recalculate_mcs: setattr(ue, 'is_to_recalculate_mcs', origin))
-
-                nb_info.update_mcs()
-                ue.update_throughput()
-                ue.is_to_recalculate_mcs = False
-                return True
-            elif not allow_lower_mcs:
-                return False
-            elif self.throughput_ue(nb_info.rb) == 0.0:
-                if allow_lower_than_cqi0:
-                    ue.remove_ue()
-                    return True
-                else:
-                    return False
+            highest_freq_rb: ResourceBlock = ue.highest_frequency_rb()
+            assert highest_freq_rb, 'UE is not allocated.'
+            if highest_freq_rb.layer.nodeb.nb_type == NodeBType.G:
+                nb_rm: GNBInfo = ue.gnb_info
+                nb_keep: Optional[ENBInfo] = ue.enb_info if ue.ue_type == UEType.D and ue.cross_nb else None
             else:
-                # add one continuous RB
-                new_resource = NewResource()
-                rb: Union[ResourceBlock, bool] = new_resource.add_one_continuous_rb(ue, channel_model,
-                                                                                    same_numerology=new_same_numerology_rb,
-                                                                                    func_is_available_rb=func_is_available_rb)
-                if rb:
-                    self.append_undo(lambda nr=new_resource: nr.undo(), lambda nr=new_resource: nr.purge_undo())
-                else:
-                    return False
+                nb_rm: ENBInfo = ue.enb_info
+                nb_keep: Optional[GNBInfo] = ue.gnb_info if ue.ue_type == UEType.D and ue.cross_nb else None
 
-    def _remove_from_tail_dual(self, ue: DUserEquipment, allow_lower_mcs: bool, allow_lower_than_cqi0: bool,
-                               channel_model: ChannelModel,
-                               new_same_numerology_rb: bool, func_is_available_rb: Callable) -> bool:
-        """
-        For dual connected UE only.
-        """
-        assert ue.cross_nb
-        first_time: bool = True
-        while first_time or (len(ue.gnb_info.rb) > 1 or len(ue.enb_info.rb) > 1):
-            first_time: bool = False
+            tmp_ue_throughput: float = self.throughput_ue(nb_rm.rb[:-1])  # temporarily remove one RB
+            if nb_keep:
+                tmp_ue_throughput += self.throughput_ue(nb_keep.rb)
 
-            nb_rm: Union[GNBInfo, ENBInfo] = ue.gnb_info if len(ue.gnb_info.rb) > len(
-                ue.enb_info.rb) else ue.enb_info
-            nb_keep: Union[GNBInfo, ENBInfo] = ue.enb_info if len(ue.gnb_info.rb) > len(
-                ue.enb_info.rb) else ue.gnb_info
-
-            # temporarily remove one RB
-            tmp_ue_throughput: float = self.throughput_ue(nb_rm.rb[:-1]) + self.throughput_ue(nb_keep.rb)
             if tmp_ue_throughput >= ue.request_data_rate:
-                self.append_undo(lambda b=nb_rm.rb[-1]: b.undo(), lambda b=nb_rm.rb[-1]: b.purge_undo())
-                nb_rm.rb[-1].remove_rb()
-                assert ue.cross_nb, 'Wrong adjustment.'
+                rb_to_rm: ResourceBlock = nb_rm.rb[-1]
+                self.append_undo(lambda b=rb_to_rm: b.undo(), lambda b=rb_to_rm: b.purge_undo())
+                rb_to_rm.remove_rb()
             elif ue.calc_throughput() >= ue.request_data_rate:
                 self.append_undo(lambda n_i=nb_rm, origin=nb_rm.mcs: setattr(n_i, 'mcs', origin))
                 self.append_undo(lambda origin=ue.throughput: setattr(ue, 'throughput', origin))
@@ -355,7 +297,7 @@ class AdjustMCS(Undo):
                 return True
             elif not allow_lower_mcs:
                 return False
-            elif self.throughput_ue(ue.gnb_info.rb) == 0.0 or self.throughput_ue(ue.gnb_info.rb) == 0.0:
+            elif self.throughput_ue(nb_rm.rb) == 0.0:
                 if allow_lower_than_cqi0:
                     ue.remove_ue()
                     return True
@@ -364,9 +306,9 @@ class AdjustMCS(Undo):
             else:
                 # add one continuous RB
                 new_resource = NewResource()
-                rb: Union[ResourceBlock, bool] = new_resource.add_one_continuous_rb(ue, channel_model,
-                                                                                    same_numerology=new_same_numerology_rb,
-                                                                                    func_is_available_rb=func_is_available_rb)
+                rb: Union[ResourceBlock, bool] = new_resource.add_one_continuous_rb(
+                    ue, channel_model,
+                    same_numerology=new_same_numerology_rb, func_is_available_rb=func_is_available_rb)
                 if rb:
                     self.append_undo(lambda nr=new_resource: nr.undo(), lambda nr=new_resource: nr.purge_undo())
                 else:

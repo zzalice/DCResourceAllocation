@@ -46,6 +46,14 @@ class _NBInfoWithinUE:
         assert self.rb, "Updating a BS that has no RB allocated."
         self.mcs = min(self.rb, key=lambda b: b.mcs.value).mcs
 
+    def highest_frequency_rb(self) -> Optional[ResourceBlock]:
+        if self.rb:
+            self.rb.sort(key=lambda x: x.j_start)  # sort by time
+            self.rb.sort(key=lambda x: x.i_start)  # sort by freq
+            return self.rb[-1]
+        else:
+            return None
+
     def to_json(self) -> Dict[str, Any]:
         nb_info: Dict[str, Any] = {
             'mcs': self.mcs.index if self.mcs else None,

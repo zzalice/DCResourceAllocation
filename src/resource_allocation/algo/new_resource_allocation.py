@@ -116,12 +116,16 @@ class NewResource(Undo):
         last_rb_enb: Optional[ResourceBlock] = None
         last_rb: Optional[ResourceBlock] = None
         if hasattr(ue, 'gnb_info'):
-            last_rb_gnb: Optional[ResourceBlock] = self.highest_freq_rb(ue.gnb_info.rb)
+            last_rb_gnb: Optional[ResourceBlock] = ue.gnb_info.highest_frequency_rb()
         if hasattr(ue, 'enb_info'):
-            last_rb_enb: Optional[ResourceBlock] = self.highest_freq_rb(ue.enb_info.rb)
+            last_rb_enb: Optional[ResourceBlock] = ue.enb_info.highest_frequency_rb()
         if last_rb_gnb and last_rb_enb:
             # pick the one with higher efficiency
-            last_rb: ResourceBlock = last_rb_gnb if last_rb_gnb.mcs.efficiency > last_rb_enb.mcs.efficiency else last_rb_enb
+            # FIXME: Is this what I want? Or the BS with higher MCS?
+            if last_rb_gnb.mcs.efficiency > last_rb_enb.mcs.efficiency:
+                last_rb: ResourceBlock = last_rb_gnb
+            else:
+                last_rb: ResourceBlock = last_rb_enb
         elif last_rb_gnb:
             last_rb: ResourceBlock = last_rb_gnb
         elif last_rb_enb:
@@ -163,14 +167,3 @@ class NewResource(Undo):
             return False
 
         return new_rb
-
-    @staticmethod
-    def highest_freq_rb(rb_list: List[ResourceBlock]) -> Optional[ResourceBlock]:
-        if not rb_list:
-            return None
-        last_rb: ResourceBlock = rb_list[0]
-        for rb in rb_list[1:]:
-            if rb.i_start > last_rb.i_start or (rb.i_start == last_rb.i_start and rb.j_start > last_rb.j_start):
-                # higher frequency or later time
-                last_rb: ResourceBlock = rb
-        return last_rb
