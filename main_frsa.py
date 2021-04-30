@@ -7,15 +7,15 @@ from main_mcuphm import mcup_hm
 from src.resource_allocation.algo.frsa.frsa_phase1 import FRSAPhase1
 from src.resource_allocation.algo.frsa.frsa_phase2 import FRSAPhase2
 from src.resource_allocation.algo.frsa.frsa_phase3 import FRSAPhase3
-from src.resource_allocation.algo.new_ue import ForceDC
+from src.resource_allocation.algo.new_ue import SimpleDC
 from src.resource_allocation.algo.utils import divide_ue
 from src.resource_allocation.ds.eutran import ENodeB, EUserEquipment
 from src.resource_allocation.ds.ngran import DUserEquipment, GNodeB, GUserEquipment
 from utils.pickle_generator import visualize_phase_uncategorized_ue
 
 
-def frsa(data_set: str, visualize_the_algo: bool = False) -> Tuple[
-    GNodeB, ENodeB, List[DUserEquipment], List[GUserEquipment], List[EUserEquipment]]:
+def frsa(data_set: str, visualize_the_algo: bool = False
+         ) -> Tuple[GNodeB, ENodeB, List[DUserEquipment], List[GUserEquipment], List[EUserEquipment]]:
     """
     Combines FRSA with MCUP.
     :param data_set:
@@ -60,10 +60,8 @@ def frsa(data_set: str, visualize_the_algo: bool = False) -> Tuple[
     # eNB resource allocation
     gnb_sc_allocated, _ = divide_ue(gnb_sc_ue_list)
     dc_ue_allocated, _ = divide_ue(dc_ue_list)
-    force_dc: ForceDC = ForceDC(
-        e_nb, dc_ue_allocated + enb_sc_ue_list, dc_ue_allocated + gnb_sc_allocated, channel_model)
-    force_dc.allocate(allow_lower_mcs=False)
-    force_dc.force_dc(dc_ue_list)
+    SimpleDC(e_nb, dc_ue_allocated + enb_sc_ue_list, dc_ue_allocated + gnb_sc_allocated, channel_model
+             ).allocate(allow_lower_mcs=False)
 
     if visualize_the_algo:
         visualize_phase_uncategorized_ue(visualization_file_path, 'ab+',

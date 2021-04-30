@@ -404,16 +404,16 @@ class AllocateUEListSameNumerology(AllocateUEList):
         return True
 
 
-class ForceDC(AllocateUEList):
+class SimpleDC(AllocateUEList):
     def __init__(self, nb: Union[GNodeB, ENodeB], ue_to_allocate: Tuple[UE, ...], allocated_ue: Tuple[UE, ...],
                  channel_model: ChannelModel):
         ue_to_allocate: List[UE] = sort_by_channel_quality(list(ue_to_allocate), nb.nb_type)
         super().__init__(nb, tuple(ue_to_allocate), allocated_ue, channel_model)
 
-    @staticmethod
-    def force_dc(dc_ue_list: Tuple[DUserEquipment, ...]):
-        assert len({ue.ue_type for ue in dc_ue_list}) <= 1
-        # DC UEs must connect to two BSs
-        for due in dc_ue_list:
-            if not due.cross_nb and due.is_allocated:
-                due.remove_ue()
+    # @staticmethod
+    # def force_dc(dc_ue_list: Tuple[DUserEquipment, ...]):
+    #     assert len({ue.ue_type for ue in dc_ue_list}) <= 1
+    #     # DC UEs must connect to two BSs
+    #     for due in dc_ue_list:
+    #         if not due.cross_nb and due.is_allocated:
+    #             due.remove_ue()
