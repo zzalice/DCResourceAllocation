@@ -66,7 +66,7 @@ class IterateAlgo:
                     'Baseline': self.run_algorithm('Baseline', intuitive_resource_allocation, file_data)
                 }
 
-                filename: str = f'{m}{self.topic["folder description"]}_iter{i}.json'
+                filename: str = f'{m}{self.topic["folder description"]}_iter{i}.json'   # FIXME save algo in separate json files
                 with open(f'{self.folder_graph}/{filename}', 'w') as f:
                     json.dump({f'{m}{self.topic["folder description"]}': result}, f)
         return True

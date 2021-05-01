@@ -16,6 +16,19 @@ CandidateSet = NewType('CandidateSet', Tuple[_Numerology, ...])
 
 
 @dataclasses.dataclass
+class CircularRegion:
+    x: float
+    y: float
+    radius: float
+
+    def calc_area(self) -> float:
+        return (self.radius ** 2) * math.pi
+
+    def in_region(self, target: Coordinate) -> bool:
+        return Coordinate.calc_distance(self, target) <= self.radius
+
+
+@dataclasses.dataclass
 class Coordinate:
     x: float
     y: float
@@ -29,7 +42,7 @@ class Coordinate:
             self.distance_gnb = Coordinate.calc_distance(self, target_nb.coordinate)
 
     @staticmethod
-    def calc_distance(source: Coordinate, target: Coordinate) -> float:
+    def calc_distance(source: Union[Coordinate, CircularRegion], target: Union[Coordinate, CircularRegion]) -> float:
         distance: float = math.sqrt((source.x - target.x) ** 2 + (source.y - target.y) ** 2)
         assert distance != 0.0, "The coordinate of the UE overlaps a BS."
         return distance
