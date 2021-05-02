@@ -199,16 +199,17 @@ class GraphGenerator:
         #              e.g. {'DC-RA': [0.98, 0.55, 0.32], 'Baseline': [0.97, 0.44, 0.22]}
         x_labels: List[str] = []
         percentages: Dict[str, List[float]] = {}
-        for layer in self.data:
-            if layer in layers:
-                x_labels.append(str(layer) + ' layer')
-                for algo in self.data[layer]:
-                    percent: float = self.data[layer][algo][0] / self.data[layer][algo][1]
-                    assert 0.0 <= percent <= 1.0, 'Error in counting used BU.'
-                    try:
-                        percentages[algo].append(percent)
-                    except KeyError:
-                        percentages[algo] = [percent]
+        for layer in layers:
+            if layer not in self.data:
+                continue
+            x_labels.append(str(layer) + ' layer')
+            for algo in self.data[layer]:
+                percent: float = self.data[layer][algo][0] / self.data[layer][algo][1]
+                assert 0.0 <= percent <= 1.0, 'Error in counting used BU.'
+                try:
+                    percentages[algo].append(percent)
+                except KeyError:
+                    percentages[algo] = [percent]
 
         x_label: str = 'The number of layer in a gNB'
         y_label: str = 'Frame Usage(%)'
@@ -273,11 +274,11 @@ class GraphGenerator:
         for ue in all_ue:
             x.append(ue[1])
             y.append(ue[2])
-            if ue[0] == UEType.D:
+            if ue[0] == UEType.D.name:
                 color.append(c[0])
-            elif ue[0] == UEType.G:
+            elif ue[0] == UEType.G.name:
                 color.append(c[1])
-            elif ue[0] == UEType.E:
+            elif ue[0] == UEType.E.name:
                 color.append(c[2])
             else:
                 raise AssertionError
