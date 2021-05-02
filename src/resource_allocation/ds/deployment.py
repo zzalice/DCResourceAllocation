@@ -7,12 +7,13 @@ from src.resource_allocation.ds.util_type import CircularRegion, Coordinate
 
 class Deploy:
     @staticmethod
-    def random(total_ue: int, in_area: Tuple[CircularRegion, ...]
+    def random(total_ue: int, in_area: Tuple[CircularRegion, ...], not_in_area: Tuple[CircularRegion, ...] = (),
                ) -> Tuple[Tuple[Tuple[Coordinate, ...]], Tuple[Coordinate, ...]]:
         """
-        Uniformly deploy UE in the areas.
+        Uniformly deploy UE in the areas of in_area but not in not_in_area.
         :param total_ue: The number of UE to deploy in the areas.
         :param in_area: The areas to deploy UE. Can't be more than two.
+        :param not_in_area: The areas that we don't want any UE deployed.
         :return: The coordinate of UE in each area and in overlapped area.
         """
         assert 0 < len(in_area) <= 2
@@ -24,6 +25,14 @@ class Deploy:
             while True:
                 tmp_coordinate: Coordinate = Coordinate(x=random.uniform(bound['left'], bound['right']),
                                                         y=random.uniform(bound['down'], bound['up']))
+                in_forbidden_area: bool = False
+                for area in not_in_area:
+                    if area.in_region(tmp_coordinate):
+                        in_forbidden_area: bool = True
+                        break
+                if in_forbidden_area:
+                    continue
+
                 under_coverage: List[int] = []
                 for j, area in enumerate(in_area):
                     if area.in_region(tmp_coordinate):
@@ -39,9 +48,28 @@ class Deploy:
 
     @staticmethod
     def cell_edge(total_ue: int, in_area: Tuple[CircularRegion, ...],
-                  proportion_cell_center: float = 0.85, proportion_of_ue_in_edge: float = 0.4):
-        # assert 面積比要低於proportion, 'Proportion of UE in cell edge is too low.'
-        pass
+                  radius_proportion_of_cell_edge: float = 0.85, proportion_of_ue_in_edge: float = 0.4
+                  ) -> Tuple[Tuple[Tuple[Coordinate, ...]], Tuple[Coordinate, ...]]:
+        assert 0 < len(in_area) <= 2
+        # TODO: Raise warning 面積比要低於proportion, 'Proportion of UE in cell edge is too low.'
+        num_of_ue_in_cell_edge: int = math.ceil(total_ue * proportion_of_ue_in_edge)
+        num_of_ue_in_cell_center: int = total_ue - num_of_ue_in_cell_edge
+
+        # deploy cell center
+        cell_center: List[CircularRegion] = []
+        for area in in_area:
+            radius_cell_center: float = area.radius * (1 - radius_proportion_of_cell_edge)
+            cell_center.append(CircularRegion(x=area.x, y=area.y, radius=radius_cell_center))
+        sc_coordinates_center, dc_coordinates_center = Deploy.random(num_of_ue_in_cell_center, tuple(cell_center))
+
+        # deploy cell edge  FIXME: no cell edge UE in DC area
+        sc_coordinates_edge, dc_coordinates_edge = Deploy.random(num_of_ue_in_cell_edge,
+                                                                 in_area=in_area, not_in_area=tuple(cell_center))
+        sc_coordinates: List[Tuple[Coordinate, ...]] = []
+        for i in range(len(in_area)):
+            sc_coordinate: Tuple[Coordinate, ...] = sc_coordinates_center[i] + sc_coordinates_edge[i]
+            sc_coordinates.append(sc_coordinate)
+        return tuple(sc_coordinates), dc_coordinates_center + dc_coordinates_edge
 
     @staticmethod
     def hotspots(total_ue: int, in_area: Tuple[CircularRegion, ...],
@@ -70,10 +98,10 @@ class Deploy:
 
         for area in in_area[1:]:
             while Coordinate.calc_distance(area, tmp_coordinate) > area.radius:
-                tmp_coordinate = Deploy.random_gen_coordinate(in_area, not_in_area)
+                tmp_coordinate = Deploy.random_in_overlapped(in_area, not_in_area)
         for area in not_in_area:
             while Coordinate.calc_distance(area, tmp_coordinate) < area.radius:
-                tmp_coordinate = Deploy.random_gen_coordinate(in_area, not_in_area)
+                tmp_coordinate = Deploy.random_in_overlapped(in_area, not_in_area)
 
         return tmp_coordinate
 
