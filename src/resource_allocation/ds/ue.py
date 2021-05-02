@@ -142,7 +142,7 @@ class UserEquipment:
             'is_allocated': self.is_allocated}
 
         if hasattr(self, 'enb_info'):
-            ue['gnb_info'] = self.enb_info.to_json()
+            ue['enb_info'] = self.enb_info.to_json()
         if hasattr(self, 'gnb_info'):
             ue['gnb_info'] = self.gnb_info.to_json()
         if hasattr(self, 'cross_nb'):
