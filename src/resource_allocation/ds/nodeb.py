@@ -7,14 +7,13 @@ from .util_enum import E_MCS, G_MCS, NodeBType
 
 if TYPE_CHECKING:
     from .rb import ResourceBlock
-    from .util_type import Coordinate
+    from .util_type import CircularRegion
 
 
 class NodeB:
-    def __init__(self, coordinate: Coordinate, radius: float, power_tx: int, frame_freq: int, frame_time: int,
+    def __init__(self, region: CircularRegion, power_tx: int, frame_freq: int, frame_time: int,
                  frame_max_layer: int):
-        self.coordinate: Coordinate = coordinate
-        self.radius: float = radius  # km
+        self.region: CircularRegion = region
         self.power_tx: int = power_tx  # dBm
         self.frame: Frame = Frame(frame_freq, frame_time, frame_max_layer, self)
         # the number of BUs in frequency and time domain and the number of NOMA layers in a frame
@@ -23,9 +22,9 @@ class NodeB:
 
     def to_json(self) -> Dict[str, Any]:
         nb: Dict[str, Any] = {
-            'x': self.coordinate.x,
-            'y': self.coordinate.y,
-            'radius': self.radius,
+            'x': self.region.x,
+            'y': self.region.y,
+            'radius': self.region.radius,
             'frame': self.frame.to_json()
         }
         return nb

@@ -2,7 +2,6 @@ from __future__ import annotations
 
 import dataclasses
 import math
-import random
 from _ast import List
 from typing import NewType, Optional, Tuple, TYPE_CHECKING, Union
 
@@ -10,7 +9,6 @@ from .util_enum import _Numerology, NodeBType, Numerology
 
 if TYPE_CHECKING:
     from .nodeb import NodeB
-    from src.simulation.data import HotSpot
 
 CandidateSet = NewType('CandidateSet', Tuple[_Numerology, ...])
 
@@ -19,7 +17,7 @@ CandidateSet = NewType('CandidateSet', Tuple[_Numerology, ...])
 class CircularRegion:
     x: float
     y: float
-    radius: float
+    radius: float  # km
 
     def calc_area(self) -> float:
         return (self.radius ** 2) * math.pi
@@ -32,39 +30,20 @@ class CircularRegion:
 class Coordinate:
     x: float
     y: float
-    distance_enb: Optional[float] = None
-    distance_gnb: Optional[float] = None
+    distance_enb: Optional[float] = None  # km
+    distance_gnb: Optional[float] = None  # km
 
     def calc_distance_to_nb(self, target_nb: NodeB):
         if target_nb.nb_type == NodeBType.E:
-            self.distance_enb = Coordinate.calc_distance(self, target_nb.coordinate)
+            self.distance_enb = Coordinate.calc_distance(self, target_nb.region)
         else:
-            self.distance_gnb = Coordinate.calc_distance(self, target_nb.coordinate)
+            self.distance_gnb = Coordinate.calc_distance(self, target_nb.region)
 
     @staticmethod
     def calc_distance(source: Union[Coordinate, CircularRegion], target: Union[Coordinate, CircularRegion]) -> float:
         distance: float = math.sqrt((source.x - target.x) ** 2 + (source.y - target.y) ** 2)
         assert distance != 0.0, "The coordinate of the UE overlaps a BS."
         return distance
-
-    @staticmethod
-    def random_gen_coordinate(in_area: Tuple[Union[NodeB, HotSpot], ...],
-                              not_in_area: Tuple[Union[NodeB, HotSpot], ...] = ()) -> Coordinate:
-        tmp_x: float = random.uniform(in_area[0].coordinate.x - in_area[0].radius,
-                                      in_area[0].coordinate.x + in_area[0].radius)
-        tmp_y_range: float = math.sqrt(in_area[0].radius ** 2 - (tmp_x - in_area[0].coordinate.x) ** 2)
-        tmp_y: float = random.uniform(in_area[0].coordinate.y - tmp_y_range, in_area[0].coordinate.y + tmp_y_range)
-        assert (in_area[0].coordinate.x - tmp_x) ** 2 + (in_area[0].coordinate.y - tmp_y) ** 2 <= in_area[0].radius ** 2
-        tmp_coordinate: Coordinate = Coordinate(tmp_x, tmp_y)
-
-        for area in in_area[1:]:
-            while Coordinate.calc_distance(area.coordinate, tmp_coordinate) > area.radius:
-                tmp_coordinate = Coordinate.random_gen_coordinate(in_area, not_in_area)
-        for area in not_in_area:
-            while Coordinate.calc_distance(area.coordinate, tmp_coordinate) < area.radius:
-                tmp_coordinate = Coordinate.random_gen_coordinate(in_area, not_in_area)
-
-        return tmp_coordinate
 
 
 @dataclasses.dataclass

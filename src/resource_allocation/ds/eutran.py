@@ -3,14 +3,14 @@ from typing import List
 from .nodeb import NodeB
 from .ue import UserEquipment
 from .util_enum import LTEResourceBlock, NodeBType, UEType
-from .util_type import CandidateSet, Coordinate
+from .util_type import CandidateSet, CircularRegion
 
 
 class ENodeB(NodeB):
-    def __init__(self, coordinate: Coordinate, radius: float = 0.5, power_tx: int = 46,
+    def __init__(self, region: CircularRegion, power_tx: int = 46,
                  frame_freq: int = 100, frame_time: int = 80, frame_max_layer: int = 1):
-        # default: 0.5km, 46 dBm, 20MHz * 10ms * 1layers
-        super().__init__(coordinate, radius, power_tx, frame_freq, frame_time, frame_max_layer)
+        # default: 46 dBm, 20MHz * 10ms * 1layers
+        super().__init__(region, power_tx, frame_freq, frame_time, frame_max_layer)
         self.nb_type: NodeBType = NodeBType.E
 
 

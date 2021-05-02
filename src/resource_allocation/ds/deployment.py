@@ -48,7 +48,7 @@ class Deploy:
 
     @staticmethod
     def cell_edge(total_ue: int, in_area: Tuple[CircularRegion, ...],
-                  radius_proportion_of_cell_edge: float = 0.85, proportion_of_ue_in_edge: float = 0.4
+                  radius_proportion_of_cell_edge: float = 0.1, proportion_of_ue_in_edge: float = 0.4
                   ) -> Tuple[Tuple[Tuple[Coordinate, ...]], Tuple[Coordinate, ...]]:
         assert 0 < len(in_area) <= 2
         # TODO: Raise warning 面積比要低於proportion, 'Proportion of UE in cell edge is too low.'
@@ -73,7 +73,7 @@ class Deploy:
 
     @staticmethod
     def hotspots(total_ue: int, in_area: Tuple[CircularRegion, ...],
-                 hotspots: Tuple[Tuple[CircularRegion, float], ...]):
+                 hotspots: Tuple[Tuple[float, float, float, int], ...]):
         # assert , 'A hotspot is not in the BS area.'
         pass
 

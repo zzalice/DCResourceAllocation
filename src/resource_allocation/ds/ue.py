@@ -38,10 +38,10 @@ class UserEquipment:
         self.coordinate.calc_distance_to_nb(g_nb)
         if hasattr(self, 'enb_info'):
             self.enb_info.nb = e_nb
-            assert self.coordinate.distance_enb <= e_nb.radius
+            assert self.coordinate.distance_enb <= e_nb.region.radius
         if hasattr(self, 'gnb_info'):
             self.gnb_info.nb = g_nb
-            assert self.coordinate.distance_gnb <= g_nb.radius
+            assert self.coordinate.distance_gnb <= g_nb.region.radius
 
     def remove_ue(self):
         self.throughput: float = 0.0
