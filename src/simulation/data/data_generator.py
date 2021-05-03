@@ -5,13 +5,13 @@ from typing import Dict, Tuple
 
 from src.channel_model.sinr import ChannelModel
 from src.resource_allocation.ds.cochannel import cochannel
-from src.resource_allocation.ds.deployment import Deploy
 from src.resource_allocation.ds.eutran import ENodeB, EUserEquipment
 from src.resource_allocation.ds.ngran import DUserEquipment, GNodeB, GUserEquipment
 from src.resource_allocation.ds.noma import setup_noma
 from src.resource_allocation.ds.util_enum import LTEResourceBlock, Numerology
 from src.resource_allocation.ds.util_type import CircularRegion
-from src.simulation.data.util_type import UEProfiles
+from src.simulation.data.deployment import Deploy
+from src.simulation.data.util_type import HotSpot, UEProfiles
 
 
 class DataGenerator:
@@ -59,7 +59,7 @@ class DataGenerator:
         self.deploy_type: int = deploy_type
         self.cell_edge_radius_proportion: float = edge_radius
         self.edge_ue_proportion: float = edge_ue
-        self.hotspots: Tuple[Tuple[float, float, float, int], ...] = hot_spots
+        self.hotspots: Tuple[HotSpot, ...] = tuple(HotSpot(hp[0], hp[1], hp[2], hp[3]) for hp in hot_spots)
         self.dc_proportion: float = dc_proportion
 
         assert cochannel_bandwidth >= 0

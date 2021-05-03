@@ -1,8 +1,9 @@
 import os
 from typing import List, Tuple
 
-from src.resource_allocation.ds.deployment import Deploy
+from src.simulation.data.deployment import Deploy
 from src.resource_allocation.ds.util_type import CircularRegion, Coordinate
+from src.simulation.data.util_type import HotSpot
 from src.simulation.graph.util_graph import scatter_chart
 
 
@@ -46,6 +47,19 @@ def test_cell_edge_deploy():
     in_area: Tuple[CircularRegion, ...] = (a, b)
     sc_coordinates, dc_coordinates = Deploy.cell_edge(1000, in_area,
                                                       radius_proportion_of_cell_edge=0.1, proportion_of_ue_in_edge=0.5)
+    sc_coordinates = list(sc_coordinates)
+    sc_coordinates.append(dc_coordinates)
+    gen_graph_deployment(in_area, sc_coordinates)
+
+
+def test_hotspot_deploy():
+    a = CircularRegion(x=0.0, y=0.0, radius=0.5)
+    b = CircularRegion(x=0.5, y=0.0, radius=0.5)
+    h1 = HotSpot(0.4, 0.0, 0.09, 0.2)
+    h2 = HotSpot(0.0, 0.0, 0.09, 0.2)
+    h3 = HotSpot(0.8, 0.2, 0.09, 0.2)
+    in_area: Tuple[CircularRegion, ...] = (a, b)
+    sc_coordinates, dc_coordinates = Deploy.hotspots(1000, in_area, (h1, h2, h3))
     sc_coordinates = list(sc_coordinates)
     sc_coordinates.append(dc_coordinates)
     gen_graph_deployment(in_area, sc_coordinates)

@@ -3,6 +3,7 @@ import random
 from typing import Dict, List, Tuple
 
 from src.resource_allocation.ds.util_type import CircularRegion, Coordinate
+from src.simulation.data.util_type import HotSpot
 
 
 class Deploy:
@@ -33,10 +34,7 @@ class Deploy:
                 if in_forbidden_area:
                     continue
 
-                under_coverage: List[int] = []
-                for j, area in enumerate(in_area):
-                    if area.in_region(tmp_coordinate):
-                        under_coverage.append(j)
+                under_coverage: Tuple[int, ...] = Deploy.under_coverage(tmp_coordinate, in_area)
                 if len(under_coverage) == 1:
                     sc_coordinates[under_coverage[0]].append(tmp_coordinate)
                     break
@@ -72,14 +70,53 @@ class Deploy:
         return tuple(sc_coordinates), dc_coordinates_center + dc_coordinates_edge
 
     @staticmethod
-    def hotspots(total_ue: int, in_area: Tuple[CircularRegion, ...],
-                 hotspots: Tuple[Tuple[float, float, float, int], ...]):
-        # assert , 'A hotspot is not in the BS area.'
-        pass
+    def hotspots(total_ue: int, in_area: Tuple[CircularRegion, ...], hotspots: Tuple[HotSpot, ...]
+                 ) -> Tuple[Tuple[Tuple[Coordinate, ...]], Tuple[Coordinate, ...]]:
+        # Assertions
+        assert 0 < len(in_area) <= 2
+        total_proportion: float = 0.0
+        for hotspot in hotspots:
+            assert True in [area.include_area(hotspot.region) for area in in_area], 'The hotspot is not in any BS area.'
+            total_proportion += hotspot.ue_proportion
+        assert 0.0 < total_proportion <= 1.0, 'The proportion of UE in hotspots are too low/high.'
+        # TODO: Raise warning hot spot not HOT!
+
+        # Main
+        # Deploy UE in hotspots
+        coordinates_hotspot: List[Coordinate] = []
+        num_ue_not_in_hotspots: int = total_ue
+        for hotspot in hotspots:
+            hotspot.calc_num_of_ue(total_ue)
+            num_ue_not_in_hotspots -= hotspot.num_ue
+            coordinates, _ = Deploy.random(hotspot.num_ue, (hotspot.region,))   # deploy
+            coordinates_hotspot.extend(list(coordinates[0]))
+        # categorize the UE by coverage
+        sc_coordinates_hotspot: List[List[Coordinate]] = [[] for _ in range(len(in_area))]
+        dc_coordinates_hotspot: List[Coordinate] = []
+        for coordinate in coordinates_hotspot:
+            under_coverage: Tuple[int, ...] = Deploy.under_coverage(coordinate, in_area)
+            if len(under_coverage) == 1:
+                sc_coordinates_hotspot[under_coverage[0]].append(coordinate)
+            elif len(under_coverage) == 2:
+                dc_coordinates_hotspot.append(coordinate)
+            else:
+                raise AssertionError
+
+        # Deploy UE not in hotspots
+        sc_coordinates_not_hotspot, dc_coordinates_not_hotspot = Deploy.random(
+            num_ue_not_in_hotspots, in_area, not_in_area=(hs.region for hs in hotspots))
+        sc_coordinates_not_hotspot: List[List[Coordinate]] = [list(i) for i in sc_coordinates_not_hotspot]
+        dc_coordinates_not_hotspot: List[Coordinate] = list(dc_coordinates_not_hotspot)
+
+        sc_coordinates: Tuple[Tuple[Coordinate]] = tuple(
+            tuple(sc_coordinates_hotspot[i] + sc_coordinates_not_hotspot[i]) for i in range(len(in_area)))
+        dc_coordinates: Tuple[Coordinate] = tuple(dc_coordinates_hotspot + dc_coordinates_not_hotspot)
+        return sc_coordinates, dc_coordinates
 
     @staticmethod
-    def dc_proportion(total_ue: int, in_area: Tuple[CircularRegion, ...], proportion_in_overlapped_area: float):
-        pass
+    def dc_proportion(total_ue: int, in_area: Tuple[CircularRegion, ...], proportion_in_overlapped_area: float
+                      ) -> Tuple[Tuple[Tuple[Coordinate, ...]], Tuple[Coordinate, ...]]:
+        raise NotImplementedError   # FIXME dc proportion deployment not implemented
 
     @staticmethod
     def random_in_overlapped(in_area: Tuple[CircularRegion, ...],
@@ -128,3 +165,11 @@ class Deploy:
             if tmp_down < bound['down']:
                 bound['down'] = tmp_down
         return bound
+
+    @staticmethod
+    def under_coverage(coordinate: Coordinate, areas: Tuple[CircularRegion, ...]) -> Tuple[int, ...]:
+        under_coverage: List[int] = []
+        for i, area in enumerate(areas):
+            if area.in_region(coordinate):
+                under_coverage.append(i)
+        return tuple(under_coverage)

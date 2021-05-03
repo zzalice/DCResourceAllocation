@@ -3,7 +3,7 @@ from __future__ import annotations
 import dataclasses
 import math
 from _ast import List
-from typing import NewType, Optional, Tuple, TYPE_CHECKING, Union
+from typing import Dict, NewType, Optional, Tuple, TYPE_CHECKING, Union
 
 from .util_enum import _Numerology, NodeBType, Numerology
 
@@ -24,6 +24,21 @@ class CircularRegion:
 
     def in_region(self, target: Coordinate) -> bool:
         return Coordinate.calc_distance(self, target) <= self.radius
+
+    def include_area(self, target: CircularRegion) -> bool:
+        included: bool = False
+        target_edge: Dict[str, float] = {
+            'left': target.x - target.radius, 'right': target.x + target.radius,
+            'up': target.y + target.radius, 'down': target.y - target.radius
+        }
+        source_edge: Dict[str, float] = {
+            'left': self.x - self.radius, 'right': self.x + self.radius,
+            'up': self.y + self.radius, 'down': self.y - self.radius
+        }
+        if (target_edge['left'] >= source_edge['left']) and (target_edge['right'] <= source_edge['right']) and (
+                target_edge['up'] <= source_edge['up']) and (target_edge['down'] >= source_edge['down']):
+            included: bool = True
+        return included
 
 
 @dataclasses.dataclass
