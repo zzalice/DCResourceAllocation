@@ -28,7 +28,6 @@ if __name__ == '__main__':
     date: str = datetime.today().strftime("%m%d-%H%M%S")
     output_folder: str = f'{date}avg_deploy'  # <--- change
 
-    # --- for layer ---
     num_of_layer = [1, 2, 3, 4, 5]  # <--- change
     for i in num_of_layer:
         para = {'output_file_path': f'{output_folder}/{i}layer',
@@ -51,7 +50,7 @@ if __name__ == '__main__':
                 'deploy_type': 0,  # 0: random, 1: cell edge, 2: hot spot, 3: more or less dUE
                 'cell_edge_radius_proportion': 0.1, 'edge_ue_proportion': 0.4,
                 'hotspots': (),  # e.g. ((0.4, 0.0, 0.09, 0.4),) => (x, y, radius, proportion of ue)
-                'dc_proportion': 0.4,
+                'dc_proportion': 50,   # [0, 100]
 
                 'inr_discount': 0.5,
                 'worsen_threshold': -100_000_000  # bps

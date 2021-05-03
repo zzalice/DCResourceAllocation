@@ -159,30 +159,40 @@ class DataGenerator:
             return Deploy.dc_proportion(self.total_num_ue, areas, self.dc_proportion)
 
     def gen_txt_parameter(self):
+        information: str = ''
+        information += f'total number of UE: {self.total_num_ue}\n'
+        information += f'dUE number: {self.due_num}\tQoS(in bps): {self.due_qos_range}\n'
+        information += f'gUE number: {self.gue_num}\tQoS(in bps): {self.gue_qos_range}\n'
+        information += f'eUE number: {self.eue_num}\tQoS(in bps): {self.eue_qos_range}\n\n'
+
+        information += f'gNB-------\n'
+        information += f'max layer: {self.gnb_layer}\n'
+        information += f'frame, freq(in BU): {self.gnb_freq}\n'
+        information += f'frame, time(in BU): {self.gnb_time}\n'
+        information += f'radius: {self.gnb_radius}\n'
+        information += f'coordinate: {self.gnb_coordinate}\n'
+        information += f'tx power: {self.gnb_tx_power}\n'
+        information += f'inr discount: {self.inr_discount}\n\n'
+
+        information += f'eNB-------\n'
+        information += f'frame, freq(in BU): {self.enb_freq}\n'
+        information += f'frame, time(in BU): {self.enb_time}\n'
+        information += f'radius: {self.enb_radius}\n'
+        information += f'coordinate: {self.enb_coordinate}\n'
+        information += f'tx power: {self.enb_tx_power}\n\n'
+
+        information += f'deploy type: {self.deploy_type}\n'  # 0: random, 1: cell edge, 2: hot spot, 3: more or less dUE
+        if self.deploy_type == 1:
+            information += f'cell edge radius proportion: {self.cell_edge_radius_proportion}\t'
+            information += f'edge_ue_proportion: {self.edge_ue_proportion}\n'
+        elif self.deploy_type == 2:
+            information += f'hot spots: {self.hotspots}\n'
+        elif self.deploy_type == 3:
+            information += f'DC proportion: {self.dc_proportion}\n'
+        information += '\n'
+
+        information += f'co-channel BW(in BU): {self.cochannel_bandwidth}\n'
+        information += f'worsen_threshold(bps): {self.worsen_threshold}\n'
+
         with open(f'{self.output_file_path}/parameter_data.txt', 'w') as file:
-            file.write(
-                f'total number of UE: {self.total_num_ue}\n' +
-                f'dUE number: {self.due_num}\tQoS(in bps): {self.due_qos_range}\n' +
-                f'gUE number: {self.gue_num}\tQoS(in bps): {self.gue_qos_range}\n' +
-                f'eUE number: {self.eue_num}\tQoS(in bps): {self.eue_qos_range}\n\n' +
-
-                f'gNB-------\n' +
-                f'max layer: {self.gnb_layer}\n' +
-                f'frame, freq(in BU): {self.gnb_freq}\n' +
-                f'frame, time(in BU): {self.gnb_time}\n' +
-                f'radius: {self.gnb_radius}\n' +
-                f'coordinate: {self.gnb_coordinate}\n' +
-                f'tx power: {self.gnb_tx_power}\n' +
-                f'inr discount: {self.inr_discount}\n\n' +
-
-                f'eNB-------\n' +
-                f'frame, freq(in BU): {self.enb_freq}\n' +
-                f'frame, time(in BU): {self.enb_time}\n' +
-                f'radius: {self.enb_radius}\n' +
-                f'coordinate: {self.enb_coordinate}\n' +
-                f'tx power: {self.enb_tx_power}\n\n' +
-
-                f'hot spots: {self.hotspots}\n\n'
-
-                f'co-channel BW(in BU): {self.cochannel_bandwidth}\n' +
-                f'worsen_threshold(bps): {self.worsen_threshold}\n')
+            file.write(information)
