@@ -33,7 +33,7 @@ def gen_data_due_to_all(proportion_due_to_all: List[int], num_of_total_ue: int, 
     parameter['deploy_type'] = 3,  # 3: more or less dUE
     parameter['cell_edge_radius_proportion'] = None
     parameter['edge_ue_proportion'] = None
-    parameter['hotspots'] = None
+    parameter['hotspots'] = ()
     for i in proportion_due_to_all:
         parameter['output_file_path'] = f'{folder}/{i}p_due'
         parameter['dc_proportion'] = i
