@@ -14,7 +14,11 @@ RESULT = Dict[str, Dict[str, Tuple[Dict, Dict, List[Dict], List[Dict], List[Dict
 
 
 class GraphGenerator:
-    def __init__(self, folder_result: Tuple[str], graph_type: str, **kwargs):
+    def __init__(self, graph_type: str, iteration: int, algorithm: Tuple[str, ...], folder_result: Tuple[str],
+                 **kwargs):
+        self.graph_type: str = graph_type
+        self.iteration: int = iteration
+        self.algorithm: Tuple[str, ...] = algorithm     # FIXME add this function
         self.output_file_path: List[str] = []
         for f in folder_result:
             self.output_file_path.append(f'{os.path.dirname(__file__)}/{f}')
@@ -26,65 +30,64 @@ class GraphGenerator:
         if graph_type == 'sys throughput - layer' or graph_type == 'increasing ue':
             self.frame_time: int = -1
 
-        self.main(graph_type, kwargs)
+        self.main(kwargs)
 
-    def main(self, graph_type: str, kwargs):
+    def main(self, kwargs):
         for file_path in self.output_file_path:
             # gather data
-            files_result: List[str] = self.input_result_files(f'{file_path}/result', kwargs['iteration'])
+            files_result: List[str] = self.input_result_files(f'{file_path}/result')
             for file_result in files_result:
-                self.read_result(f'{file_path}/result', file_result, graph_type, kwargs)
+                self.read_result(f'{file_path}/result', file_result, kwargs)
 
             # draw graphs
-            self.gen_graph(graph_type, file_path, kwargs)
+            self.gen_graph(file_path, kwargs)
         return True
 
-    def read_result(self, file_path: str, file_result: str, graph_type: str, kwargs):
+    def read_result(self, file_path: str, file_result: str, kwargs):
         with open(f'{file_path}/{file_result}', 'r') as f:
             algo_result: RESULT = json.load(f)
-            self.collect_data(graph_type, algo_result, file_path, kwargs)
+            self.collect_data(algo_result, file_path, kwargs)
         return True
 
-    def collect_data(self, graph_type: str, algo_result: RESULT, file_path: str, kwargs):
-        if graph_type == 'sys throughput - layer' or graph_type == 'due to all':
-            self.collect_sys_throughput(kwargs['iteration'], algo_result)
-        elif graph_type == 'increasing ue':
-            self.collect_sys_throughput(kwargs['iteration'], algo_result, kwargs['collect_unallo_ue'])
-        elif graph_type == 'used percentage':
-            self.collect_used_percentage(kwargs['iteration'], algo_result)
-        elif graph_type == 'deployment':
-            self.collect_deployment(kwargs['iteration'], algo_result)
-        elif graph_type == 'allocated ue' or graph_type == 'total_allocated_ue':
-            self.collect_allocated_ue(kwargs['iteration'], algo_result)
-        elif graph_type == 'NOMA':
-            self.collect_noma(kwargs['iteration'], kwargs['layer_or_ue'], kwargs['algorithm'], algo_result)
-        elif graph_type == 'CQI':
-            self.collect_ue_cqi(kwargs['iteration'], kwargs['layer_or_ue'], kwargs['algorithm'], algo_result, file_path)
+    def collect_data(self, algo_result: RESULT, file_path: str, kwargs):
+        if self.graph_type == 'sys throughput - layer' or self.graph_type == 'due to all':
+            self.collect_sys_throughput(algo_result)
+        elif self.graph_type == 'increasing ue':
+            self.collect_sys_throughput(algo_result, kwargs['collect_unallo_ue'])
+        elif self.graph_type == 'used percentage':
+            self.collect_used_percentage(algo_result)
+        elif self.graph_type == 'deployment':
+            self.collect_deployment(algo_result)
+        elif self.graph_type == 'allocated ue' or self.graph_type == 'total_allocated_ue':
+            self.collect_allocated_ue(algo_result)
+        elif self.graph_type == 'NOMA':
+            self.collect_noma(kwargs['layer_or_ue'], kwargs['algorithm'], algo_result)
+        elif self.graph_type == 'CQI':
+            self.collect_ue_cqi(kwargs['layer_or_ue'], kwargs['algorithm'], algo_result, file_path)
 
-    def gen_graph(self, graph_type: str, file_path: str, kwargs):
-        if graph_type == 'sys throughput - layer':
-            self.gen_sys_throughput_layer(kwargs['iteration'], kwargs['layers'], file_path)
-        elif graph_type == 'increasing ue':
-            self.gen_sys_throughput_increasing_ue(kwargs['iteration'], kwargs['total_ue'], kwargs['collect_unallo_ue'],
-                                                  file_path)
-        elif graph_type == 'due to all':
-            self.gen_due_to_all(kwargs['iteration'], kwargs['percentage'], file_path)
-        elif graph_type == 'used percentage':
-            self.gen_used_percentage(kwargs['iteration'], kwargs['layers'], file_path)
-        elif graph_type == 'deployment':
-            self.gen_deployment(kwargs['iteration'], kwargs['layers'], file_path)
-        elif graph_type == 'allocated ue':
-            self.gen_allocated_ue(kwargs['iteration'], kwargs['layers'], file_path,
+    def gen_graph(self, file_path: str, kwargs):
+        if self.graph_type == 'sys throughput - layer':
+            self.gen_sys_throughput_layer(kwargs['layers'], file_path)
+        elif self.graph_type == 'increasing ue':
+            self.gen_sys_throughput_increasing_ue(kwargs['total_ue'], kwargs['collect_unallo_ue'], file_path)
+        elif self.graph_type == 'due to all':
+            self.gen_due_to_all(kwargs['percentage'], file_path)
+        elif self.graph_type == 'used percentage':
+            self.gen_used_percentage(kwargs['layers'], file_path)
+        elif self.graph_type == 'deployment':
+            self.gen_deployment(kwargs['layers'], file_path)
+        elif self.graph_type == 'allocated ue':
+            self.gen_allocated_ue(kwargs['layers'], file_path,
                                   ue_label=('eUE', 'dUE_in_eNB', 'gUE', 'dUE_in_gNB', 'dUE_cross_BS'))
-        elif graph_type == 'total_allocated_ue':
-            self.gen_allocated_ue(kwargs['iteration'], kwargs['layers'], file_path, ue_label=('total',))
-        elif graph_type == 'NOMA':
-            self.gen_noma_overlap_status(kwargs['iteration'], kwargs['algorithm'], file_path)
-        elif graph_type == 'CQI':
-            self.gen_ue_cqi(kwargs['iteration'], file_path)
+        elif self.graph_type == 'total_allocated_ue':
+            self.gen_allocated_ue(kwargs['layers'], file_path, ue_label=('total',))
+        elif self.graph_type == 'NOMA':
+            self.gen_noma_overlap_status(kwargs['algorithm'], file_path)
+        elif self.graph_type == 'CQI':
+            self.gen_ue_cqi(file_path)
 
     # ==================================================================================================================
-    def collect_sys_throughput(self, iteration: int, result: RESULT, collect_unallocated_ue: bool = False):
+    def collect_sys_throughput(self, result: RESULT, collect_unallocated_ue: bool = False):
         # collect_data:  Dict[Union[str, int], Dict[str, float]]
         #                          layer/#ue   algo sum of system throughput
         # collect_data2: Dict[Union[str, int], Dict[str, float]]
@@ -93,9 +96,9 @@ class GraphGenerator:
 
         for layer_or_total_ue in result:  # only one
             l_or_u: int = int(re.sub('[^0-9]', '', layer_or_total_ue))
-            if not self._increase_iter(l_or_u, iteration):
-                return True
             for algo in result[layer_or_total_ue]:
+                if not self._increase_iter(l_or_u, algo):
+                    return True
                 allocated_ue, unallocated_ue = divide_ue_json(result[layer_or_total_ue][algo][2] +
                                                               result[layer_or_total_ue][algo][3] +
                                                               result[layer_or_total_ue][algo][4])
@@ -109,71 +112,71 @@ class GraphGenerator:
                         self.data2[l_or_u][algo] = len(unallocated_ue)
         return True
 
-    def calc_avg_sys_throughput(self, topic: List[int], iteration: int) -> Dict[str, List[float]]:
+    def calc_avg_sys_throughput(self, topic: List[int]) -> Dict[str, List[float]]:
         avg_system_throughput: Dict[str, List[float]] = {algo: [] for algo in next(iter(self.data.values()))}
         #                           algo      avg throughput of each layer
         for t in topic:
             for algo in self.data[t]:
-                assert self.count_iter[t] == iteration
-                self.data[t][algo] /= iteration
+                assert self.count_iter[t][algo] == self.iteration
+                self.data[t][algo] /= self.iteration
                 assert self.frame_time > 0
                 self.data[t][algo] = bpframe_to_mbps(self.data[t][algo], self.frame_time)
                 avg_system_throughput[algo].append(self.data[t][algo])
         return avg_system_throughput
 
-    def gen_unallocated_ue(self, total_ue: List[int], iteration: int, output_file_path: str):
+    def gen_unallocated_ue(self, total_ue: List[int], output_file_path: str):
         avg_unallocated_ue: Dict[str, List[float]] = {algo: [] for algo in next(iter(self.data2.values()))}
         #                        algo      avg unallocated ue
         for t in total_ue:
             for algo in self.data2[t]:
-                self.data2[t][algo] /= iteration
+                self.data2[t][algo] /= self.iteration
                 avg_unallocated_ue[algo].append(self.data2[t][algo])
         bar_chart('',
                   'The number of UE', total_ue,
                   'The number of unallocated UE', avg_unallocated_ue,
                   f'{output_file_path}/unallocatedUE_numOfUE_{datetime.today().strftime("%m%d-%H%M")}',
-                  {'iteration': iteration})
+                  {'iteration': self.iteration})
 
-    def gen_sys_throughput_layer(self, iteration: int, layers: List[int], output_file_path: str):
+    def gen_sys_throughput_layer(self, layers: List[int], output_file_path: str):
         for i in range(len(layers) - 1):
             assert layers[i] < layers[i + 1], 'Not in order.'
 
-        avg_system_throughput: Dict[str, List[float]] = self.calc_avg_sys_throughput(layers, iteration)
+        avg_system_throughput: Dict[str, List[float]] = self.calc_avg_sys_throughput(layers)
 
         line_chart('',
                    'The number of gNB layer', ([str(i) for i in layers]),
                    'System throughput(Mbps)', avg_system_throughput,
-                   output_file_path, {'iteration': iteration})
+                   output_file_path, {'iteration': self.iteration})
 
-    def gen_sys_throughput_increasing_ue(self, iteration: int, total_ue: List[int], collect_unallocated_ue: bool,
+    def gen_sys_throughput_increasing_ue(self, total_ue: List[int], collect_unallocated_ue: bool,
                                          output_file_path: str):
-        avg_system_throughput: Dict[str, List[float]] = self.calc_avg_sys_throughput(total_ue, iteration)
+        avg_system_throughput: Dict[str, List[float]] = self.calc_avg_sys_throughput(total_ue)
 
         line_chart('',
                    'Number of UEs', ([str(i) for i in total_ue]),
                    'System throughput(Mbps)', avg_system_throughput,
-                   output_file_path, {'iteration': iteration})
+                   output_file_path, {'iteration': self.iteration})
 
         if collect_unallocated_ue:
-            self.gen_unallocated_ue(total_ue, iteration, output_file_path)
+            self.gen_unallocated_ue(total_ue, output_file_path)
 
-    def gen_due_to_all(self, iteration: int, due_to_all: List[int], output_file_path: str):
-        avg_system_throughput: Dict[str, List[float]] = self.calc_avg_sys_throughput(due_to_all, iteration)
+    def gen_due_to_all(self, due_to_all: List[int], output_file_path: str):
+        avg_system_throughput: Dict[str, List[float]] = self.calc_avg_sys_throughput(due_to_all)
 
         line_chart('',
                    'The proportion of dUE to total UE', ([str(i / 100) for i in due_to_all]),
                    'System throughput(Mbps)', avg_system_throughput,
-                   output_file_path, {'iteration': iteration})
+                   output_file_path, {'iteration': self.iteration})
 
     # ==================================================================================================================
-    def collect_used_percentage(self, iteration: int, result: RESULT):
+    def collect_used_percentage(self, result: RESULT):
         # collect_data: Dict[str, Dict[str, [int,        int]]
         #                    layer     algo  used BU     number of BU in gNBs
         for max_layer_str in result:  # only one
             l: int = int(max_layer_str.replace('layer', ''))
-            if not self._increase_iter(l, iteration):
-                return True
             for algo in result[max_layer_str]:
+                if not self._increase_iter(l, algo):
+                    return True
                 gnb: Dict = result[max_layer_str][algo][0]
                 assert l == gnb['frame']['max_layer']
 
@@ -190,7 +193,7 @@ class GraphGenerator:
                 except KeyError:
                     self.data[l][algo] = [count_used_bu, count_bu]
 
-    def gen_used_percentage(self, iteration: int, layers: List[int], output_file_path: str):
+    def gen_used_percentage(self, layers: List[int], output_file_path: str):
         # x_labels: List[str]
         #                max layer
         #           e.g. ['1 layer', '2 layer', '3 layer']
@@ -215,18 +218,18 @@ class GraphGenerator:
         y_label: str = 'Frame Usage(%)'
         bar_chart('Frame used', x_label, x_labels, y_label, percentages,
                   f'{output_file_path}/{x_label}_{y_label}_{datetime.today().strftime("%m%d-%H%M")}',
-                  {'iteration': iteration})
+                  {'iteration': self.iteration})
 
     # ==================================================================================================================
-    def collect_deployment(self, iteration: int, result: RESULT):
+    def collect_deployment(self, result: RESULT):
         # collect_data: Dict[str, Dict[str, Dict[str, Any]]
         #                    layer     algo      nb   [nb_radius, nb_coordinate]
         #                                        ue   [[ue.x, ue.y], ...]
         for layer in result:  # only one
             l: int = int(layer.replace('layer', ''))
-            if not self._increase_iter(l, iteration):
-                return True
             for algo in result[layer]:
+                if not self._increase_iter(l, algo):
+                    return True
                 try:
                     self.data[l][algo]['allocated_ue'].extend(
                         self.purge_ue(result[layer][algo][2] + result[layer][algo][3] + result[layer][algo][4]))
@@ -249,7 +252,7 @@ class GraphGenerator:
                 purged_ue.append((ue['ue_type'], ue['x'], ue['y']))
         return purged_ue
 
-    def gen_deployment(self, iteration: int, layers: List[int], output_file_path: str):
+    def gen_deployment(self, layers: List[int], output_file_path: str):
         for layer in self.data:
             if layer in layers:
                 for algo in self.data[layer]:
@@ -265,7 +268,7 @@ class GraphGenerator:
                                   x, y, color,
                                   (-enb_radius, gnb_coordinate[0] + gnb_radius), (-enb_radius, enb_radius),
                                   f'{output_file_path}/deployment_{layer}_{algo}_{datetime.today().strftime("%m%d-%H%M")}',
-                                  {'iteration': iteration})
+                                  {'iteration': self.iteration})
 
     @staticmethod
     def _ue_deployment(all_ue: List[Tuple[UEType, float, float]],
@@ -285,14 +288,14 @@ class GraphGenerator:
         return x, y, color
 
     # ==================================================================================================================
-    def collect_allocated_ue(self, iteration: int, result: RESULT):
+    def collect_allocated_ue(self, result: RESULT):
         # collect_data: Dict[str, Dict[str, Dict[str, int]]
         #                    layer     algo,     ue   num of allocated ue
         for layer in result:  # only one
             l: int = int(layer.replace('layer', ''))
-            if not self._increase_iter(l, iteration):
-                return True
             for algo in result[layer]:
+                if not self._increase_iter(l, algo):
+                    return True
                 try:
                     self.count_allocated_ue(result[layer][algo][2], result[layer][algo][3], result[layer][algo][4],
                                             self.data[l][algo])
@@ -321,15 +324,11 @@ class GraphGenerator:
                 collect_data['eUE'] += 1
         collect_data['total'] = collect_data['dUE_cross_BS'] + collect_data['dUE_in_gNB'] + collect_data['dUE_in_eNB'] + collect_data['gUE'] + collect_data['eUE']
 
-    def gen_allocated_ue(self, iteration: int, layers: List[int], output_file_path: str,
-                         ue_label: Tuple[str, ...],
-                         algo_label: Tuple[str, ...] = ('DC-RA', 'FRSA', 'MSEMA', 'Baseline')):
+    def gen_allocated_ue(self, layers: List[int], output_file_path: str, ue_label: Tuple[str, ...]):
         """
-        :param iteration:
         :param layers: The display order of the number of layers in gNB
         :param output_file_path:
         :param ue_label: The display order of bar stack in the form of Dict name.
-        :param algo_label: The display order of algorithm
         """
         collect_data: Dict[str, Dict[int, Dict[str, float]]] = {}
         #                  algo      layer     ue   avg allocated ue
@@ -337,14 +336,14 @@ class GraphGenerator:
             if layer in layers:
                 for algo in self.data[layer]:
                     for ue in self.data[layer][algo]:
-                        self.data[layer][algo][ue] /= iteration
+                        self.data[layer][algo][ue] /= self.iteration
                     try:
                         collect_data[algo][layer] = self.data[layer][algo]
                     except KeyError:
                         collect_data[algo] = {layer: self.data[layer][algo]}
 
         num_of_allo_ue: Dict[str, List[List[float]]] = {}  # algo(str) -> layers(list) -> UEs(float)
-        for algo in algo_label:
+        for algo in self.algorithm:
             num_of_allo_ue[algo] = []  # layers(list) -> UEs(float)
             for layer in layers:
                 num_of_allo_ue[algo].append([])
@@ -353,21 +352,21 @@ class GraphGenerator:
 
         bar_chart_grouped_stacked('The allocated UEs', 'The number of layers in gNB', 'The number of allocated UE',
                                   f'{output_file_path}/num_of_allocated_ue_{datetime.today().strftime("%m%d-%H%M")}',
-                                  {'iteration': iteration}, num_of_allo_ue, [str(i) for i in layers], ue_label,
-                                  algo_label)
+                                  {'iteration': self.iteration}, num_of_allo_ue, [str(i) for i in layers], ue_label,
+                                  self.algorithm)
 
     # ==================================================================================================================
-    def collect_noma(self, iteration: int, layer_or_ue: List[str], algorithm: List[str], result: RESULT):
+    def collect_noma(self, layer_or_ue: List[str], algorithm: List[str], result: RESULT):
         # collect_data: Dict[str, List[List[List[List[int]]], ...]]
         #                    algo iter layer freq time CQI index, '0' for empty
         for topic in result:  # only one. e.g. '300ue' or '1layer'
             if topic not in layer_or_ue:
                 continue
-            if not self._increase_iter(topic, iteration):
-                return True
             for algo in result[topic]:
                 if algo not in algorithm:
                     continue
+                if not self._increase_iter(topic, algo):
+                    return True
                 gnb: Dict = result[topic][algo][0]
                 try:
                     self.data[topic][algo].append(self.collect_cqi(gnb))
@@ -398,7 +397,7 @@ class GraphGenerator:
                         cqi[layer][freq][time]: int = 0
         return cqi
 
-    def gen_noma_overlap_status(self, iteration: int, algorithm: List[str], output_file_path: str):
+    def gen_noma_overlap_status(self, algorithm: List[str], output_file_path: str):
         assert self.data, "Can't find layer_or_ue."
 
         # X: The overlapped layer, 0 ~ frame.max_layer. Y: The number of BU / the number of BU in a layer, float
@@ -417,7 +416,7 @@ class GraphGenerator:
                 data_count_layer[algo] = [0 for _ in range(self.data[topic]['gnb_info']['max_layer'] + 1)]
                 data_count_bu[algo] = [[0 for _ in range(cqi[1] - cqi[0] + 1)] for _ in
                                        range(self.data[topic]['gnb_info']['max_layer'])]
-                for i in range(iteration):
+                for i in range(self.iteration):
                     frame: List[List[List[List[int]]]] = self.data[topic][algo][i]
                     for f in range(self.data[topic]['gnb_info']['freq']):
                         for t in range(self.data[topic]['gnb_info']['time']):
@@ -433,10 +432,10 @@ class GraphGenerator:
 
                 count_bu_flat: int = self.data[topic]['gnb_info']['freq'] * self.data[topic]['gnb_info']['time']
                 for x in range(self.data[topic]['gnb_info']['max_layer'] + 1):
-                    data_count_layer[algo][x] /= (count_bu_flat * iteration)
+                    data_count_layer[algo][x] /= (count_bu_flat * self.iteration)
                 for x in range(self.data[topic]['gnb_info']['max_layer']):
                     for c in range(cqi[1] - cqi[0] + 1):
-                        data_count_bu[algo][x][c] /= iteration
+                        data_count_bu[algo][x][c] /= self.iteration
                 assert False not in [data_count_layer[algo][x] <= 1 for x in
                                      range(len(data_count_layer[algo]))], 'Data gathering error.'
 
@@ -444,30 +443,29 @@ class GraphGenerator:
                       'The number of overlapped UE', [i for i in range(self.data[topic]['gnb_info']['max_layer'] + 1)],
                       'Percentage of BU(%)', data_count_layer,
                       f'{output_file_path}/noma_lap_{topic}_{datetime.today().strftime("%m%d-%H%M")}',
-                      {'iteration': iteration, 'layer_or_ue': topic})
+                      {'iteration': self.iteration, 'layer_or_ue': topic})
             bar_chart_grouped_stacked(f'The MCS used in a frame of {topic}',
                                       'The number of overlapped UE', 'The number BU',
                                       f'{output_file_path}/noma_mcs_{topic}_{datetime.today().strftime("%m%d-%H%M")}',
-                                      {'iteration': iteration, 'layer_or_ue': topic},
+                                      {'iteration': self.iteration, 'layer_or_ue': topic},
                                       data_count_bu,
                                       [str(i + 1) for i in range(self.data[topic]['gnb_info']['max_layer'])],
                                       ['CQI' + str(i) for i in range(cqi[0], cqi[1] + 1)], algorithm,
                                       color_gradient=True)
 
     # ==================================================================================================================
-    def collect_ue_cqi(self, iteration: int, layer_or_ue: List[str], algorithm: List[str], result: RESULT,
+    def collect_ue_cqi(self, layer_or_ue: List[str], algorithm: List[str], result: RESULT,
                        output_file_path: str):
         # collect_data: Dict[str, Dict[str, List[int]]]
         #                    algo      NB   CQI  number of allocated ue using the CQI
         for topic in result:  # only one. e.g. '300ue' or '1layer'
             if topic not in layer_or_ue:
                 continue
-            if not self._increase_iter(topic, iteration):
-                return True
             for algo in result[topic]:
                 if algo not in algorithm:
                     continue
-
+                if not self._increase_iter(topic, algo):
+                    return True
                 gnb_cqi: List[int] = self.get_cqi(output_file_path, 'gNB')
                 enb_cqi: List[int] = self.get_cqi(output_file_path, 'eNB')
                 try:
@@ -495,7 +493,7 @@ class GraphGenerator:
             assert ue['enb_info']['mcs'], "UE status wasn't updated."
             self.data[topic][algo]['eNB'][ue['enb_info']['mcs'] - enb_cqi[0]] += 1
 
-    def gen_ue_cqi(self, iteration: int, output_file_path: str):
+    def gen_ue_cqi(self, output_file_path: str):
         # avg
         gnb_cqi_data: Dict[str, List[float]] = {}
         enb_cqi_data: Dict[str, List[float]] = {}
@@ -505,7 +503,7 @@ class GraphGenerator:
                 enb_cqi_data[algo] = []
                 for nb in self.data[topic][algo]:
                     for ue_of_cqi in self.data[topic][algo][nb]:
-                        ue_of_cqi /= iteration
+                        ue_of_cqi /= self.iteration
                         (gnb_cqi_data[algo] if nb == 'gNB' else enb_cqi_data[algo]).append(ue_of_cqi)
 
             # draw two graphs
@@ -515,32 +513,34 @@ class GraphGenerator:
                       'The available CQI in gNB', [str(i) for i in range(gnb_cqi[0], gnb_cqi[1] + 1)],
                       'The number of allocated UE', gnb_cqi_data,
                       f'{output_file_path}/cqi_{topic}_gNB_{datetime.today().strftime("%m%d-%H%M")}',
-                      {'iteration': iteration, 'layer_or_ue': topic})
+                      {'iteration': self.iteration, 'layer_or_ue': topic})
             bar_chart(f'The CQI in {topic}',
                       'The available CQI in eNB', [str(i) for i in range(enb_cqi[0], enb_cqi[1] + 1)],
                       'The number of allocated UE', enb_cqi_data,
                       f'{output_file_path}/cqi_{topic}_eNB_{datetime.today().strftime("%m%d-%H%M")}',
-                      {'iteration': iteration, 'layer_or_ue': topic})
+                      {'iteration': self.iteration, 'layer_or_ue': topic})
 
     # ==================================================================================================================
-    def _increase_iter(self, key: Union[str, int], iteration: int) -> bool:
+    def _increase_iter(self, topic: Union[str, int], algorithm: str) -> bool:
         """
         Monitors the iteration.
-        :param key: Layer, number of UE, etc.
-        :param iteration: The limit of the iteration.
+        :param topic: Layer, number of UE, etc.
+        :param algorithm: The name of the algorithm saved in json file.
         :return: If returns False means the iteration of data collection has reached the request.
         """
         try:
-            if self.count_iter[key] >= iteration:
+            if self.count_iter[topic][algorithm] >= self.iteration:
                 return False
             else:
-                self.count_iter[key] += 1
-                return True
+                self.count_iter[topic][algorithm] += 1
         except KeyError:
-            self.count_iter[key] = 1
-            self.data[key] = {}
-            self.data2[key] = {}
-            return True
+            try:
+                self.count_iter[topic][algorithm] = 1
+            except KeyError:
+                self.count_iter[topic] = {algorithm: 1}
+                self.data[topic] = {}
+                self.data2[topic] = {}
+        return True
 
     @staticmethod
     def get_cqi(output_file_path: str, nb: str = 'gNB') -> List[int]:
@@ -548,17 +548,15 @@ class GraphGenerator:
         find_all = re.findall('CQI(\\d+)', nb_cqi)
         return [int(find_all.pop(0)), int(find_all.pop(0))]
 
-    @staticmethod
-    def input_result_files(directory: str, iteration: int) -> List[str]:
+    def input_result_files(self, directory: str) -> List[str]:
         """
         :param directory: The directory to result files.
-        :param iteration: The iteration to be averaged.
         :return: A list of result.json to read. That are within the iteration
         """
         filenames = next(walk(directory))[2]
-        filename_with_iter: List[str] = [f'iter{i}.json' for i in range(iteration)]
+        file_to_find: List[str] = [f'_iter{j}_algo{k}' for j in range(self.iteration) for k in self.algorithm]
         result_file_to_read: List[str] = []
-        for i in filename_with_iter:
+        for i in file_to_find:
             has_found: bool = False
             for filename in filter(lambda x: i in x, filenames):
                 has_found: bool = True

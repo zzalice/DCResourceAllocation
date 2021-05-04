@@ -54,25 +54,15 @@ class IterateAlgo:
 
     def iter(self, iter_lower_bound: int, iter_higher_bound: int):
         for m in self.topic['item']:
-            print(f'm: {m}')
             for i in range(iter_lower_bound, iter_higher_bound + 1):
-                print(f'i: {i}')
                 file_data: str = f'{self.folder_data}/{m}{self.topic["folder description"]}/{i}'
-
-                result = {
-                    'DC-RA': self.run_algorithm('DC-RA', dc_resource_allocation, file_data),
-                    'FRSA': self.run_algorithm('FRSA', frsa, file_data),
-                    'MSEMA': self.run_algorithm('MSEMA', msema_rb_ra, file_data),
-                    'Baseline': self.run_algorithm('Baseline', intuitive_resource_allocation, file_data)
-                }
-
-                filename: str = f'{m}{self.topic["folder description"]}_iter{i}.json'   # FIXME save algo in separate json files
-                with open(f'{self.folder_graph}/{filename}', 'w') as f:
-                    json.dump({f'{m}{self.topic["folder description"]}': result}, f)
+                self.run_algorithm('DC-RA', dc_resource_allocation, m, i, file_data)
+                self.run_algorithm('FRSA', frsa, m, i, file_data)
+                self.run_algorithm('MSEMA', msema_rb_ra, m, i, file_data)
+                self.run_algorithm('Baseline', intuitive_resource_allocation, m, i, file_data)
         return True
 
-    @staticmethod
-    def run_algorithm(algo_name: str, func_algo: Callable, file_data):
+    def run_algorithm(self, algo_name: str, func_algo: Callable, topic: int, iteration: int, file_data: str):
         start_time = time.time()
         result = func_algo(file_data)
         json_result = [result[0].to_json(),
@@ -80,8 +70,11 @@ class IterateAlgo:
                        [due.to_json() for due in result[2]],
                        [gue.to_json() for gue in result[3]],
                        [eue.to_json() for eue in result[4]]]
-        print(f'--- {round((time.time() - start_time) / 60, 3)} min {algo_name} ---')
-        return json_result
+        print(f'm:{topic} i:{iteration} --- {round((time.time() - start_time) / 60, 3)} min {algo_name} ---')
+
+        filename: str = f'topic{topic}{self.topic["folder description"]}_iter{iteration}_algo{algo_name}.json'
+        with open(f'{self.folder_graph}/{filename}', 'w') as f:
+            json.dump({f'{topic}{self.topic["folder description"]}': {algo_name: json_result}}, f)
 
     def new_directory(self):
         self.folder_graph: str = f'{os.path.dirname(__file__)}/graph/{self.folder_data}'
