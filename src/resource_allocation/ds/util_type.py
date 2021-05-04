@@ -22,10 +22,10 @@ class CircularRegion:
     def calc_area(self) -> float:
         return (self.radius ** 2) * math.pi
 
-    def in_region(self, target: Coordinate) -> bool:
+    def spot_in_region(self, target: Coordinate) -> bool:
         return Coordinate.calc_distance(self, target) <= self.radius
 
-    def include_area(self, target: CircularRegion) -> bool:
+    def area_included(self, target: CircularRegion) -> bool:
         included: bool = False
         target_edge: Dict[str, float] = {
             'left': target.x - target.radius, 'right': target.x + target.radius,
@@ -39,6 +39,9 @@ class CircularRegion:
                 target_edge['up'] <= source_edge['up']) and (target_edge['down'] >= source_edge['down']):
             included: bool = True
         return included
+
+    def area_overlapped(self, target: CircularRegion) -> bool:
+        return Coordinate.calc_distance(self, target) <= self.radius
 
 
 @dataclasses.dataclass

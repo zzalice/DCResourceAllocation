@@ -28,7 +28,7 @@ class Deploy:
                                                         y=random.uniform(bound['down'], bound['up']))
                 in_forbidden_area: bool = False
                 for area in not_in_area:
-                    if area.in_region(tmp_coordinate):
+                    if area.spot_in_region(tmp_coordinate):
                         in_forbidden_area: bool = True
                         break
                 if in_forbidden_area:
@@ -76,7 +76,7 @@ class Deploy:
         assert 0 < len(in_area) <= 2
         total_proportion: float = 0.0
         for hotspot in hotspots:
-            assert True in [area.include_area(hotspot.region) for area in in_area], 'The hotspot is not in any BS area.'
+            assert True in [area.area_included(hotspot.region) for area in in_area], 'The hotspot is not in any BS area.'
             total_proportion += hotspot.ue_proportion
         assert 0.0 < total_proportion <= 1.0, 'The proportion of UE in hotspots are too low/high.'
         # TODO: Raise warning hot spot not HOT!
@@ -114,13 +114,33 @@ class Deploy:
         return sc_coordinates, dc_coordinates
 
     @staticmethod
-    def dc_proportion(total_ue: int, in_area: Tuple[CircularRegion, ...], proportion_in_overlapped_area: float
+    def dc_proportion(total_ue: int, in_area: Tuple[CircularRegion, ...], proportion_in_overlapped_area: int
                       ) -> Tuple[Tuple[Tuple[Coordinate, ...]], Tuple[Coordinate, ...]]:
-        raise NotImplementedError   # FIXME dc proportion deployment not implemented
+        assert total_ue > 0
+        assert 0 < len(in_area) <= 2
+        assert in_area[0].area_overlapped(in_area[1]), 'Two areas are not overlapped.'
+        assert 0 <= proportion_in_overlapped_area <= 100, 'Proportion out of range.'
+        num_of_ue_in_overlapped_area: int = math.floor(total_ue * (proportion_in_overlapped_area / 100))
+        num_of_ue_in_single_area: int = total_ue - num_of_ue_in_overlapped_area
+
+        # deploy UE in overlapped area
+        dc_coordinates: List[Coordinate] = []
+        for i in range(num_of_ue_in_overlapped_area):
+            dc_coordinates.append(Deploy.random_and(in_area))
+        dc_coordinates: Tuple[Coordinate, ...] = tuple(dc_coordinates)
+
+        # deploy UE not in overlapped areas
+        sc_coordinates: List[List[Coordinate]] = [[] for _ in range(len(in_area))]
+        for i in range(num_of_ue_in_single_area):
+            coordinate: Coordinate = Deploy.random_xor(in_area)
+            under_coverage: Tuple[int] = Deploy.under_coverage(coordinate, in_area)
+            sc_coordinates[under_coverage[0]].append(coordinate)
+        sc_coordinates: Tuple[Tuple[Coordinate, ...]] = tuple(tuple(cs) for cs in sc_coordinates)
+        return sc_coordinates, dc_coordinates
 
     @staticmethod
-    def random_in_overlapped(in_area: Tuple[CircularRegion, ...],
-                             not_in_area: Tuple[CircularRegion, ...] = ()) -> Coordinate:
+    def random_and(in_area: Tuple[CircularRegion, ...],
+                   not_in_area: Tuple[CircularRegion, ...] = ()) -> Coordinate:
         """
         Deployed UE must be in the areas.
         :param in_area: Must be in all of these areas.
@@ -135,11 +155,22 @@ class Deploy:
 
         for area in in_area[1:]:
             while Coordinate.calc_distance(area, tmp_coordinate) > area.radius:
-                tmp_coordinate = Deploy.random_in_overlapped(in_area, not_in_area)
+                tmp_coordinate = Deploy.random_and(in_area, not_in_area)
         for area in not_in_area:
             while Coordinate.calc_distance(area, tmp_coordinate) < area.radius:
-                tmp_coordinate = Deploy.random_in_overlapped(in_area, not_in_area)
+                tmp_coordinate = Deploy.random_and(in_area, not_in_area)
+        return tmp_coordinate
 
+    @staticmethod
+    def random_xor(in_area: Tuple[CircularRegion, ...]) -> Coordinate:
+        bound: Dict[str, float] = Deploy.union_bound(in_area)
+        tmp_x: float = random.uniform(bound['left'], bound['right'])
+        tmp_y: float = random.uniform(bound['down'], bound['up'])
+        tmp_coordinate: Coordinate = Coordinate(tmp_x, tmp_y)
+        under_cover: Tuple[int, ...] = Deploy.under_coverage(tmp_coordinate, in_area)
+        assert len(under_cover) >= 0, 'ValueError'
+        if len(under_cover) != 1:
+            tmp_coordinate: Coordinate = Deploy.random_xor(in_area)
         return tmp_coordinate
 
     @staticmethod
@@ -170,6 +201,6 @@ class Deploy:
     def under_coverage(coordinate: Coordinate, areas: Tuple[CircularRegion, ...]) -> Tuple[int, ...]:
         under_coverage: List[int] = []
         for i, area in enumerate(areas):
-            if area.in_region(coordinate):
+            if area.spot_in_region(coordinate):
                 under_coverage.append(i)
         return tuple(under_coverage)

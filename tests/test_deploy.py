@@ -63,3 +63,13 @@ def test_hotspot_deploy():
     sc_coordinates = list(sc_coordinates)
     sc_coordinates.append(dc_coordinates)
     gen_graph_deployment(in_area, sc_coordinates)
+
+
+def test_dc_proportion_deploy():
+    a = CircularRegion(x=0.0, y=0.0, radius=0.5)
+    b = CircularRegion(x=0.5, y=0.0, radius=0.5)
+    in_area: Tuple[CircularRegion, ...] = (a, b)
+    sc_coordinates, dc_coordinates = Deploy.dc_proportion(1000, in_area, 40)
+    sc_coordinates = list(sc_coordinates)
+    sc_coordinates.append(dc_coordinates)
+    gen_graph_deployment(in_area, sc_coordinates)

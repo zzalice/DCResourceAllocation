@@ -24,7 +24,7 @@ class DataGenerator:
                  deploy_type: int,
                  edge_radius: float, edge_ue: float,
                  hot_spots: Tuple[Tuple[float, float, float, int], ...],
-                 dc_proportion: float,
+                 dc_proportion: int,
                  cochannel_bandwidth: int, worsen_threshold: int):
         assert iteration > 0
         self.iteration: int = iteration
@@ -60,7 +60,7 @@ class DataGenerator:
         self.cell_edge_radius_proportion: float = edge_radius
         self.edge_ue_proportion: float = edge_ue
         self.hotspots: Tuple[HotSpot, ...] = tuple(HotSpot(hp[0], hp[1], hp[2], hp[3]) for hp in hot_spots)
-        self.dc_proportion: float = dc_proportion
+        self.dc_proportion: int = dc_proportion
 
         assert cochannel_bandwidth >= 0
         self.cochannel_bandwidth: int = cochannel_bandwidth
