@@ -26,8 +26,8 @@ if __name__ == '__main__':
 
     # ---Graphs for ue---
     ut: List[int] = [300, 400, 500, 600, 700, 800, 900]  # <-- change
-    IterateAlgo(iteration=i, folder_data=f_data).iter_ue(total_ue=ut)
-    GraphGenerator(graph_type='increasing ue', collect_unallo_ue=True, total_ue=ut, iteration=i, algorithm=algo, folder_result=(f'{f_data}/{f_mcs}',))
+    # IterateAlgo(iteration=i, folder_data=f_data).iter_ue(total_ue=ut)
+    # GraphGenerator(graph_type='increasing ue', collect_unallo_ue=False, total_ue=ut, iteration=i, algorithm=algo, folder_result=(f'{f_data}/{f_mcs}',))
 
     # ---Graphs for due to all---
     p_due: List[int] = [i for i in range(10, 91, 10)]  # <-- change

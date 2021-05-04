@@ -42,12 +42,12 @@ def gen_data_due_to_all(proportion_due_to_all: List[int], num_of_total_ue: int, 
 
 if __name__ == '__main__':
     date: str = datetime.today().strftime("%m%d-%H%M%S")
-    output_folder: str = f'{date}test_hotspot'  # <--- change
+    output_folder: str = f'{date}UE_'  # <--- change
 
     para = {'iteration': 100,
-            'due_qos': [16_000, 100_000],
-            'gue_qos': [16_000, 100_000],
-            'eue_qos': [16_000, 100_000],
+            'due_qos': [22_000, 100_000],
+            'gue_qos': [22_000, 100_000],
+            'eue_qos': [12_000, 60_000],
 
             # gnb_freq(MHz/#): 5/25, 10/52, 15/79, 20/106, 25/133, 30/160, 40/216, 50/270, 60/324, 70/378, 80/434, 90/490, 100/546
             # enb_freq(MHz/#): 1.4/6, 3/15, 5/25, 10/50, 15/75, 20/100

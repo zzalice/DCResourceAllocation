@@ -131,7 +131,7 @@ class DataGenerator:
                 d_ue.numerology_in_use = d_ue.candidate_set[-1]
 
             # Output
-            with open(f'{self.output_file_path}/{str(i)}.P', "wb") as file_of_frame_and_ue:
+            with open(f'{self.output_file_path}/{str(i)}.P', "wb") as file_of_frame_and_ue:     # TODO: save to json
                 pickle.dump(
                     [g_nb, e_nb, channel_model,
                      g_ue_list, d_ue_list, e_ue_list, self.gue_qos_range, self.eue_qos_range,
