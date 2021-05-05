@@ -7,6 +7,7 @@ from typing import Any, Callable, Dict, List
 
 from main import dc_resource_allocation
 from main_frsa import frsa
+from main_gen_data_bw import gnb_mhz_to_bu
 from main_intuitive import intuitive_resource_allocation
 from main_msema import msema_rb_ra
 from src.resource_allocation.ds.util_enum import E_MCS, G_MCS
@@ -33,6 +34,16 @@ class IterateAlgo:
         self.topic: Dict[str, Any] = {'topic': 'due to all', 'item': due_proportion, 'folder description': 'p_due'}
         self.large_iter()
 
+    def iter_gnb_bw(self, gnb_bw: List[int]):
+        gnb_bw = [gnb_mhz_to_bu(i) for i in gnb_bw]
+        self.topic: Dict[str, Any] = {'topic': 'gNB BW', 'item': gnb_bw, 'folder description': 'bw_gnb'}
+        self.large_iter()
+
+    def iter_cochannel(self, cochannel_bw: List[int]):
+        cochannel_bw = [gnb_mhz_to_bu(i) for i in cochannel_bw]
+        self.topic: Dict[str, Any] = {'topic': 'co-channel BW', 'item': cochannel_bw, 'folder description': 'bw_co'}
+        self.large_iter()
+
     def large_iter(self):
         each_thread_run: int = 10
         assert each_thread_run > 0, 'Value Error.'
@@ -43,8 +54,7 @@ class IterateAlgo:
         for i in range(math.ceil(self.iteration / each_thread_run)):
             iter_lower_bound = i * each_thread_run
             iter_higher_bound = iter_lower_bound + (each_thread_run - 1) if iter_lower_bound + (each_thread_run - 1) < self.iteration else self.iteration - 1
-            t = threading.Thread(target=self.iter,
-                                 args=(iter_lower_bound, iter_higher_bound))
+            t = threading.Thread(target=self.iter, args=(iter_lower_bound, iter_higher_bound))
             t.start()
             threads.append(t)
         for t in threads:
