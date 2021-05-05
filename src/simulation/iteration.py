@@ -3,7 +3,7 @@ import math
 import os
 import threading
 import time
-from typing import Any, Callable, Dict, List
+from typing import Any, Callable, Dict, List, Tuple
 
 from main import dc_resource_allocation
 from main_frsa import frsa
@@ -14,9 +14,10 @@ from src.resource_allocation.ds.util_enum import E_MCS, G_MCS
 
 
 class IterateAlgo:
-    def __init__(self, iteration: int, folder_data: str):
+    def __init__(self, iteration: int, algorithm: Tuple[str, ...], folder_data: str):
         assert iteration > 0
         self.iteration: int = iteration
+        self.algorithm: Tuple[str, ...] = algorithm
         self.folder_data: str = folder_data
 
         self.topic: Dict[str, Any] = {'topic': '', 'item': [], 'folder description': ''}
@@ -66,10 +67,14 @@ class IterateAlgo:
         for m in self.topic['item']:
             for i in range(iter_lower_bound, iter_higher_bound + 1):
                 file_data: str = f'{self.folder_data}/{m}{self.topic["folder description"]}/{i}'
-                self.run_algorithm('DC-RA', dc_resource_allocation, m, i, file_data)
-                self.run_algorithm('FRSA', frsa, m, i, file_data)
-                self.run_algorithm('MSEMA', msema_rb_ra, m, i, file_data)
-                self.run_algorithm('Baseline', intuitive_resource_allocation, m, i, file_data)
+                if 'DC-RA' in self.algorithm:
+                    self.run_algorithm('DC-RA', dc_resource_allocation, m, i, file_data)
+                if 'FRSA' in self.algorithm:
+                    self.run_algorithm('FRSA', frsa, m, i, file_data)
+                if 'MSEMA' in self.algorithm:
+                    self.run_algorithm('MSEMA', msema_rb_ra, m, i, file_data)
+                if 'Baseline' in self.algorithm:
+                    self.run_algorithm('Baseline', intuitive_resource_allocation, m, i, file_data)
         return True
 
     def run_algorithm(self, algo_name: str, func_algo: Callable, topic: int, iteration: int, file_data: str):
