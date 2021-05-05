@@ -17,6 +17,7 @@ class Deploy:
         :param not_in_area: The areas that we don't want any UE deployed.
         :return: The coordinate of UE in each area and in overlapped area.
         """
+        assert total_ue > 0
         assert 0 < len(in_area) <= 2
         # random coordinate
         bound: Dict[str, float] = Deploy.union_bound(in_area)
@@ -48,21 +49,26 @@ class Deploy:
     def cell_edge(total_ue: int, in_area: Tuple[CircularRegion, ...],
                   radius_proportion_of_cell_edge: float = 0.1, proportion_of_ue_in_edge: float = 0.4
                   ) -> Tuple[Tuple[Tuple[Coordinate, ...]], Tuple[Coordinate, ...]]:
+        assert total_ue > 0
         assert 0 < len(in_area) <= 2
+        assert 0.0 < radius_proportion_of_cell_edge < 1.0, 'Radius of cell edge too narrow/wide.'
+        assert 0.0 < proportion_of_ue_in_edge <= 1.0, 'Proportion of UE in cell edge too low or out of range.'
         # TODO: Raise warning 面積比要低於proportion, 'Proportion of UE in cell edge is too low.'
         num_of_ue_in_cell_edge: int = math.ceil(total_ue * proportion_of_ue_in_edge)
         num_of_ue_in_cell_center: int = total_ue - num_of_ue_in_cell_edge
+        assert num_of_ue_in_cell_edge > 0, 'Calculation error.'
 
         # deploy cell center
-        cell_center: List[CircularRegion] = []
-        for area in in_area:
-            radius_cell_center: float = area.radius * (1 - radius_proportion_of_cell_edge)
-            cell_center.append(CircularRegion(x=area.x, y=area.y, radius=radius_cell_center))
-        sc_coordinates_center, dc_coordinates_center = Deploy.random(num_of_ue_in_cell_center, tuple(cell_center))
+        sc_coordinates_center: Tuple[Tuple] = tuple(tuple() for _ in range(len(in_area)))
+        dc_coordinates_center: Tuple = tuple()
+        if num_of_ue_in_cell_center > 0:
+            sc_coordinates_center, dc_coordinates_center = Deploy._cell_center(
+                num_of_ue_in_cell_center, in_area, radius_proportion_of_cell_edge)
 
-        # deploy cell edge  FIXME: no cell edge UE in DC area
-        sc_coordinates_edge, dc_coordinates_edge = Deploy.random(num_of_ue_in_cell_edge,
-                                                                 in_area=in_area, not_in_area=tuple(cell_center))
+        # deploy cell edge
+        sc_coordinates_edge, dc_coordinates_edge = Deploy._cell_edge(
+            num_of_ue_in_cell_edge, in_area, radius_proportion_of_cell_edge)
+
         sc_coordinates: List[Tuple[Coordinate, ...]] = []
         for i in range(len(in_area)):
             sc_coordinate: Tuple[Coordinate, ...] = sc_coordinates_center[i] + sc_coordinates_edge[i]
@@ -70,13 +76,87 @@ class Deploy:
         return tuple(sc_coordinates), dc_coordinates_center + dc_coordinates_edge
 
     @staticmethod
+    def _cell_center(num_of_ue: int, cells: Tuple[CircularRegion, ...], radius_proportion_of_cell_edge: float
+                     ) -> Tuple[Tuple[Tuple[Coordinate, ...]], Tuple[Coordinate, ...]]:
+        assert num_of_ue > 0
+        assert 0 < len(cells) <= 2
+        assert 0.0 < radius_proportion_of_cell_edge < 1.0, 'Radius of cell edge too narrow/wide.'
+
+        # form cell center
+        cell_centers: List[CircularRegion] = []
+        for area in cells:
+            radius_cell_center: float = area.radius * (1 - radius_proportion_of_cell_edge)
+            cell_centers.append(CircularRegion(x=area.x, y=area.y, radius=radius_cell_center))
+        cell_centers: Tuple[CircularRegion, ...] = tuple(cell_centers)
+
+        bound: Dict[str, float] = Deploy.union_bound(cell_centers)
+        sc_coordinates: List[List[Coordinate]] = [[] for _ in range(len(cells))]
+        dc_coordinates: List[Coordinate] = []
+        for i in range(num_of_ue):
+            # random a coordinate in cell centers
+            while True:
+                tmp_coordinate: Coordinate = Coordinate(x=random.uniform(bound['left'], bound['right']),
+                                                        y=random.uniform(bound['down'], bound['up']))
+
+                under_coverage: Tuple[int, ...] = Deploy.under_coverage(tmp_coordinate, cell_centers)
+                if len(under_coverage) > 0:  # in cell centers but may also be in the cell edge of another BS
+                    if Deploy.in_cell_edges(tmp_coordinate, cells, radius_proportion_of_cell_edge):
+                        continue  # in the cell edge of another BS
+                else:
+                    continue  # not in any cell centers
+
+                # categorize SC and DC users
+                if len(under_coverage) == 1:
+                    sc_coordinates[under_coverage[0]].append(tmp_coordinate)
+                    break
+                elif len(under_coverage) > 1:
+                    dc_coordinates.append(tmp_coordinate)
+                    break
+        sc_coordinates: Tuple[Tuple[Coordinate, ...]] = tuple(tuple(coordinates) for coordinates in sc_coordinates)
+        return sc_coordinates, tuple(dc_coordinates)
+
+    @staticmethod
+    def _cell_edge(num_of_ue: int, cells: Tuple[CircularRegion, ...], radius_proportion_of_cell_edge: float
+                   ) -> Tuple[Tuple[Tuple[Coordinate, ...]], Tuple[Coordinate, ...]]:
+        bound: Dict[str, float] = Deploy.union_bound(cells)
+        sc_coordinates: List[List[Coordinate]] = [[] for _ in range(len(cells))]
+        dc_coordinates: List[Coordinate] = []
+        for i in range(num_of_ue):
+            while True:
+                tmp_coordinate: Coordinate = Coordinate(x=random.uniform(bound['left'], bound['right']),
+                                                        y=random.uniform(bound['down'], bound['up']))
+                if not Deploy.in_cell_edges(tmp_coordinate, cells, radius_proportion_of_cell_edge):
+                    continue
+
+                under_coverage: Tuple[int, ...] = Deploy.under_coverage(tmp_coordinate, cells)
+                if len(under_coverage) == 1:
+                    sc_coordinates[under_coverage[0]].append(tmp_coordinate)
+                    break
+                elif len(under_coverage) > 1:
+                    dc_coordinates.append(tmp_coordinate)
+                    break
+
+        sc_coordinates: Tuple[Tuple[Coordinate, ...]] = tuple(tuple(coordinates) for coordinates in sc_coordinates)
+        return sc_coordinates, tuple(dc_coordinates)
+
+    @staticmethod
+    def in_cell_edges(target: Coordinate, areas: Tuple[CircularRegion, ...], radius_proportion_of_cell_edge: float):
+        for area in areas:
+            if area.spot_at_edge(target, radius_proportion_of_cell_edge):
+                return True
+        return False
+
+    @staticmethod
     def hotspots(total_ue: int, in_area: Tuple[CircularRegion, ...], hotspots: Tuple[HotSpot, ...]
                  ) -> Tuple[Tuple[Tuple[Coordinate, ...]], Tuple[Coordinate, ...]]:
         # Assertions
+        assert total_ue > 0
         assert 0 < len(in_area) <= 2
+        assert len(hotspots) > 0, 'No hotspot input.'
         total_proportion: float = 0.0
         for hotspot in hotspots:
-            assert True in [area.area_included(hotspot.region) for area in in_area], 'The hotspot is not in any BS area.'
+            assert True in [area.area_included(hotspot.region) for area in
+                            in_area], 'The hotspot is not in any BS area.'
             total_proportion += hotspot.ue_proportion
         assert 0.0 < total_proportion <= 1.0, 'The proportion of UE in hotspots are too low/high.'
         # TODO: Raise warning hot spot not HOT!
@@ -88,7 +168,7 @@ class Deploy:
         for hotspot in hotspots:
             hotspot.calc_num_of_ue(total_ue)
             num_ue_not_in_hotspots -= hotspot.num_ue
-            coordinates, _ = Deploy.random(hotspot.num_ue, (hotspot.region,))   # deploy
+            coordinates, _ = Deploy.random(hotspot.num_ue, (hotspot.region,))  # deploy
             coordinates_hotspot.extend(list(coordinates[0]))
         # categorize the UE by coverage
         sc_coordinates_hotspot: List[List[Coordinate]] = [[] for _ in range(len(in_area))]

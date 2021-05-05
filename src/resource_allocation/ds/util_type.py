@@ -25,6 +25,12 @@ class CircularRegion:
     def spot_in_region(self, target: Coordinate) -> bool:
         return Coordinate.calc_distance(self, target) <= self.radius
 
+    def spot_at_edge(self, target: Coordinate, edge_proportion: float) -> bool:
+        assert 0.0 <= edge_proportion <= 1.0, 'Proportion out of range.'
+        in_region: bool = self.spot_in_region(target)
+        in_center: bool = Coordinate.calc_distance(self, target) < self.radius * (1 - edge_proportion)
+        return in_region and not in_center
+
     def area_included(self, target: CircularRegion) -> bool:
         included: bool = False
         target_edge: Dict[str, float] = {

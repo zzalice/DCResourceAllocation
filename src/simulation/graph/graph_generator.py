@@ -332,7 +332,7 @@ class GraphGenerator:
         """
         collect_data: Dict[str, Dict[int, Dict[str, float]]] = {}
         #                  algo      layer     ue   avg allocated ue
-        for layer in self.data:
+        for layer in self.data:  # FIXME: Adding an axes using the same arguments as a previous axes
             if layer in layers:
                 for algo in self.data[layer]:
                     for ue in self.data[layer][algo]:
