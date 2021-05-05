@@ -42,8 +42,10 @@ class _NBInfoWithinUE:
         return self.nb.nb_type
 
     def update_mcs(self):
-        assert self.rb, "Updating a BS that has no RB allocated."
-        self.mcs = min(self.rb, key=lambda b: b.mcs.value).mcs
+        if self.rb:
+            self.mcs = min(self.rb, key=lambda b: b.mcs.value).mcs
+        else:
+            self.mcs = None
 
     def highest_frequency_rb(self) -> Optional[ResourceBlock]:
         if self.rb:

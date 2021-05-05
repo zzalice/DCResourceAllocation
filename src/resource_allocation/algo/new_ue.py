@@ -70,7 +70,7 @@ class AllocateUEList(Undo):
                 system_throughput: float = new_system_throughput
 
     @Undo.undo_func_decorator
-    def _allocate(self, ue, spaces: Tuple[Space, ...], allow_lower_mcs, allow_lower_than_cqi0) -> bool:
+    def _allocate(self, ue: UE, spaces: Tuple[Space, ...], allow_lower_mcs, allow_lower_than_cqi0) -> bool:
         # allocate new ue
         allocate_ue: AllocateUE = AllocateUE(ue, spaces, self.channel_model)
         is_allocated: bool = allocate_ue.allocate()

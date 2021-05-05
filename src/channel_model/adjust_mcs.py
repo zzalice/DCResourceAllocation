@@ -286,12 +286,16 @@ class AdjustMCS(Undo):
                 self.append_undo(lambda b=rb_to_rm: b.undo(), lambda b=rb_to_rm: b.purge_undo())
                 rb_to_rm.remove_rb()
             elif ue.calc_throughput() >= ue.request_data_rate:
-                self.append_undo(lambda n_i=nb_rm, origin=nb_rm.mcs: setattr(n_i, 'mcs', origin))
                 self.append_undo(lambda origin=ue.throughput: setattr(ue, 'throughput', origin))
                 self.append_undo(
                     lambda origin=ue.is_to_recalculate_mcs: setattr(ue, 'is_to_recalculate_mcs', origin))
 
-                nb_rm.update_mcs()
+                if hasattr(ue, 'gnb_info'):
+                    self.append_undo(lambda n_i=ue.gnb_info, origin=ue.gnb_info.mcs: setattr(n_i, 'mcs', origin))
+                    ue.gnb_info.update_mcs()
+                if hasattr(ue, 'enb_info'):
+                    self.append_undo(lambda n_i=ue.enb_info, origin=ue.enb_info.mcs: setattr(n_i, 'mcs', origin))
+                    ue.enb_info.update_mcs()
                 ue.update_throughput()
                 ue.is_to_recalculate_mcs = False
                 return True
