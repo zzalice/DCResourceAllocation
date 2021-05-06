@@ -5,7 +5,9 @@ from main_gen_data_layer import main_gen_data
 
 
 def gnb_mhz_to_bu(mhz: int):
-    if mhz == 5:
+    if mhz == 0:
+        return 0
+    elif mhz == 5:
         return 25
     elif mhz == 10:
         return 52
@@ -45,6 +47,8 @@ def gnb_mhz_to_bu(mhz: int):
         return 518
     elif mhz == 100:
         return 546
+    else:
+        raise AssertionError
 
 
 def gen_data_bw_gnb(gnb_bw: List[int], cochannel_bw: int, parameter: Dict[str, Any], folder: str):

@@ -49,7 +49,7 @@ if __name__ == '__main__':
 
     # ---Graphs for co-channel bandwidth---
     cochannel_bw = [j for j in range(5, 51, 5)]  # <-- change
-    IterateAlgo(iteration=i, algorithm=algo, folder_data=f_data).iter_cochannel(cochannel_bw)
+    # IterateAlgo(iteration=i, algorithm=algo, folder_data=f_data).iter_cochannel(cochannel_bw)
 
     # ---Graphs for CQI/NOMA---
     l_or_u: int = 0  # 0 for layer, 1 for ue     <-- change
