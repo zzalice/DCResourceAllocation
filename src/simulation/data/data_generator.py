@@ -155,7 +155,7 @@ class DataGenerator:
             assert self.hotspots, 'No hotspot.'
             return Deploy.hotspots(self.total_num_ue, areas, self.hotspots)
         elif self.deploy_type == 3:
-            assert 0.0 <= self.dc_proportion <= 1.0, 'Proportion out of range.'
+            assert 0 <= self.dc_proportion <= 100, 'Proportion out of range.'
             return Deploy.dc_proportion(self.total_num_ue, areas, self.dc_proportion)
         else:
             raise AssertionError("Illegal deploy type.")
