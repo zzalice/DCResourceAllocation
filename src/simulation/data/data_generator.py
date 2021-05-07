@@ -23,7 +23,7 @@ class DataGenerator:
                  gnb_layer: int, inr_discount: float,
                  deploy_type: int,
                  edge_radius: float, edge_ue: float,
-                 hot_spots: Tuple[Tuple[float, float, float, int], ...],
+                 hot_spots: Tuple[Tuple[float, float, float, float], ...],
                  dc_proportion: int,
                  cochannel_bandwidth: int, worsen_threshold: int):
         assert iteration > 0
@@ -157,6 +157,8 @@ class DataGenerator:
         elif self.deploy_type == 3:
             assert 0.0 <= self.dc_proportion <= 1.0, 'Proportion out of range.'
             return Deploy.dc_proportion(self.total_num_ue, areas, self.dc_proportion)
+        else:
+            raise AssertionError("Illegal deploy type.")
 
     def gen_txt_parameter(self):
         information: str = ''

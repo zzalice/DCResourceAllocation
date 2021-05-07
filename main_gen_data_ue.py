@@ -30,7 +30,7 @@ def gen_data_due_to_all(proportion_due_to_all: List[int], num_of_total_ue: int, 
     assert 0 <= proportion_due_to_all[0] and proportion_due_to_all[-1] <= 100
     parameter['total_num_ue'] = num_of_total_ue
 
-    parameter['deploy_type'] = 3,  # 3: more or less dUE
+    parameter['deploy_type'] = 3  # 3: more or less dUE
     parameter['cell_edge_radius_proportion'] = None
     parameter['edge_ue_proportion'] = None
     parameter['hotspots'] = ()
