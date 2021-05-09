@@ -8,6 +8,7 @@ from typing import Dict, List, Tuple, Union
 from src.resource_allocation.algo.utils import bpframe_to_mbps, calc_system_throughput_json, divide_ue_json
 from src.resource_allocation.ds.util_enum import UEType
 from src.simulation.graph.util_graph import bar_chart, bar_chart_grouped_stacked, line_chart, scatter_chart
+from src.simulation.utils import fairness_index_json
 
 """           layer/ue  algo       gNB   eNB   dUE         gUE         eUE"""
 RESULT = Dict[str, Dict[str, Tuple[Dict, Dict, List[Dict], List[Dict], List[Dict]]]]
@@ -18,7 +19,7 @@ class GraphGenerator:
                  **kwargs):
         self.graph_type: str = graph_type
         self.iteration: int = iteration
-        self.algorithm: Tuple[str, ...] = algorithm     # FIXME add this function
+        self.algorithm: Tuple[str, ...] = algorithm  # FIXME add this function
         self.output_file_path: List[str] = []
         for f in folder_result:
             self.output_file_path.append(f'{os.path.dirname(__file__)}/{f}')
@@ -53,7 +54,7 @@ class GraphGenerator:
         if self.graph_type == 'sys throughput - layer' or self.graph_type == 'due to all':
             self.collect_sys_throughput(algo_result)
         elif self.graph_type == 'increasing ue':
-            self.collect_sys_throughput(algo_result, kwargs['collect_unallo_ue'])
+            self.collect_sys_throughput(algo_result, kwargs['collect_unallo_ue'])  # FIXME: should input kwargs['total_ue']?
         elif self.graph_type == 'used percentage':
             self.collect_used_percentage(algo_result)
         elif self.graph_type == 'deployment':
@@ -64,6 +65,9 @@ class GraphGenerator:
             self.collect_noma(kwargs['layer_or_ue'], kwargs['algorithm'], algo_result)
         elif self.graph_type == 'CQI':
             self.collect_ue_cqi(kwargs['layer_or_ue'], kwargs['algorithm'], algo_result, file_path)
+        elif 'fairness' in self.graph_type:
+            topic_parameter_str: List[str] = self.append_parameter_description(kwargs['topic_parameter'])
+            self.collect_fairness(topic_parameter_str, algo_result)
 
     def gen_graph(self, file_path: str, kwargs):
         if self.graph_type == 'sys throughput - layer':
@@ -85,6 +89,8 @@ class GraphGenerator:
             self.gen_noma_overlap_status(kwargs['algorithm'], file_path)
         elif self.graph_type == 'CQI':
             self.gen_ue_cqi(file_path)
+        elif 'fairness' in self.graph_type:
+            self.gen_fairness(kwargs['topic_parameter'], file_path)
 
     # ==================================================================================================================
     def collect_sys_throughput(self, result: RESULT, collect_unallocated_ue: bool = False):
@@ -144,7 +150,7 @@ class GraphGenerator:
         avg_system_throughput: Dict[str, List[float]] = self.calc_avg_sys_throughput(layers)
 
         line_chart('',
-                   'The number of gNB layer', ([str(i) for i in layers]),
+                   'The number of gNB layer', [str(i) for i in layers],
                    'System throughput(Mbps)', avg_system_throughput,
                    output_file_path, {'iteration': self.iteration})
 
@@ -153,7 +159,7 @@ class GraphGenerator:
         avg_system_throughput: Dict[str, List[float]] = self.calc_avg_sys_throughput(total_ue)
 
         line_chart('',
-                   'Number of UEs', ([str(i) for i in total_ue]),
+                   'Number of UE', ([str(i) for i in total_ue]),
                    'System throughput(Mbps)', avg_system_throughput,
                    output_file_path, {'iteration': self.iteration})
 
@@ -519,6 +525,64 @@ class GraphGenerator:
                       'The number of allocated UE', enb_cqi_data,
                       f'{output_file_path}/cqi_{topic}_eNB_{datetime.today().strftime("%m%d-%H%M")}',
                       {'iteration': self.iteration, 'layer_or_ue': topic})
+
+    # ==================================================================================================================
+    def collect_fairness(self, topic_parameter_str: List[str], result: RESULT):
+        # collect_data: Dict[str, Dict[str, float]]
+        #                    topic     algo sum of fairness
+        topic: str = list(result.keys())[0]
+        if topic not in topic_parameter_str:
+            return True
+        algo: str = list(result[topic].keys())[0]
+        if algo not in self.algorithm:
+            return True
+        if not self._increase_iter(topic, algo):
+            return True
+
+        fairness: float = fairness_index_json(result[topic][algo][2] + result[topic][algo][3] + result[topic][algo][4])
+        try:
+            self.data[topic][algo] += fairness
+        except KeyError:
+            self.data[topic][algo] = fairness
+        return True
+
+    def gen_fairness(self, topic_parameter_int: List[int], output_file_path: str):
+        topic_parameter_str: List[str] = self.append_parameter_description(topic_parameter_int)
+
+        avg_fairness: Dict[str, List[float]] = {algo: [] for algo in next(iter(self.data.values()))}
+        for t in topic_parameter_str:
+            for algo in self.data[t]:
+                avg_fairness[algo].append(self.data[t][algo] / self.iteration)
+
+        if '- ue' in self.graph_type:
+            x_label: str = 'The Number of UE'
+        elif '- layer' in self.graph_type:
+            x_label: str = 'The Number of gNB Layer'
+        elif '- proportion due' in self.graph_type:
+            x_label: str = 'The Proportion of dUE'
+        elif '- gnb bw' in self.graph_type:
+            x_label: str = 'The Bandwidth of gNB'
+        elif '- cochannel bw' in self.graph_type:
+            x_label: str = 'The Bandwidth of Sharing Spectrum'
+        else:
+            raise AssertionError("Function calling fairness-graph-generator isn't defined.")
+        line_chart('', x_label, [str(i) for i in topic_parameter_int], "Jain's Fairness Index", avg_fairness,
+                   output_file_path, {'iteration': self.iteration})
+
+    def append_parameter_description(self, topic_parameter_int: List[int]) -> List[str]:
+        if '- ue' in self.graph_type:
+            topic_description: str = 'ue'
+        elif '- layer' in self.graph_type:
+            topic_description: str = 'layer'
+        elif '- proportion due' in self.graph_type:
+            topic_description: str = 'p_due'
+        elif '- gnb bw' in self.graph_type:
+            topic_description: str = 'bw_gnb'
+        elif '- cochannel bw' in self.graph_type:
+            topic_description: str = 'bw_co'
+        else:
+            raise AssertionError("Function calling fairness-graph-generator isn't defined.")
+        return [str(i) + topic_description for i in topic_parameter_int]
 
     # ==================================================================================================================
     def _increase_iter(self, topic: Union[str, int], algorithm: str) -> bool:
