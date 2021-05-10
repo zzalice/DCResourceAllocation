@@ -20,7 +20,7 @@ if __name__ == '__main__':
     MCS parameter can be set in resource_allocation/ds/util_enum.py
     and record in IterateAlgo output pickle.
     """
-    f_data: str = '0505-153801BWCO_40MHz_qos100'  # <-- change
+    f_data: str = '0509-190047BWGNB_'  # <-- change
     f_mcs: str = 'gNBCQI1CQI15_eNBCQI1CQI15'  # <-- change
     i: int = 100  # <-- change
     algo: Tuple[str, ...] = ('DC-RA', 'FRSA', 'MSEMA', 'Baseline')  # <-- change
@@ -52,6 +52,7 @@ if __name__ == '__main__':
     gnb_bw = [gnb_mhz_to_bu(i) for i in gnb_bw]
     # IterateAlgo(iteration=i, algorithm=algo, folder_data=f_data).iter_gnb_bw(gnb_bw)
     # GraphGenerator(graph_type='fairness - gnb bw', topic_parameter=gnb_bw, iteration=i, algorithm=algo, folder_result=(f'{f_data}/{f_mcs}',))
+    # GraphGenerator(graph_type='INI - gnb bw', topic_parameter=gnb_bw, iteration=i, algorithm=algo, folder_result=(f'{f_data}/{f_mcs}',))
 
     # ---Graphs for co-channel bandwidth---
     cochannel_bw = [j for j in range(5, 51, 5)]  # <-- change

@@ -68,6 +68,11 @@ class GraphGenerator:
         elif 'fairness' in self.graph_type:
             topic_parameter_str: List[str] = self.append_parameter_description(kwargs['topic_parameter'])
             self.collect_fairness(topic_parameter_str, algo_result)
+        elif self.graph_type == 'INI - gnb bw':
+            topic_parameter_str: List[str] = self.append_parameter_description(kwargs['topic_parameter'])
+            self.collect_ini(topic_parameter_str, algo_result)
+        else:
+            raise AssertionError('Undefined graph type.')
 
     def gen_graph(self, file_path: str, kwargs):
         if self.graph_type == 'sys throughput - layer':
@@ -91,6 +96,25 @@ class GraphGenerator:
             self.gen_ue_cqi(file_path)
         elif 'fairness' in self.graph_type:
             self.gen_fairness(kwargs['topic_parameter'], file_path)
+        elif self.graph_type == 'INI - gnb bw':
+            self.gen_ini(kwargs['topic_parameter'], file_path)
+        else:
+            raise AssertionError('Undefined graph type.')
+
+    def append_parameter_description(self, topic_parameter_int: List[int]) -> List[str]:
+        if '- ue' in self.graph_type:
+            topic_description: str = 'ue'
+        elif '- layer' in self.graph_type:
+            topic_description: str = 'layer'
+        elif '- proportion due' in self.graph_type:
+            topic_description: str = 'p_due'
+        elif '- gnb bw' in self.graph_type:
+            topic_description: str = 'bw_gnb'
+        elif '- cochannel bw' in self.graph_type:
+            topic_description: str = 'bw_co'
+        else:
+            raise AssertionError("Function calling fairness-graph-generator isn't defined.")
+        return [str(i) + topic_description for i in topic_parameter_int]
 
     # ==================================================================================================================
     def collect_sys_throughput(self, result: RESULT, collect_unallocated_ue: bool = False):
@@ -530,14 +554,9 @@ class GraphGenerator:
     def collect_fairness(self, topic_parameter_str: List[str], result: RESULT):
         # collect_data: Dict[str, Dict[str, float]]
         #                    topic     algo sum of fairness
-        topic: str = list(result.keys())[0]
-        if topic not in topic_parameter_str:
-            return True
-        algo: str = list(result[topic].keys())[0]
-        if algo not in self.algorithm:
-            return True
-        if not self._increase_iter(topic, algo):
-            return True
+        topic, algo = self._topic_and_algo(topic_parameter_str, result)
+        if topic == '' or algo == '':
+            return True  # don't continue
 
         fairness: float = fairness_index_json(result[topic][algo][2] + result[topic][algo][3] + result[topic][algo][4])
         try:
@@ -552,6 +571,7 @@ class GraphGenerator:
         avg_fairness: Dict[str, List[float]] = {algo: [] for algo in next(iter(self.data.values()))}
         for t in topic_parameter_str:
             for algo in self.data[t]:
+                assert self.count_iter[t][algo] == self.iteration
                 avg_fairness[algo].append(self.data[t][algo] / self.iteration)
 
         if '- ue' in self.graph_type:
@@ -569,22 +589,56 @@ class GraphGenerator:
         line_chart('', x_label, [str(i) for i in topic_parameter_int], "Jain's Fairness Index", avg_fairness,
                    output_file_path, {'iteration': self.iteration})
 
-    def append_parameter_description(self, topic_parameter_int: List[int]) -> List[str]:
-        if '- ue' in self.graph_type:
-            topic_description: str = 'ue'
-        elif '- layer' in self.graph_type:
-            topic_description: str = 'layer'
-        elif '- proportion due' in self.graph_type:
-            topic_description: str = 'p_due'
-        elif '- gnb bw' in self.graph_type:
-            topic_description: str = 'bw_gnb'
-        elif '- cochannel bw' in self.graph_type:
-            topic_description: str = 'bw_co'
+    # ==================================================================================================================
+    def collect_ini(self, topic_parameter_str: List[str], result: RESULT):
+        """
+        Includes Inter-Carrier Interference in eNB and INI in gNB.
+        eNB happens in co-channel frequency, which will be considered when going through gNB.
+        Count the number of BU that has ICI.
+        """
+        # collect_data: Dict[str, Dict[str, int]]
+        #                    topic     algo ICI
+        topic, algo = self._topic_and_algo(topic_parameter_str, result)
+        if topic == '' or algo == '':
+            return True  # don't continue
+
+        gnb: Dict = result[topic][algo][0]
+        for i in range(gnb['frame']['frame_freq']):
+            for j in range(gnb['frame']['frame_time']):
+                if algo not in self.data[topic]:    # first time, new dictionary
+                    self.data[topic][algo] = 0
+                if len(gnb['frame']['layer'][0]['bu'][i][j]['lapped_numerology']) > 1:    # happens ICI
+                    self.data[topic][algo] += 1
+
+    def gen_ini(self, topic_parameter_int: List[int], output_file_path: str):
+        topic_parameter_str: List[str] = self.append_parameter_description(topic_parameter_int)
+
+        avg_ini: Dict[str, List[float]] = {algo: [] for algo in next(iter(self.data.values()))}
+        for t in topic_parameter_str:
+            for algo in self.data[t]:
+                avg_ini[algo].append(self.data[t][algo] / self.iteration)
+
+        if '- gnb bw' in self.graph_type:
+            x_label: str = 'The Bandwidth of gNB'
         else:
-            raise AssertionError("Function calling fairness-graph-generator isn't defined.")
-        return [str(i) + topic_description for i in topic_parameter_int]
+            raise AssertionError("Function calling INI-graph-generator isn't defined.")
+        line_chart('',
+                   x_label, [str(i) for i in topic_parameter_int],
+                   'The Average Number of BU with ICI', avg_ini,
+                   output_file_path, {'iteration': self.iteration})
 
     # ==================================================================================================================
+    def _topic_and_algo(self, topic_parameter_str: List[str], result: RESULT) -> Tuple[str, str]:
+        topic: str = list(result.keys())[0]
+        if topic not in topic_parameter_str:
+            return '', ''    # not the request data for X label
+        algo: str = list(result[topic].keys())[0]
+        if algo not in self.algorithm:
+            return '', ''    # not the algorithm to draw
+        if not self._increase_iter(topic, algo):
+            return '', ''    # has already reached the iteration
+        return topic, algo
+
     def _increase_iter(self, topic: Union[str, int], algorithm: str) -> bool:
         """
         Monitors the iteration.
