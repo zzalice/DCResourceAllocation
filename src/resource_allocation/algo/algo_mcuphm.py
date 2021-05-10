@@ -27,9 +27,9 @@ class McupHm:
         count_frame_rb: float = (nb.frame.frame_freq * nb.frame.frame_time * nb.frame.max_layer) / count_rb_bu
 
         if nb.nb_type == NodeBType.G:
-            self.gnb_max_serve = floor(count_frame_rb / count_ue_rb)
+            self.gnb_max_serve = floor(count_frame_rb / count_ue_rb) if count_ue_rb > 0 else 0
         elif nb.nb_type == NodeBType.E:
-            self.enb_max_serve = ceil(count_frame_rb / count_ue_rb)
+            self.enb_max_serve = ceil(count_frame_rb / count_ue_rb) if count_ue_rb > 0 else 0
         else:
             raise AssertionError
 
