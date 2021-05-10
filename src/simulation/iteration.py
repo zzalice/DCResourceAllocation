@@ -7,7 +7,6 @@ from typing import Any, Callable, Dict, List, Tuple
 
 from main import dc_resource_allocation
 from main_frsa import frsa
-from main_gen_data_bw import gnb_mhz_to_bu
 from main_intuitive import intuitive_resource_allocation
 from main_msema import msema_rb_ra
 from src.resource_allocation.ds.util_enum import E_MCS, G_MCS
@@ -36,12 +35,10 @@ class IterateAlgo:
         self.large_iter()
 
     def iter_gnb_bw(self, gnb_bw: List[int]):
-        gnb_bw = [gnb_mhz_to_bu(i) for i in gnb_bw]
         self.topic: Dict[str, Any] = {'topic': 'gNB BW', 'item': gnb_bw, 'folder description': 'bw_gnb'}
         self.large_iter()
 
     def iter_cochannel(self, cochannel_bw: List[int]):
-        cochannel_bw = [gnb_mhz_to_bu(i) for i in cochannel_bw]
         self.topic: Dict[str, Any] = {'topic': 'co-channel BW', 'item': cochannel_bw, 'folder description': 'bw_co'}
         self.large_iter()
 

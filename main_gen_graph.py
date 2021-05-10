@@ -1,5 +1,6 @@
 from typing import List, Tuple
 
+from main_gen_data_bw import gnb_mhz_to_bu
 from src.simulation.graph.graph_generator import GraphGenerator
 from src.simulation.iteration import IterateAlgo
 
@@ -44,17 +45,19 @@ if __name__ == '__main__':
     p_due: List[int] = [j for j in range(10, 91, 10)]  # <-- change
     # IterateAlgo(iteration=i, algorithm=algo, folder_data=f_data).iter_due_to_all(p_due)
     # GraphGenerator(graph_type='due to all', percentage=p_due, iteration=i, algorithm=algo, folder_result=(f'{f_data}/{f_mcs}',))
-    # GraphGenerator(graph_type='fairness - proportion due', topic_parameter=ut, iteration=i, algorithm=algo, folder_result=(f'{f_data}/{f_mcs}',))
+    # GraphGenerator(graph_type='fairness - proportion due', topic_parameter=p_due, iteration=i, algorithm=algo, folder_result=(f'{f_data}/{f_mcs}',))
 
     # ---Graphs for gNB bandwidth---
     gnb_bw = [10, 20, 30, 40, 50, 60, 70, 80, 90, 100]  # <-- change
+    gnb_bw = [gnb_mhz_to_bu(i) for i in gnb_bw]
     # IterateAlgo(iteration=i, algorithm=algo, folder_data=f_data).iter_gnb_bw(gnb_bw)
-    # GraphGenerator(graph_type='fairness - gnb bw', topic_parameter=ut, iteration=i, algorithm=algo, folder_result=(f'{f_data}/{f_mcs}',))
+    # GraphGenerator(graph_type='fairness - gnb bw', topic_parameter=gnb_bw, iteration=i, algorithm=algo, folder_result=(f'{f_data}/{f_mcs}',))
 
     # ---Graphs for co-channel bandwidth---
     cochannel_bw = [j for j in range(5, 51, 5)]  # <-- change
+    cochannel_bw = [gnb_mhz_to_bu(i) for i in cochannel_bw]
     # IterateAlgo(iteration=i, algorithm=algo, folder_data=f_data).iter_cochannel(cochannel_bw)
-    # GraphGenerator(graph_type='fairness - cochannel bw', topic_parameter=ut, iteration=i, algorithm=algo, folder_result=(f'{f_data}/{f_mcs}',))
+    # GraphGenerator(graph_type='fairness - cochannel bw', topic_parameter=cochannel_bw, iteration=i, algorithm=algo, folder_result=(f'{f_data}/{f_mcs}',))
 
     # ---Graphs for CQI/NOMA---
     l_or_u: int = 0  # 0 for layer, 1 for ue     <-- change
