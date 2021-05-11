@@ -19,7 +19,7 @@ class GraphGenerator:
                  **kwargs):
         self.graph_type: str = graph_type
         self.iteration: int = iteration
-        self.algorithm: Tuple[str, ...] = algorithm  # FIXME add this function
+        self.algorithm: Tuple[str, ...] = algorithm
         self.output_file_path: List[str] = []
         for f in folder_result:
             self.output_file_path.append(f'{os.path.dirname(__file__)}/{f}')
@@ -28,8 +28,7 @@ class GraphGenerator:
         self.data = {}
         self.data2 = {}
         self.count_iter = {}
-        if graph_type == 'layer - sys throughput' or graph_type == 'increasing ue':
-            self.frame_time: int = -1
+        self.frame_time: int = -1
 
         self.main(kwargs)
 
@@ -51,10 +50,12 @@ class GraphGenerator:
         return True
 
     def collect_data(self, algo_result: RESULT, file_path: str, kwargs):
-        if self.graph_type == 'layer - sys throughput' or self.graph_type == 'due to all':
-            self.collect_sys_throughput(algo_result)
-        elif self.graph_type == 'increasing ue':
-            self.collect_sys_throughput(algo_result, kwargs['collect_unallo_ue'])  # FIXME: should input kwargs['total_ue']?
+        if '- throughput' in self.graph_type:
+            topic_parameter_str: List[str] = self.append_parameter_description(kwargs['topic_parameter'])
+            try:
+                self.collect_sys_throughput(topic_parameter_str, algo_result, kwargs['collect_unallo_ue'])
+            except KeyError:
+                self.collect_sys_throughput(topic_parameter_str, algo_result)
         elif self.graph_type == 'used percentage':
             self.collect_used_percentage(algo_result)
         elif self.graph_type == 'deployment':
@@ -75,12 +76,11 @@ class GraphGenerator:
             raise AssertionError('Undefined graph type.')
 
     def gen_graph(self, file_path: str, kwargs):
-        if self.graph_type == 'layer - sys throughput':
-            self.gen_sys_throughput_layer(kwargs['layers'], file_path)
-        elif self.graph_type == 'increasing ue':
-            self.gen_sys_throughput_increasing_ue(kwargs['total_ue'], kwargs['collect_unallo_ue'], file_path)
-        elif self.graph_type == 'due to all':
-            self.gen_due_to_all(kwargs['percentage'], file_path)
+        if '- throughput' in self.graph_type:
+            try:
+                self.gen_sys_throughput(kwargs['topic_parameter'], file_path, kwargs['collect_unallo_ue'])
+            except KeyError:
+                self.gen_sys_throughput(kwargs['topic_parameter'], file_path)
         elif self.graph_type == 'used percentage':
             self.gen_used_percentage(kwargs['layers'], file_path)
         elif self.graph_type == 'deployment':
@@ -117,86 +117,70 @@ class GraphGenerator:
         return [str(i) + topic_description for i in topic_parameter_int]
 
     # ==================================================================================================================
-    def collect_sys_throughput(self, result: RESULT, collect_unallocated_ue: bool = False):
+    def collect_sys_throughput(self, topic_parameter_str: List[str], result: RESULT,
+                               collect_unallocated_ue: bool = False):
         # collect_data:  Dict[Union[str, int], Dict[str, float]]
         #                          layer/#ue   algo sum of system throughput
         # collect_data2: Dict[Union[str, int], Dict[str, float]]
         #                          layer/#ue   algo sum of #unallocated ue
-        self.frame_time: int = next(iter(next(iter(result.values())).values()))[0]['frame']['frame_time']
+        topic, algo = self._topic_and_algo(topic_parameter_str, result)
+        if topic == '' or algo == '':
+            return True  # don't continue
 
-        for layer_or_total_ue in result:  # only one
-            l_or_u: int = int(re.sub('[^0-9]', '', layer_or_total_ue))
-            for algo in result[layer_or_total_ue]:
-                if not self._increase_iter(l_or_u, algo):
-                    return True
-                allocated_ue, unallocated_ue = divide_ue_json(result[layer_or_total_ue][algo][2] +
-                                                              result[layer_or_total_ue][algo][3] +
-                                                              result[layer_or_total_ue][algo][4])
-                try:
-                    self.data[l_or_u][algo] += calc_system_throughput_json(allocated_ue)
-                    if collect_unallocated_ue:
-                        self.data2[l_or_u][algo] += len(unallocated_ue)
-                except KeyError:
-                    self.data[l_or_u][algo] = calc_system_throughput_json(allocated_ue)
-                    if collect_unallocated_ue:
-                        self.data2[l_or_u][algo] = len(unallocated_ue)
+        self.frame_time: int = result[topic][algo][0]['frame']['frame_time']
+        allocated_ue, unallocated_ue = divide_ue_json(result[topic][algo][2] + result[topic][algo][3] +
+                                                      result[topic][algo][4])
+        if algo not in self.data[topic]:  # first time
+            self.data[topic][algo] = 0.0
+        if collect_unallocated_ue and algo not in self.data2[topic]:  # first time
+            self.data2[topic][algo] = 0.0
+        self.data[topic][algo] += calc_system_throughput_json(allocated_ue)
+        if collect_unallocated_ue:
+            self.data2[topic][algo] += len(unallocated_ue)
         return True
 
-    def calc_avg_sys_throughput(self, topic: List[int]) -> Dict[str, List[float]]:
+    def gen_sys_throughput(self, topic_parameter_int: List[int], output_file_path: str,
+                           collect_unallocated_ue: bool = False):
+        self.gen_avg_sys_throughput(topic_parameter_int, output_file_path)
+
+        if collect_unallocated_ue:
+            self.gen_unallocated_ue(topic_parameter_int, output_file_path)
+
+    def gen_avg_sys_throughput(self, topic_parameter_int: List[int], output_file_path: str):
+        topic_parameter_str: List[str] = self.append_parameter_description(topic_parameter_int)
+
         avg_system_throughput: Dict[str, List[float]] = {algo: [] for algo in next(iter(self.data.values()))}
         #                           algo      avg throughput of each layer
-        for t in topic:
+        for t in topic_parameter_str:
             for algo in self.data[t]:
                 assert self.count_iter[t][algo] == self.iteration
                 self.data[t][algo] /= self.iteration
                 assert self.frame_time > 0
                 self.data[t][algo] = bpframe_to_mbps(self.data[t][algo], self.frame_time)
                 avg_system_throughput[algo].append(self.data[t][algo])
-        return avg_system_throughput
 
-    def gen_unallocated_ue(self, total_ue: List[int], output_file_path: str):
+        x_label: str = self._x_label()
+        scale_x: List[str] = self._x_scale(topic_parameter_int)
+        line_chart('', x_label, scale_x,
+                   'System throughput(Mbps)', avg_system_throughput,
+                   output_file_path, {'iteration': self.iteration})
+
+    def gen_unallocated_ue(self, topic_parameter_int: List[int], output_file_path: str):
+        topic_parameter_str: List[str] = self.append_parameter_description(topic_parameter_int)
+
         avg_unallocated_ue: Dict[str, List[float]] = {algo: [] for algo in next(iter(self.data2.values()))}
         #                        algo      avg unallocated ue
-        for t in total_ue:
+        for t in topic_parameter_str:
             for algo in self.data2[t]:
                 self.data2[t][algo] /= self.iteration
                 avg_unallocated_ue[algo].append(self.data2[t][algo])
-        bar_chart('',
-                  'The number of UE', total_ue,
+
+        x_label: str = self._x_label()
+        scale_x: List[str] = self._x_scale(topic_parameter_int)
+        bar_chart('', x_label, scale_x,
                   'The number of unallocated UE', avg_unallocated_ue,
                   f'{output_file_path}/unallocatedUE_numOfUE_{datetime.today().strftime("%m%d-%H%M")}',
                   {'iteration': self.iteration})
-
-    def gen_sys_throughput_layer(self, layers: List[int], output_file_path: str):
-        for i in range(len(layers) - 1):
-            assert layers[i] < layers[i + 1], 'Not in order.'
-
-        avg_system_throughput: Dict[str, List[float]] = self.calc_avg_sys_throughput(layers)
-
-        line_chart('',
-                   'The number of gNB layer', [str(i) for i in layers],
-                   'System throughput(Mbps)', avg_system_throughput,
-                   output_file_path, {'iteration': self.iteration})
-
-    def gen_sys_throughput_increasing_ue(self, total_ue: List[int], collect_unallocated_ue: bool,
-                                         output_file_path: str):
-        avg_system_throughput: Dict[str, List[float]] = self.calc_avg_sys_throughput(total_ue)
-
-        line_chart('',
-                   'Number of UE', ([str(i) for i in total_ue]),
-                   'System throughput(Mbps)', avg_system_throughput,
-                   output_file_path, {'iteration': self.iteration})
-
-        if collect_unallocated_ue:
-            self.gen_unallocated_ue(total_ue, output_file_path)
-
-    def gen_due_to_all(self, due_to_all: List[int], output_file_path: str):
-        avg_system_throughput: Dict[str, List[float]] = self.calc_avg_sys_throughput(due_to_all)
-
-        line_chart('',
-                   'The proportion of dUE to total UE', ([str(i / 100) for i in due_to_all]),
-                   'System throughput(Mbps)', avg_system_throughput,
-                   output_file_path, {'iteration': self.iteration})
 
     # ==================================================================================================================
     def collect_used_percentage(self, result: RESULT):
@@ -574,19 +558,9 @@ class GraphGenerator:
                 assert self.count_iter[t][algo] == self.iteration
                 avg_fairness[algo].append(self.data[t][algo] / self.iteration)
 
-        if 'ue - ' in self.graph_type:
-            x_label: str = 'The Number of UE'
-        elif 'layer - ' in self.graph_type:
-            x_label: str = 'The Number of gNB Layer'
-        elif 'proportion due - ' in self.graph_type:
-            x_label: str = 'The Proportion of dUE'
-        elif 'gnb bw - ' in self.graph_type:
-            x_label: str = 'The Bandwidth of gNB'
-        elif 'cochannel bw - ' in self.graph_type:
-            x_label: str = 'The Bandwidth of Sharing Spectrum'
-        else:
-            raise AssertionError("Function calling fairness-graph-generator isn't defined.")
-        line_chart('', x_label, [str(i) for i in topic_parameter_int], "Jain's Fairness Index", avg_fairness,
+        x_label: str = self._x_label()
+        scale_x: List[str] = self._x_scale(topic_parameter_int)
+        line_chart('', x_label, scale_x, "Jain's Fairness Index", avg_fairness,
                    output_file_path, {'iteration': self.iteration})
 
     # ==================================================================================================================
@@ -618,12 +592,9 @@ class GraphGenerator:
             for algo in self.data[t]:
                 avg_ini[algo].append(self.data[t][algo] / self.iteration)
 
-        if 'gnb bw - ' in self.graph_type:
-            x_label: str = 'The Bandwidth of gNB'
-        else:
-            raise AssertionError("Function calling INI-graph-generator isn't defined.")
-        bar_chart('',
-                  x_label, [str(i) for i in topic_parameter_int],
+        x_label: str = self._x_label()
+        scale_x: List[str] = self._x_scale(topic_parameter_int)
+        bar_chart('', x_label, scale_x,
                   'The Average Number of BU with ICI', avg_ini,
                   output_file_path, {'iteration': self.iteration})
 
@@ -638,6 +609,32 @@ class GraphGenerator:
         if not self._increase_iter(topic, algo):
             return '', ''  # has already reached the iteration
         return topic, algo
+
+    def _x_label(self) -> str:
+        if 'layer - ' in self.graph_type:
+            x_label: str = 'The number of gNB layer'
+        elif 'ue - ' in self.graph_type:
+            x_label: str = 'The Number of UE'
+        elif 'proportion due - ' in self.graph_type:
+            x_label: str = 'The Proportion of dUE'
+        elif 'gnb bw - ' in self.graph_type:
+            x_label: str = 'The Bandwidth of gNB'
+        elif 'cochannel bw - ' in self.graph_type:
+            x_label: str = 'The Bandwidth of Sharing Spectrum'
+        else:
+            raise AssertionError("The graph type isn't defined.")
+        return x_label
+
+    def _x_scale(self, parameter: List[int]) -> List[str]:
+
+        if ('layer - ' in self.graph_type) or ('ue - ' in self.graph_type) or ('gnb bw - ' in self.graph_type) or (
+                'cochannel bw - ' in self.graph_type):
+            scale_x: List[str] = [str(i) for i in parameter]
+        elif 'proportion due - ' in self.graph_type:
+            scale_x: List[str] = [str(i / 100) for i in parameter]
+        else:
+            raise AssertionError("The graph type isn't defined.")
+        return scale_x
 
     def _increase_iter(self, topic: Union[str, int], algorithm: str) -> bool:
         """
