@@ -51,8 +51,8 @@ if __name__ == '__main__':
     gnb_bw = [10, 20, 30, 40, 50, 60, 70, 80, 90, 100]  # <-- change
     gnb_bw = [gnb_mhz_to_bu(i) for i in gnb_bw]
     # IterateAlgo(iteration=i, algorithm=algo, folder_data=f_data).iter_gnb_bw(gnb_bw)
-    # GraphGenerator(graph_type='fairness - gnb bw', topic_parameter=gnb_bw, iteration=i, algorithm=algo, folder_result=(f'{f_data}/{f_mcs}',))
     # GraphGenerator(graph_type='INI - gnb bw', topic_parameter=gnb_bw, iteration=i, algorithm=algo, folder_result=(f'{f_data}/{f_mcs}',))
+    # GraphGenerator(graph_type='fairness - gnb bw', topic_parameter=gnb_bw, iteration=i, algorithm=algo, folder_result=(f'{f_data}/{f_mcs}',))
 
     # ---Graphs for co-channel bandwidth---
     cochannel_bw = [j for j in range(5, 51, 5)]  # <-- change

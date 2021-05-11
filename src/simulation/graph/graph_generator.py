@@ -605,9 +605,9 @@ class GraphGenerator:
         gnb: Dict = result[topic][algo][0]
         for i in range(gnb['frame']['frame_freq']):
             for j in range(gnb['frame']['frame_time']):
-                if algo not in self.data[topic]:    # first time, new dictionary
+                if algo not in self.data[topic]:  # first time, new dictionary
                     self.data[topic][algo] = 0
-                if len(gnb['frame']['layer'][0]['bu'][i][j]['lapped_numerology']) > 1:    # happens ICI
+                if len(gnb['frame']['layer'][0]['bu'][i][j]['lapped_numerology']) > 1:  # happens ICI
                     self.data[topic][algo] += 1
 
     def gen_ini(self, topic_parameter_int: List[int], output_file_path: str):
@@ -622,21 +622,21 @@ class GraphGenerator:
             x_label: str = 'The Bandwidth of gNB'
         else:
             raise AssertionError("Function calling INI-graph-generator isn't defined.")
-        line_chart('',
-                   x_label, [str(i) for i in topic_parameter_int],
-                   'The Average Number of BU with ICI', avg_ini,
-                   output_file_path, {'iteration': self.iteration})
+        bar_chart('',
+                  x_label, [str(i) for i in topic_parameter_int],
+                  'The Average Number of BU with ICI', avg_ini,
+                  output_file_path, {'iteration': self.iteration})
 
     # ==================================================================================================================
     def _topic_and_algo(self, topic_parameter_str: List[str], result: RESULT) -> Tuple[str, str]:
         topic: str = list(result.keys())[0]
         if topic not in topic_parameter_str:
-            return '', ''    # not the request data for X label
+            return '', ''  # not the request data for X label
         algo: str = list(result[topic].keys())[0]
         if algo not in self.algorithm:
-            return '', ''    # not the algorithm to draw
+            return '', ''  # not the algorithm to draw
         if not self._increase_iter(topic, algo):
-            return '', ''    # has already reached the iteration
+            return '', ''  # has already reached the iteration
         return topic, algo
 
     def _increase_iter(self, topic: Union[str, int], algorithm: str) -> bool:
