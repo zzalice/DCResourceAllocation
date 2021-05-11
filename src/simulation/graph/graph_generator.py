@@ -28,7 +28,7 @@ class GraphGenerator:
         self.data = {}
         self.data2 = {}
         self.count_iter = {}
-        if graph_type == 'sys throughput - layer' or graph_type == 'increasing ue':
+        if graph_type == 'layer - sys throughput' or graph_type == 'increasing ue':
             self.frame_time: int = -1
 
         self.main(kwargs)
@@ -51,7 +51,7 @@ class GraphGenerator:
         return True
 
     def collect_data(self, algo_result: RESULT, file_path: str, kwargs):
-        if self.graph_type == 'sys throughput - layer' or self.graph_type == 'due to all':
+        if self.graph_type == 'layer - sys throughput' or self.graph_type == 'due to all':
             self.collect_sys_throughput(algo_result)
         elif self.graph_type == 'increasing ue':
             self.collect_sys_throughput(algo_result, kwargs['collect_unallo_ue'])  # FIXME: should input kwargs['total_ue']?
@@ -68,14 +68,14 @@ class GraphGenerator:
         elif 'fairness' in self.graph_type:
             topic_parameter_str: List[str] = self.append_parameter_description(kwargs['topic_parameter'])
             self.collect_fairness(topic_parameter_str, algo_result)
-        elif self.graph_type == 'INI - gnb bw':
+        elif self.graph_type == 'gnb bw - INI':
             topic_parameter_str: List[str] = self.append_parameter_description(kwargs['topic_parameter'])
             self.collect_ini(topic_parameter_str, algo_result)
         else:
             raise AssertionError('Undefined graph type.')
 
     def gen_graph(self, file_path: str, kwargs):
-        if self.graph_type == 'sys throughput - layer':
+        if self.graph_type == 'layer - sys throughput':
             self.gen_sys_throughput_layer(kwargs['layers'], file_path)
         elif self.graph_type == 'increasing ue':
             self.gen_sys_throughput_increasing_ue(kwargs['total_ue'], kwargs['collect_unallo_ue'], file_path)
@@ -96,21 +96,21 @@ class GraphGenerator:
             self.gen_ue_cqi(file_path)
         elif 'fairness' in self.graph_type:
             self.gen_fairness(kwargs['topic_parameter'], file_path)
-        elif self.graph_type == 'INI - gnb bw':
+        elif self.graph_type == 'gnb bw - INI':
             self.gen_ini(kwargs['topic_parameter'], file_path)
         else:
             raise AssertionError('Undefined graph type.')
 
     def append_parameter_description(self, topic_parameter_int: List[int]) -> List[str]:
-        if '- ue' in self.graph_type:
+        if 'ue - ' in self.graph_type:
             topic_description: str = 'ue'
-        elif '- layer' in self.graph_type:
+        elif 'layer - ' in self.graph_type:
             topic_description: str = 'layer'
-        elif '- proportion due' in self.graph_type:
+        elif 'proportion due - ' in self.graph_type:
             topic_description: str = 'p_due'
-        elif '- gnb bw' in self.graph_type:
+        elif 'gnb bw - ' in self.graph_type:
             topic_description: str = 'bw_gnb'
-        elif '- cochannel bw' in self.graph_type:
+        elif 'cochannel bw - ' in self.graph_type:
             topic_description: str = 'bw_co'
         else:
             raise AssertionError("Function calling fairness-graph-generator isn't defined.")
@@ -574,15 +574,15 @@ class GraphGenerator:
                 assert self.count_iter[t][algo] == self.iteration
                 avg_fairness[algo].append(self.data[t][algo] / self.iteration)
 
-        if '- ue' in self.graph_type:
+        if 'ue - ' in self.graph_type:
             x_label: str = 'The Number of UE'
-        elif '- layer' in self.graph_type:
+        elif 'layer - ' in self.graph_type:
             x_label: str = 'The Number of gNB Layer'
-        elif '- proportion due' in self.graph_type:
+        elif 'proportion due - ' in self.graph_type:
             x_label: str = 'The Proportion of dUE'
-        elif '- gnb bw' in self.graph_type:
+        elif 'gnb bw - ' in self.graph_type:
             x_label: str = 'The Bandwidth of gNB'
-        elif '- cochannel bw' in self.graph_type:
+        elif 'cochannel bw - ' in self.graph_type:
             x_label: str = 'The Bandwidth of Sharing Spectrum'
         else:
             raise AssertionError("Function calling fairness-graph-generator isn't defined.")
@@ -618,7 +618,7 @@ class GraphGenerator:
             for algo in self.data[t]:
                 avg_ini[algo].append(self.data[t][algo] / self.iteration)
 
-        if '- gnb bw' in self.graph_type:
+        if 'gnb bw - ' in self.graph_type:
             x_label: str = 'The Bandwidth of gNB'
         else:
             raise AssertionError("Function calling INI-graph-generator isn't defined.")
