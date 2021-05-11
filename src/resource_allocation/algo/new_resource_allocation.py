@@ -13,7 +13,7 @@ from src.resource_allocation.ds.util_enum import E_MCS, G_MCS, LTEResourceBlock,
 class AllocateUE(Undo):  # TODO: move to new_ue.py
     """
     In this method, self.ue will be allocated to one BS only.
-    The RBs can be discontinuous.
+    The RBs can be discontinuous.   FIXME改成必須連續
     :return: If the allocation has succeed.
     """
 
