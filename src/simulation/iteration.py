@@ -13,14 +13,18 @@ from src.resource_allocation.ds.util_enum import E_MCS, G_MCS
 
 
 class IterateAlgo:
-    def __init__(self, iteration: int, algorithm: Tuple[str, ...], folder_data: str):
+    def __init__(self, iteration: int, algorithm: Tuple[str, ...], folder_data: str, to_start_over: bool = False):
         assert iteration > 0
         self.iteration: int = iteration
         self.algorithm: Tuple[str, ...] = algorithm
         self.folder_data: str = folder_data
+        self.to_start_over: bool = to_start_over
 
+        self.num_thread: int = 2
+        assert self.num_thread > 0
         self.topic: Dict[str, Any] = {'topic': '', 'item': [], 'folder description': ''}
         self.folder_graph: str = ''
+        self.exist_result: List[str] = []   # the iteration of algorithm that has already run
 
     def iter_layer(self, layers: List[int]):
         self.topic: Dict[str, Any] = {'topic': 'layers', 'item': layers, 'folder description': 'layer'}
@@ -43,15 +47,12 @@ class IterateAlgo:
         self.large_iter()
 
     def large_iter(self):
-        each_thread_run: int = 10
-        assert each_thread_run > 0, 'Value Error.'
-
         self.new_directory()
         threads = []
         program_start_time = time.time()
-        for i in range(math.ceil(self.iteration / each_thread_run)):
-            iter_lower_bound = i * each_thread_run
-            iter_higher_bound = iter_lower_bound + (each_thread_run - 1) if iter_lower_bound + (each_thread_run - 1) < self.iteration else self.iteration - 1
+        for i in range(math.ceil(self.iteration / self.num_thread)):
+            iter_lower_bound = i * self.num_thread
+            iter_higher_bound = iter_lower_bound + (self.num_thread - 1) if iter_lower_bound + (self.num_thread - 1) < self.iteration else self.iteration - 1
             t = threading.Thread(target=self.iter, args=(iter_lower_bound, iter_higher_bound))
             t.start()
             threads.append(t)
@@ -75,6 +76,9 @@ class IterateAlgo:
         return True
 
     def run_algorithm(self, algo_name: str, func_algo: Callable, topic: int, iteration: int, file_data: str):
+        filename: str = f'topic{topic}{self.topic["folder description"]}_iter{iteration}_algo{algo_name}.json'
+        if filename in self.exist_result:
+            return True
         start_time = time.time()
         result = func_algo(file_data)
         json_result = [result[0].to_json(),
@@ -84,7 +88,6 @@ class IterateAlgo:
                        [eue.to_json() for eue in result[4]]]
         print(f'm:{topic} i:{iteration} --- {round((time.time() - start_time) / 60, 3)} min {algo_name} ---')
 
-        filename: str = f'topic{topic}{self.topic["folder description"]}_iter{iteration}_algo{algo_name}.json'
         with open(f'{self.folder_graph}/{filename}', 'w') as f:
             json.dump({f'{topic}{self.topic["folder description"]}': {algo_name: json_result}}, f)
 
@@ -94,6 +97,8 @@ class IterateAlgo:
         self.folder_graph += f'/result'
 
         if os.path.exists(self.folder_graph):
+            if not self.to_start_over:  # to continue
+                self.exist_result: List[str] = next(os.walk(self.folder_graph))[2]
             return True
         else:
             os.makedirs(self.folder_graph)
