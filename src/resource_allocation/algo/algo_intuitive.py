@@ -34,6 +34,14 @@ class Intuitive(AllocateUEList):
     def update_empty_space(self) -> Optional[Tuple[Space, ...]]:
         # find the last occupied BU
         last_layer, last_freq_up_bound, last_time = self.find_row_last_bu()
+
+        if last_layer == last_freq_up_bound == last_time == -1:  # empty NB
+            spaces: List[Space] = [Space(layer, 0, 0, self.nb.frame.frame_freq - 1, self.nb.frame.frame_time - 1) for
+                                   layer in self.nb.frame.layer]
+            for space in spaces:
+                space.assert_is_empty()
+            return tuple(spaces)
+
         last_freq_low_bound: int = self.find_row_lower_bound(last_layer, last_freq_up_bound, last_time)
 
         # find a small space to continue to allocate
@@ -56,7 +64,7 @@ class Intuitive(AllocateUEList):
         # find other large spaces
         assert 0 <= bu_layer < self.nb.frame.max_layer
         for l in range(bu_layer, self.nb.frame.max_layer):
-            new_spaces: Tuple[Space] = empty_space(self.nb.frame.layer[l])
+            new_spaces: Tuple[Space, ...] = empty_space(self.nb.frame.layer[l])
 
             # find a space at the end of the frame
             space_at_bottom: Optional[Space] = next(
@@ -93,6 +101,10 @@ class Intuitive(AllocateUEList):
 
     def find_row_last_bu(self) -> Tuple[int, int, int]:
         layer, freq, time = self.find_latest_bu()
+        if layer == freq == time == -1:
+            # empty NB
+            return -1, -1, -1
+
         last_rb: ResourceBlock = self.nb.frame.layer[layer].bu[freq][time].within_rb
         assert last_rb, 'A unused BU.'
 
@@ -118,6 +130,10 @@ class Intuitive(AllocateUEList):
                         last_freq: int = f
                         last_time: int = t
                         break
+
+        if last_layer == last_freq == last_time == -1:
+            # empty NB
+            return -1, -1, -1
 
         assert (0 <= last_layer < self.nb.frame.max_layer) and (0 <= last_freq < self.nb.frame.frame_freq) and (
                 0 <= last_time < self.nb.frame.frame_time), 'Fail to find the last occupied BU.'
