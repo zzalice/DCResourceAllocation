@@ -2,26 +2,42 @@ from typing import Optional, Tuple
 
 from src.resource_allocation.algo.algo_intuitive import Intuitive
 from src.resource_allocation.ds.eutran import ENodeB
-from src.resource_allocation.ds.ngran import GNodeB
+from src.resource_allocation.ds.frame import Layer
+from src.resource_allocation.ds.ngran import DUserEquipment, GNodeB, GUserEquipment
 from src.resource_allocation.ds.space import Space
-from src.resource_allocation.ds.util_type import CircularRegion
+from src.resource_allocation.ds.util_enum import Numerology
+from src.resource_allocation.ds.util_type import CircularRegion, Coordinate
 
 
-def enb():
-    return ENodeB(region=CircularRegion(0.0, 0.0, 0.5))
+def intuitive_enb():
+    enb = ENodeB(region=CircularRegion(0.0, 0.0, 0.5), frame_freq=50, frame_time=8)
+    return Intuitive(enb, (), (), None)
 
 
-def gnb_2l():
-    return GNodeB(region=CircularRegion(0.5, 0.0, 0.5), frame_max_layer=2)
+def intuitive_gnb_2l():
+    gnb = GNodeB(region=CircularRegion(0.5, 0.0, 0.5), frame_freq=50, frame_time=8, frame_max_layer=2)
+    return Intuitive(gnb, (), (), None)
 
 
-def gnb_3l():
-    return GNodeB(region=CircularRegion(0.5, 0.0, 0.5), frame_max_layer=3)
+def intuitive_gnb_3l():
+    gnb = GNodeB(region=CircularRegion(0.5, 0.0, 0.5), frame_freq=50, frame_time=8, frame_max_layer=3)
+    return Intuitive(gnb, (), (), None)
+
+
+def gue():
+    return GUserEquipment(11, (Numerology.N0, Numerology.N1, Numerology.N2, Numerology.N3), Coordinate(0.5, 0.0))
+
+
+def due():
+    u = DUserEquipment(11, (Numerology.N1,), Coordinate(0.45, 0.0))
+    u.set_numerology(Numerology.N1)
+    return u
 
 
 def test_update_space():
     update_space_empty()
     update_space_complete_row()
+    update_space_enb()
 
 
 def update_space_empty():
@@ -29,8 +45,7 @@ def update_space_empty():
     # 1  --------
     #      ...
     # 49 --------
-    gnb = gnb_2l()
-    intuitive: Intuitive = Intuitive(gnb, (), (), None)
+    intuitive: Intuitive = intuitive_gnb_2l()
     spaces: Optional[Tuple[Space, ...]] = intuitive.update_empty_space()
     assert len(spaces) == 2
     assert spaces[0].starting_i == 0
@@ -44,14 +59,30 @@ def update_space_empty():
 
 
 def update_space_complete_row():
-    pass
     # 0  ********
     # 1  --------
     #      ...
     # 49 --------
+    intuitive: Intuitive = intuitive_gnb_2l()
+    l0: Layer = intuitive.nb.frame.layer[0]
+    ue: GUserEquipment = gue()
+
+    ue.set_numerology(Numerology.N0)
+    l0.allocate_resource_block(0, 0, ue)
+
+    spaces: Optional[Tuple[Space, ...]] = intuitive.update_empty_space()
+    assert len(spaces) == 2
+    assert spaces[0].starting_i == 1
+    assert spaces[0].starting_j == 0
+    assert spaces[0].ending_i == intuitive.nb.frame.frame_freq - 1
+    assert spaces[0].ending_j == intuitive.nb.frame.frame_time - 1
+    assert spaces[1].starting_i == 0
+    assert spaces[1].starting_j == 0
+    assert spaces[1].ending_i == intuitive.nb.frame.frame_freq - 1
+    assert spaces[1].ending_j == intuitive.nb.frame.frame_time - 1
 
 
-def update_space_():
+def update_space_enb():
     pass
     # # (eNB)
     # 0  ********
@@ -59,6 +90,24 @@ def update_space_():
     # 2  --------
     #      ...
     # 49 --------
+    intuitive: Intuitive = intuitive_enb()
+    l0: Layer = intuitive.nb.frame.layer[0]
+    ue: DUserEquipment = due()
+
+    l0.allocate_resource_block(0, 0, ue)
+    l0.allocate_resource_block(0, 4, ue)
+    l0.allocate_resource_block(1, 0, ue)
+
+    spaces: Optional[Tuple[Space, ...]] = intuitive.update_empty_space()
+    assert len(spaces) == 2
+    assert spaces[0].starting_i == 1
+    assert spaces[0].starting_j == 4
+    assert spaces[0].ending_i == 1
+    assert spaces[0].ending_j == intuitive.nb.frame.frame_time - 1
+    assert spaces[1].starting_i == 2
+    assert spaces[1].starting_j == 0
+    assert spaces[1].ending_i == intuitive.nb.frame.frame_freq - 1
+    assert spaces[1].ending_j == intuitive.nb.frame.frame_time - 1
 
 
 def update_space_():
@@ -96,7 +145,6 @@ def update_space_():
     #      ...
     # 49 --------
 
-
     # 0  ********
     # 1  *****---
     # 2  *****---
@@ -110,7 +158,6 @@ def update_space_():
     #      ...
     # 49 --------
 
-
     # 0  ********
     # 1  ******--
     # 2  ******--
@@ -123,7 +170,6 @@ def update_space_():
     # 9  --------
     #      ...
     # 49 --------
-
 
     # 0  ********
     # 1  ******--
@@ -142,7 +188,6 @@ def update_space_():
     #      ...
     # 49 --------
 
-
     # 0  ********
     # 1  ******--
     # 2  ******--
@@ -159,7 +204,6 @@ def update_space_():
     # 13 --------
     #      ...
     # 49 --------
-
 
     # 0  ********
     # 1  ********
@@ -182,7 +226,6 @@ def update_space_():
     #      ...
     # 49 --------
 
-
     # 0  ********
     #      ...
     # 45 ********
@@ -190,7 +233,6 @@ def update_space_():
     # 47 ******--
     # 48 ----**--
     # 49 ----**--
-
 
     # 0  ********
     #      ...
@@ -201,7 +243,6 @@ def update_space_():
     # 48 ----**--
     # 49 --------
 
-
     # 0  ********
     #      ...
     # 45 ********
@@ -209,7 +250,6 @@ def update_space_():
     # 47 ******--
     # 48 **------
     # 49 **------
-
 
     # 0  ********
     #      ...
@@ -219,7 +259,6 @@ def update_space_():
     # 47 **------
     # 48 **------
     # 49 --------
-
 
     # 0  ********     layer 1 empty     | no next layer
     #      ...          --------        |
@@ -232,7 +271,6 @@ def update_space_():
     # 47 --*-----                       |
     # 48 --*-----                       |
     # 49 --*-----       --------        |
-
 
     # layer 0         layer 1 empty     | no next layer
     # 0  ********       --------        |
@@ -247,7 +285,6 @@ def update_space_():
     # 47 --*-----                       |
     # 48 --*-----                       |
     # 49 --------       --------        |
-
 
     # layer 0         layer 1 empty     |     no next layer
     # 0  ********       --------        |

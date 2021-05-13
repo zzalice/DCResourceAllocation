@@ -145,7 +145,7 @@ class Intuitive(AllocateUEList):
             time + 1] is False, 'No the last BU.'
 
         if self.nb.nb_type == NodeBType.E:
-            return freq + LTEResourceBlock.freq - 1
+            return freq + LTEResourceBlock.E.freq - 1
 
         # collect the numerology of RBs in the same row.
         numerology_set: Set[Numerology] = set()
