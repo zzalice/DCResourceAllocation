@@ -141,7 +141,7 @@ class Intuitive(AllocateUEList):
 
     def find_row_lower_bound(self, layer: int, freq: int, time: int):
         assert self.nb.frame.layer[layer].bu_status[freq][time], 'Input a unused BU.'
-        assert time == self.nb.frame.frame_time or self.nb.frame.layer[layer].bu_status[freq][
+        assert time == self.nb.frame.frame_time - 1 or self.nb.frame.layer[layer].bu_status[freq][
             time + 1] is False, 'No the last BU.'
 
         if self.nb.nb_type == NodeBType.E:
