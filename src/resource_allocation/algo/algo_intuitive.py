@@ -31,7 +31,7 @@ class Intuitive(AllocateUEList):
             else:
                 self.undo()
 
-    def update_empty_space(self) -> Optional[Tuple[Space, ...]]:
+    def update_empty_space(self) -> Tuple[Space, ...]:
         # find the last occupied BU
         last_layer, last_freq_up_bound, last_time = self.find_row_last_bu()
 
@@ -57,7 +57,7 @@ class Intuitive(AllocateUEList):
             else:
                 spaces: List[Space] = []
         else:  # run out of space
-            return None
+            return tuple()
         assert (len(spaces) == 1 and spaces[0].width < self.nb.frame.frame_time) or (
                 len(spaces) == 0), 'Should be a space smaller than frame time.'
 

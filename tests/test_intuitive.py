@@ -666,56 +666,145 @@ def update_space_end_jags():
 
 
 def update_space_end_jags_empty():
-    pass
-    # layer 0         layer 1 empty     | no next layer
-    # 0  ********       --------        |
-    #      ...                          |
-    # 40 ********                       |
-    # 41 *****---                       |
-    # 42 *****---                       |
-    # 43 *****---                       |
-    # 44 *****---         ...           |
-    # 45 --*-----                       |
-    # 46 --*-----                       |
-    # 47 --*-----                       |
-    # 48 --*-----                       |
-    # 49 --------       --------        |
+    #  layer 0      layer 1
+    #  ********     0  ********
+    #                    ...
+    #               40 ********
+    #               41 *****---
+    #               42 *****---
+    #    ...        43 *****---
+    #               44 *****---
+    #               45 --*-----
+    #               46 --*-----
+    #               47 --*-----
+    #               48 --*-----
+    #  ********     49 --------
+    intuitive: Intuitive = intuitive_gnb_2l()
+    l0: Layer = intuitive.nb.frame.layer[0]
+    l1: Layer = intuitive.nb.frame.layer[1]
+    ue: GUserEquipment = gue()
+
+    ue.set_numerology(Numerology.N0)
+    for i in range(0, intuitive.nb.frame.frame_freq):
+        l0.allocate_resource_block(i, 0, ue)
+    for i in range(0, 41):
+        l1.allocate_resource_block(i, 0, ue)
+    ue.set_numerology(Numerology.N2)
+    l1.allocate_resource_block(41, 0, ue)
+    l1.allocate_resource_block(41, 3, ue)
+    ue.set_numerology(Numerology.N3)
+    l1.allocate_resource_block(41, 2, ue)
+
+    spaces: Optional[Tuple[Space, ...]] = intuitive.update_empty_space()
+    assert len(spaces) == 2
+    assert spaces[0].starting_i == 41
+    assert spaces[0].starting_j == 5
+    assert spaces[0].ending_i == 48
+    assert spaces[0].ending_j == intuitive.nb.frame.frame_time - 1
+    assert spaces[1].layer.layer_index == 1
+    assert spaces[1].starting_i == 49
+    assert spaces[1].starting_j == 0
+    assert spaces[1].ending_i == intuitive.nb.frame.frame_freq - 1
+    assert spaces[1].ending_j == intuitive.nb.frame.frame_time - 1
 
 
 def update_space_end_two_jags():
-    pass
-    # layer 0         layer 1 empty     |     no next layer
-    # 0  ********       --------        |
-    #      ...                          |
-    # 41 ********                       |
-    # 42 ********                       |
-    # 43 ********                       |
-    # 44 ********                       |
-    # 45 ********         ...           |
-    # 46 --*--*--                       |
-    # 47 --*--*--                       |
-    # 48 --*--*--                       |
-    # 49 --*--*--       --------        |
+    #  layer 0       layer 1
+    #  ********      0  ********
+    #                     ...
+    #                41 ********
+    #                42 ********
+    #                43 ********
+    #    ...         44 ********
+    #                45 ********
+    #                46 --*--*--
+    #                47 --*--*--
+    #                48 --*--*--
+    #  ********      49 --*--*--
+    intuitive: Intuitive = intuitive_gnb_2l()
+    l0: Layer = intuitive.nb.frame.layer[0]
+    l1: Layer = intuitive.nb.frame.layer[1]
+    ue: GUserEquipment = gue()
+
+    ue.set_numerology(Numerology.N0)
+    for i in range(0, intuitive.nb.frame.frame_freq):
+        l0.allocate_resource_block(i, 0, ue)
+    for i in range(0, 42):
+        l1.allocate_resource_block(i, 0, ue)
+    ue.set_numerology(Numerology.N2)
+    l1.allocate_resource_block(42, 0, ue)
+    l1.allocate_resource_block(42, 3, ue)
+    l1.allocate_resource_block(42, 6, ue)
+    ue.set_numerology(Numerology.N3)
+    l1.allocate_resource_block(42, 2, ue)
+    l1.allocate_resource_block(42, 5, ue)
+
+    spaces: Optional[Tuple[Space, ...]] = intuitive.update_empty_space()
+    assert len(spaces) == 0
 
 
 def update_space_to_second_layer():
-    pass
-    # layer 0       layer 1        layer 2     |   no next layer
-    # 0  ********   0  ********    --------    |
-    #      ...      1  ********                |
-    # 41 ********   2  **----**                |
-    # 42 ********   3  **----**                |
-    # 43 ********   4  ------**                |
-    # 44 ********   5  ------**                |
-    # 45 ********   6  ------**      ...       |
-    # 46 --****--   7  ------**                |
-    # 47 --****--        ...                   |
-    # 48 --------   48 --------                |
-    # 49 --------   49 --------    --------    |
+    # layer 0       layer 1        layer 2
+    # 0  ********   0  ********    --------
+    #      ...      1  ********
+    # 39 ********   2  **----**
+    # 40 ********   3  **----**
+    # 41 ********   4  ------**
+    # 42 ********   5  ------**      ...
+    # 43 ********   6  ------**
+    # 44 --****--   7  ------**
+    # 45 --****--   8  --------
+    # 46 --****--
+    # 47 --****--        ...
+    # 48 --------
+    # 49 --------   49 --------    --------
+    intuitive: Intuitive = intuitive_gnb_3l()
+    l0: Layer = intuitive.nb.frame.layer[0]
+    l1: Layer = intuitive.nb.frame.layer[1]
+    ue: GUserEquipment = gue()
+
+    ue.set_numerology(Numerology.N0)
+    for i in range(0, 40):
+        l0.allocate_resource_block(i, 0, ue)
+    ue.set_numerology(Numerology.N1)
+    l1.allocate_resource_block(0, 2, ue)
+    ue.set_numerology(Numerology.N2)
+    l0.allocate_resource_block(40, 0, ue)
+    l0.allocate_resource_block(40, 6, ue)
+    l1.allocate_resource_block(0, 0, ue)
+    ue.set_numerology(Numerology.N3)
+    l0.allocate_resource_block(40, 2, ue)
+    l0.allocate_resource_block(40, 3, ue)
+    l0.allocate_resource_block(40, 4, ue)
+    l0.allocate_resource_block(40, 5, ue)
+    l1.allocate_resource_block(0, 6, ue)
+    l1.allocate_resource_block(0, 7, ue)
+
+    spaces: Optional[Tuple[Space, ...]] = intuitive.update_empty_space()
+    assert len(spaces) == 2
+    assert spaces[0].layer.layer_index == 1
+    assert spaces[0].starting_i == 8
+    assert spaces[0].starting_j == 0
+    assert spaces[0].ending_i == intuitive.nb.frame.frame_freq - 1
+    assert spaces[0].ending_j == intuitive.nb.frame.frame_time - 1
+    assert spaces[1].layer.layer_index == 2
+    assert spaces[1].starting_i == 0
+    assert spaces[1].starting_j == 0
+    assert spaces[1].ending_i == intuitive.nb.frame.frame_freq - 1
+    assert spaces[1].ending_j == intuitive.nb.frame.frame_time - 1
 
 
 def update_space_out_of_space():
     # 0  ********
     #      ...
     # 49 ********
-    pass
+    intuitive: Intuitive = intuitive_enb()
+    l0: Layer = intuitive.nb.frame.layer[0]
+    ue: DUserEquipment = due()
+
+    for i in range(0, intuitive.nb.frame.frame_freq):
+        l0.allocate_resource_block(i, 0, ue)
+        l0.allocate_resource_block(i, 4, ue)
+
+    spaces: Optional[Tuple[Space, ...]] = intuitive.update_empty_space()
+    assert len(spaces) == 0
