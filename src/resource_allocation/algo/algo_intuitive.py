@@ -144,7 +144,7 @@ class Intuitive(AllocateUEList):
             if bu.is_upper_left:
                 is_upper_left += 1
         assert numerology_set, 'Algorithm error.'
-        assert 0 < is_upper_left <= len(numerology_set), 'Input BU is not the start of a row of RB.'
+        assert len(numerology_set) <= is_upper_left, 'Input BU is not the start of a row of RB.'
 
         # find the longest RB
         longest_freq: int = -1

@@ -38,6 +38,8 @@ def test_update_space():
     update_space_empty()
     update_space_complete_row()
     update_space_enb()
+    update_space_first_row()
+    update_space_first_row_jagged()
 
 
 def update_space_empty():
@@ -83,7 +85,6 @@ def update_space_complete_row():
 
 
 def update_space_enb():
-    pass
     # # (eNB)
     # 0  ********
     # 1  ****----
@@ -110,17 +111,36 @@ def update_space_enb():
     assert spaces[1].ending_j == intuitive.nb.frame.frame_time - 1
 
 
-def update_space_():
-    pass
+def update_space_first_row():
     # 0  ****----
     # 1  ****----
     # 2  --------
     #      ...
     # 49 --------
+    intuitive: Intuitive = intuitive_gnb_2l()
+    l0: Layer = intuitive.nb.frame.layer[0]
+    ue: GUserEquipment = gue()
+
+    ue.set_numerology(Numerology.N1)
+    l0.allocate_resource_block(0, 0, ue)
+
+    spaces: Optional[Tuple[Space, ...]] = intuitive.update_empty_space()
+    assert len(spaces) == 3
+    assert spaces[0].starting_i == 0
+    assert spaces[0].starting_j == 4
+    assert spaces[0].ending_i == 1
+    assert spaces[0].ending_j == intuitive.nb.frame.frame_time - 1
+    assert spaces[1].starting_i == 2
+    assert spaces[1].starting_j == 0
+    assert spaces[1].ending_i == intuitive.nb.frame.frame_freq - 1
+    assert spaces[1].ending_j == intuitive.nb.frame.frame_time - 1
+    assert spaces[2].starting_i == 0
+    assert spaces[2].starting_j == 0
+    assert spaces[2].ending_i == intuitive.nb.frame.frame_freq - 1
+    assert spaces[2].ending_j == intuitive.nb.frame.frame_time - 1
 
 
-def update_space_():
-    pass
+def update_space_first_row_jagged():
     # 0  *****---
     # 1  *****---
     # 2  *****---
@@ -132,6 +152,30 @@ def update_space_():
     # 8  --------
     #      ...
     # 49 --------
+    intuitive: Intuitive = intuitive_gnb_2l()
+    l0: Layer = intuitive.nb.frame.layer[0]
+    ue: GUserEquipment = gue()
+
+    ue.set_numerology(Numerology.N2)
+    l0.allocate_resource_block(0, 0, ue)
+    l0.allocate_resource_block(0, 3, ue)
+    ue.set_numerology(Numerology.N3)
+    l0.allocate_resource_block(0, 2, ue)
+
+    spaces: Optional[Tuple[Space, ...]] = intuitive.update_empty_space()
+    assert len(spaces) == 3
+    assert spaces[0].starting_i == 0
+    assert spaces[0].starting_j == 5
+    assert spaces[0].ending_i == 7
+    assert spaces[0].ending_j == intuitive.nb.frame.frame_time - 1
+    assert spaces[1].starting_i == 8
+    assert spaces[1].starting_j == 0
+    assert spaces[1].ending_i == intuitive.nb.frame.frame_freq - 1
+    assert spaces[1].ending_j == intuitive.nb.frame.frame_time - 1
+    assert spaces[2].starting_i == 0
+    assert spaces[2].starting_j == 0
+    assert spaces[2].ending_i == intuitive.nb.frame.frame_freq - 1
+    assert spaces[2].ending_j == intuitive.nb.frame.frame_time - 1
 
 
 def update_space_():
