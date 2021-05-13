@@ -20,10 +20,14 @@ class Intuitive(AllocateUEList):
         super().__init__(nb, (), allocated_ue, channel_model)
         self.ue_to_allocate: List[UE] = sort_by_channel_quality(list(ue_to_allocate), nb.nb_type)
 
-    def allocate(self, allow_lower_mcs: bool = False, allow_lower_than_cqi0: bool = False):
+    def allocate(self, allow_lower_mcs: bool = True, allow_lower_than_cqi0: bool = True):
         while self.ue_to_allocate:
             ue: UE = self.ue_to_allocate.pop(0)
+
             spaces: Tuple[Space, ...] = self.update_empty_space()
+            if not spaces:  # run out of space
+                return True
+
             is_allocated: bool = self._allocate(ue, spaces, allow_lower_mcs, allow_lower_than_cqi0)
             if is_allocated:
                 self.allocated_ue.append(ue)
@@ -90,7 +94,7 @@ class Intuitive(AllocateUEList):
         if first_bu_time >= self.nb.frame.frame_time:
             # next row
             first_bu_time: int = 0
-            first_bu_freq += last_freq_low_bound
+            first_bu_freq: int = last_freq_low_bound + 1
             if first_bu_freq >= self.nb.frame.frame_freq:
                 first_bu_layer += 1
                 first_bu_freq: int = 0
