@@ -1,4 +1,4 @@
-from typing import List, Set, Tuple, Union
+from typing import List, Optional, Set, Tuple, Union
 
 from src.channel_model.sinr import ChannelModel
 from src.resource_allocation.algo.new_ue import AllocateUEList
@@ -7,7 +7,7 @@ from src.resource_allocation.ds.eutran import ENodeB, EUserEquipment
 from src.resource_allocation.ds.frame import BaseUnit
 from src.resource_allocation.ds.ngran import DUserEquipment, GNodeB, GUserEquipment
 from src.resource_allocation.ds.rb import ResourceBlock
-from src.resource_allocation.ds.space import Space
+from src.resource_allocation.ds.space import empty_space, Space
 from src.resource_allocation.ds.ue import UserEquipment
 from src.resource_allocation.ds.util_enum import LTEResourceBlock, NodeBType, Numerology
 
@@ -31,54 +31,80 @@ class Intuitive(AllocateUEList):
             else:
                 self.undo()
 
-    def update_empty_space(self) -> Tuple[Space, ...]:
-        self.find_the_last_continuous_empty_bu()    # FIXME
-        pass
-        # spaces: List[Space] = []
-        # for layer in self.nb.frame.layer:
-        #     new_spaces: Tuple[Space] = empty_space(layer)
-        #
-        #     # break if there is a complete layer in tmp_space
-        #     if len(new_spaces) == 1 and (
-        #             new_spaces[0].width == self.nb.frame.frame_time and new_spaces[0].height == self.nb.frame.frame_freq):
-        #         spaces.extend(new_spaces)
-        #         break
-        #
-        #     # find a space at the end of the frame  FIXME: mark the row and column
-        #     space_at_bottom: Optional[Space] = next(
-        #         (s for s in new_spaces if (
-        #                 s.width == self.nb.frame.frame_time) and (s.ending_i == self.nb.frame.frame_freq - 1)),
-        #         None)
-        #
-        #     if space_at_bottom:
-        #         # find a space above space_at_bottom
-        #         space_above_bottom: Optional[Space] = next(
-        #             (s for s in new_spaces if (
-        #                     s.ending_j == self.nb.frame.frame_time - 1) and (
-        #                          s.ending_i == space_at_bottom.starting_i - 1)),
-        #             None)
-        #     else:
-        #         # find a space at the end of the frame
-        #         space_above_bottom: Optional[Space] = next(
-        #             (s for s in new_spaces if (
-        #                     s.ending_j == self.nb.frame.frame_time - 1) and (
-        #                          s.ending_i == self.nb.frame.frame_freq - 1)),
-        #             None)
-        #
-        #     # gather the spaces
-        #     spaces.append(space_above_bottom) if space_above_bottom else None
-        #     spaces.append(space_at_bottom) if space_at_bottom else None
-        # return tuple(spaces)
-
-    def find_the_last_continuous_empty_bu(self) -> Tuple[int, int, int]:
+    def update_empty_space(self) -> Optional[Tuple[Space, ...]]:
         # find the last occupied BU
-        last_layer, last_freq, last_time = self.find_latest_bu()
-        last_layer, last_freq, last_time = self.find_row_last_bu(last_layer, last_freq, last_time)
-        last_freq_bound: int = self.find_row_end(last_layer, last_freq, last_time)
+        last_layer, last_freq_up_bound, last_time = self.find_row_last_bu()
+        last_freq_low_bound: int = self.find_row_lower_bound(last_layer, last_freq_up_bound, last_time)
 
-        # find the last continuous empty BU
-        # FIXME
-        return
+        # find a small space to continue to allocate
+        if space_para := self.find_next_space_start_bu(last_layer, last_freq_up_bound, last_time, last_freq_low_bound):
+            bu_layer: int = space_para[0]
+            bu_freq: int = space_para[1]
+            bu_time: int = space_para[2]
+            if bu_freq != 0:
+                first_space: Space = Space(
+                    self.nb.frame.layer[bu_layer], bu_freq, bu_time, last_freq_low_bound, self.nb.frame.frame_time)
+                first_space.assert_is_empty()
+                spaces: List[Space] = [first_space]
+            else:
+                spaces: List[Space] = []
+        else:  # run out of space
+            return None
+        assert (len(spaces) == 1 and spaces[0].width < self.nb.frame.frame_time) or (
+                len(spaces) == 0), 'Should be a space smaller than frame time.'
+
+        # find other large spaces
+        assert 0 <= bu_layer < self.nb.frame.max_layer
+        for l in range(bu_layer, self.nb.frame.max_layer):
+            new_spaces: Tuple[Space] = empty_space(self.nb.frame.layer[l])
+
+            # find a space at the end of the frame
+            space_at_bottom: Optional[Space] = next(
+                (s for s in new_spaces if (
+                        s.width == self.nb.frame.frame_time) and (s.ending_i == self.nb.frame.frame_freq - 1)),
+                None)
+            if space_at_bottom:
+                if l == bu_layer and spaces:  # found a small space earlier
+                    assert space_at_bottom.starting_i - 1 == spaces[0].ending_i, 'Algorithm error'
+                elif l != bu_layer:
+                    assert space_at_bottom.starting_i == space_at_bottom.starting_j == 0, 'Algorithm error'
+                spaces.append(space_at_bottom)
+        return tuple(spaces)
+
+    def find_next_space_start_bu(self, last_layer: int, last_freq: int, last_time: int, last_freq_low_bound: int
+                                 ) -> Optional[Tuple[int, int, int]]:
+        assert 0 <= last_layer < self.nb.frame.max_layer
+        assert 0 <= last_freq <= last_freq_low_bound < self.nb.frame.frame_freq
+        assert 0 <= last_time < self.nb.frame.frame_time
+        first_bu_layer: int = last_layer
+        first_bu_freq: int = last_freq
+        first_bu_time: int = last_time + 1
+        if first_bu_time >= self.nb.frame.frame_time:
+            # next row
+            first_bu_time: int = 0
+            first_bu_freq += last_freq_low_bound
+            if first_bu_freq >= self.nb.frame.frame_freq:
+                first_bu_layer += 1
+                first_bu_freq: int = 0
+                first_bu_time: int = 0
+                if first_bu_layer >= self.nb.frame.max_layer:
+                    return None  # run out of space
+        return first_bu_layer, first_bu_freq, first_bu_time
+
+    def find_row_last_bu(self) -> Tuple[int, int, int]:
+        layer, freq, time = self.find_latest_bu()
+        last_rb: ResourceBlock = self.nb.frame.layer[layer].bu[freq][time].within_rb
+        assert last_rb, 'A unused BU.'
+
+        last_numerology: Union[Numerology, LTEResourceBlock] = last_rb.numerology
+        row_start: int = freq - last_numerology.freq + 1
+        assert self.nb.frame.layer[layer].bu_status[row_start][time], 'Algorithm error.'
+        col_end: int = time
+        for t in range(time + 1, self.nb.frame.frame_time):
+            if self.nb.frame.layer[layer].bu_status[row_start][t] is True:
+                col_end: int = t
+        assert self.nb.frame.layer[layer].bu_status[row_start][col_end], 'Algorithm error.'
+        return layer, row_start, col_end
 
     def find_latest_bu(self) -> Tuple[int, int, int]:
         last_layer: int = -1
@@ -92,24 +118,12 @@ class Intuitive(AllocateUEList):
                         last_freq: int = f
                         last_time: int = t
                         break
+
         assert (0 <= last_layer < self.nb.frame.max_layer) and (0 <= last_freq < self.nb.frame.frame_freq) and (
                 0 <= last_time < self.nb.frame.frame_time), 'Fail to find the last occupied BU.'
         return last_layer, last_freq, last_time
 
-    def find_row_last_bu(self, layer: int, freq: int, time: int) -> Tuple[int, int, int]:
-        last_rb: ResourceBlock = self.nb.frame.layer[layer].bu[freq][time].within_rb
-        assert last_rb, 'Input a unused BU.'
-        last_numerology: Union[Numerology, LTEResourceBlock] = last_rb.numerology
-        row_start: int = freq - last_numerology.freq + 1
-        assert self.nb.frame.layer[layer].bu_status[row_start][time], 'Algorithm error coming from input.'
-        col_end: int = time
-        for t in range(time + 1, self.nb.frame.frame_time):
-            if self.nb.frame.layer[layer].bu_status[row_start][t] is True:
-                col_end: int = t
-        assert self.nb.frame.layer[layer].bu_status[row_start][col_end], 'Algorithm error.'
-        return layer, row_start, col_end
-
-    def find_row_end(self, layer: int, freq: int, time: int):
+    def find_row_lower_bound(self, layer: int, freq: int, time: int):
         assert self.nb.frame.layer[layer].bu_status[freq][time], 'Input a unused BU.'
         assert time == self.nb.frame.frame_time or self.nb.frame.layer[layer].bu_status[freq][
             time + 1] is False, 'No the last BU.'
