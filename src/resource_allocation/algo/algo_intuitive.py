@@ -49,9 +49,9 @@ class Intuitive(AllocateUEList):
             bu_layer: int = space_para[0]
             bu_freq: int = space_para[1]
             bu_time: int = space_para[2]
-            if bu_freq != 0:
+            if bu_time != 0:
                 first_space: Space = Space(
-                    self.nb.frame.layer[bu_layer], bu_freq, bu_time, last_freq_low_bound, self.nb.frame.frame_time)
+                    self.nb.frame.layer[bu_layer], bu_freq, bu_time, last_freq_low_bound, self.nb.frame.frame_time - 1)
                 first_space.assert_is_empty()
                 spaces: List[Space] = [first_space]
             else:
@@ -119,25 +119,12 @@ class Intuitive(AllocateUEList):
         return layer, row_start, col_end
 
     def find_latest_bu(self) -> Tuple[int, int, int]:
-        last_layer: int = -1
-        last_freq: int = -1
-        last_time: int = -1
         for l in range(self.nb.frame.max_layer - 1, -1, -1):
             for f in range(self.nb.frame.frame_freq - 1, -1, -1):
                 for t in range(self.nb.frame.frame_time - 1, -1, -1):
                     if self.nb.frame.layer[l].bu_status[f][t] is True:
-                        last_layer: int = l
-                        last_freq: int = f
-                        last_time: int = t
-                        break
-
-        if last_layer == last_freq == last_time == -1:
-            # empty NB
-            return -1, -1, -1
-
-        assert (0 <= last_layer < self.nb.frame.max_layer) and (0 <= last_freq < self.nb.frame.frame_freq) and (
-                0 <= last_time < self.nb.frame.frame_time), 'Fail to find the last occupied BU.'
-        return last_layer, last_freq, last_time
+                        return l, f, t
+        return -1, -1, -1   # empty NB
 
     def find_row_lower_bound(self, layer: int, freq: int, time: int):
         assert self.nb.frame.layer[layer].bu_status[freq][time], 'Input a unused BU.'
