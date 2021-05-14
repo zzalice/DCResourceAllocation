@@ -1,7 +1,8 @@
 from typing import List, Optional, Set, Tuple, Union
 
 from src.channel_model.sinr import ChannelModel
-from src.resource_allocation.algo.new_ue import AllocateUEList
+from src.resource_allocation.algo.new_single_ue import AllocateUE, DCProportionAllocate
+from src.resource_allocation.algo.new_ue_list import AllocateUEList
 from src.resource_allocation.algo.utils import sort_by_channel_quality
 from src.resource_allocation.ds.eutran import ENodeB, EUserEquipment
 from src.resource_allocation.ds.frame import BaseUnit
@@ -9,31 +10,61 @@ from src.resource_allocation.ds.ngran import DUserEquipment, GNodeB, GUserEquipm
 from src.resource_allocation.ds.rb import ResourceBlock
 from src.resource_allocation.ds.space import empty_space, Space
 from src.resource_allocation.ds.ue import UserEquipment
-from src.resource_allocation.ds.util_enum import LTEResourceBlock, NodeBType, Numerology
+from src.resource_allocation.ds.util_enum import LTEResourceBlock, NodeBType, Numerology, UEType
 
 UE = Union[UserEquipment, GUserEquipment, DUserEquipment, EUserEquipment]
 
 
 class Intuitive(AllocateUEList):
-    def __init__(self, nb: Union[GNodeB, ENodeB], ue_to_allocate: Tuple[UE, ...], allocated_ue: Tuple[UE, ...],
+    def __init__(self, nb: Union[GNodeB, ENodeB], another_nb: Union[GNodeB, ENodeB],
+                 ue_to_allocate: Tuple[UE, ...], allocated_ue: Tuple[UE, ...],
                  channel_model: ChannelModel):
         super().__init__(nb, (), allocated_ue, channel_model)
         self.ue_to_allocate: List[UE] = sort_by_channel_quality(list(ue_to_allocate), nb.nb_type)
+        assert nb.nb_type != another_nb.nb_type, 'Input two same-type-BS.'
+        self.another_nb: Union[GNodeB, ENodeB] = another_nb
 
     def allocate(self, allow_lower_mcs: bool = True, allow_lower_than_cqi0: bool = True):
         while self.ue_to_allocate:
             ue: UE = self.ue_to_allocate.pop(0)
-
-            spaces: Tuple[Space, ...] = self.update_empty_space(self.nb, ue)
-            if not spaces:  # run out of space
-                return True
-
-            is_allocated: bool = self._allocate(ue, spaces, allow_lower_mcs, allow_lower_than_cqi0)
+            # from tests.assertion import check_undo_copy   FIXME
+            # copy_ue = check_undo_copy([ue] + self.gue_allocated + self.due_allocated + self.eue_allocated)
+            is_allocated: bool = self._allocate(ue, (), allow_lower_mcs, allow_lower_than_cqi0)
             if is_allocated:
                 self.allocated_ue.append(ue)
                 self.purge_undo()
             else:
                 self.undo()
+                # from tests.assertion import check_undo_compare
+                # check_undo_compare([ue] + self.gue_allocated + self.due_allocated + self.eue_allocated, copy_ue)
+            # from tests.assertion import assert_is_empty
+            # assert_is_empty(spaces, ue, is_allocated)
+
+    def allocate_one_ue(self, ue: UE, spaces: Tuple = ()) -> bool:
+        """
+        :param ue: The UE to allocate.
+        :param spaces: A redundant input.
+        :return: If the ue allocation succeed.
+        """
+        assert not ue.is_allocated, 'Not a new UE.'
+        if ue.ue_type == UEType.D:
+            space_in_nbs: List[Tuple[Space, ...]] = []
+            for nb in [self.nb, self.another_nb]:
+                space_in_nbs.append(self.update_empty_space(nb, ue))
+                if not space_in_nbs[-1]:  # run out of space
+                    return False
+
+            allocate_ue: DCProportionAllocate = DCProportionAllocate(ue, self.channel_model)
+            is_allocated: bool = allocate_ue.allocate(tuple(space_in_nbs))
+        else:
+            spaces: Tuple[Space, ...] = self.update_empty_space(self.nb, ue)
+            if not spaces:  # run out of space
+                return False
+
+            allocate_ue: AllocateUE = AllocateUE(ue, spaces, self.channel_model)
+            is_allocated: bool = allocate_ue.allocate()
+        self.append_undo(lambda a_u=allocate_ue: a_u.undo(), lambda a_u=allocate_ue: a_u.purge_undo())
+        return is_allocated
 
     @staticmethod
     def update_empty_space(nb: Union[GNodeB, ENodeB], ue: UE) -> Tuple[Space, ...]:

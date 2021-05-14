@@ -1,7 +1,7 @@
 import pytest
 
 from src.channel_model.sinr import ChannelModel
-from src.resource_allocation.algo.new_resource_allocation import AllocateUE
+from src.resource_allocation.algo.new_single_ue import AllocateUE
 from src.resource_allocation.ds.eutran import ENodeB
 from src.resource_allocation.ds.ngran import DUserEquipment, GNodeB, GUserEquipment
 from src.resource_allocation.ds.space import Space

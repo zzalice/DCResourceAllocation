@@ -2,7 +2,7 @@ from typing import List, Optional, Tuple, Union
 
 from src.channel_model.adjust_mcs import AdjustMCS
 from src.channel_model.sinr import ChannelModel
-from src.resource_allocation.algo.new_resource_allocation import AllocateUE
+from src.resource_allocation.algo.new_single_ue import AllocateUE
 from src.resource_allocation.algo.util_type import RBIndex
 from src.resource_allocation.algo.utils import calc_system_throughput, sort_by_channel_quality
 from src.resource_allocation.ds.eutran import ENodeB, EUserEquipment
@@ -72,9 +72,7 @@ class AllocateUEList(Undo):
     @Undo.undo_func_decorator
     def _allocate(self, ue: UE, spaces: Tuple[Space, ...], allow_lower_mcs, allow_lower_than_cqi0) -> bool:
         # allocate new ue
-        allocate_ue: AllocateUE = AllocateUE(ue, spaces, self.channel_model)
-        is_allocated: bool = allocate_ue.allocate()
-        self.append_undo(lambda a_u=allocate_ue: a_u.undo(), lambda a_u=allocate_ue: a_u.purge_undo())
+        is_allocated: bool = self.allocate_one_ue(ue, spaces)
 
         # the effected UEs
         if is_allocated:
@@ -82,6 +80,12 @@ class AllocateUEList(Undo):
                                                                       allow_lower_mcs, allow_lower_than_cqi0)
             if not has_positive_effect:
                 is_allocated: bool = False
+        return is_allocated
+
+    def allocate_one_ue(self, ue: UE, spaces: Tuple[Space, ...]) -> bool:
+        allocate_ue: AllocateUE = AllocateUE(ue, spaces, self.channel_model)
+        is_allocated: bool = allocate_ue.allocate()
+        self.append_undo(lambda a_u=allocate_ue: a_u.undo(), lambda a_u=allocate_ue: a_u.purge_undo())
         return is_allocated
 
     @staticmethod

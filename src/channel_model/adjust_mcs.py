@@ -1,7 +1,7 @@
 from typing import Callable, List, Optional, Union
 
 from src.channel_model.sinr import ChannelModel
-from src.resource_allocation.algo.new_resource_allocation import NewResource
+from src.resource_allocation.algo.new_resource import NewResource
 from src.resource_allocation.ds.eutran import EUserEquipment
 from src.resource_allocation.ds.ngran import DUserEquipment, GUserEquipment
 from src.resource_allocation.ds.nodeb import ENBInfo, GNBInfo
