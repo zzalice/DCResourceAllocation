@@ -10,10 +10,10 @@ from src.resource_allocation.ds.undo import Undo
 from src.resource_allocation.ds.util_enum import E_MCS, G_MCS, LTEResourceBlock, NodeBType, Numerology, UEType
 
 
-class AllocateUE(Undo):  # TODO: move to new_ue.py  FIXME !!!!! if DC-RA not calling this class. 改成必須連續
+class AllocateUE(Undo):  # TODO: move to new_ue.py
     """
     In this method, self.ue will be allocated to one BS only.
-    The RBs can be discontinuous.
+    The new RBs will be continuous.
     :return: If the allocation has succeed.
     """
 
@@ -69,7 +69,7 @@ class AllocateUE(Undo):  # TODO: move to new_ue.py  FIXME !!!!! if DC-RA not cal
             self.append_undo(lambda l=space.layer: l.undo(), lambda l=space.layer: l.purge_undo())
             if not rb:
                 # overlapped with itself
-                continue
+                return False
 
             self.channel_model.sinr_rb(rb)
             self.append_undo(lambda: self.channel_model.undo(), lambda: self.channel_model.purge_undo())
