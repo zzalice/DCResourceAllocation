@@ -10,10 +10,10 @@ from src.resource_allocation.ds.undo import Undo
 from src.resource_allocation.ds.util_enum import E_MCS, G_MCS, LTEResourceBlock, NodeBType, Numerology, UEType
 
 
-class AllocateUE(Undo):  # TODO: move to new_ue.py
+class AllocateUE(Undo):  # TODO: move to new_ue.py  FIXME !!!!! if DC-RA not calling this class. 改成必須連續
     """
     In this method, self.ue will be allocated to one BS only.
-    The RBs can be discontinuous.   FIXME改成必須連續
+    The RBs can be discontinuous.
     :return: If the allocation has succeed.
     """
 
@@ -48,17 +48,12 @@ class AllocateUE(Undo):  # TODO: move to new_ue.py
         while True:
             # the position for the new RB
             if is_to_next_space:
-                if self.spaces:
-                    space: Space = self.spaces.pop(0)
-                    if self.ue.numerology_in_use in space.rb_type:
-                        bu_i: int = space.starting_i
-                        bu_j: int = space.starting_j
-                        is_to_next_space: bool = False
-                    else:
-                        # the space is not big enough for a RB the UE is using
-                        continue
-                else:
-                    # run out of spaces before achieving QoS
+                if space_rb := self.next_space():
+                    space: Space = space_rb[0]
+                    bu_i: int = space_rb[1]
+                    bu_j: int = space_rb[2]
+                    is_to_next_space: bool = False
+                else:  # run out of space
                     return False
             else:
                 if bu := space.next_rb(bu_i, bu_j, self.ue.numerology_in_use):
@@ -93,6 +88,13 @@ class AllocateUE(Undo):  # TODO: move to new_ue.py
                 self.ue.update_throughput()
                 self.ue.is_to_recalculate_mcs = False
                 return True
+
+    def next_space(self) -> Optional[Tuple[Space, int, int]]:
+        while self.spaces:
+            space: Space = self.spaces.pop(0)
+            if self.ue.numerology_in_use in space.rb_type:  # the space is big enough for a RB the UE is using
+                return space, space.starting_i, space.starting_j
+        return None
 
 
 class NewResource(Undo):

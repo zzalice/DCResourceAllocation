@@ -24,7 +24,7 @@ class Intuitive(AllocateUEList):
         while self.ue_to_allocate:
             ue: UE = self.ue_to_allocate.pop(0)
 
-            spaces: Tuple[Space, ...] = self.update_empty_space(self.nb)
+            spaces: Tuple[Space, ...] = self.update_empty_space(self.nb, ue)
             if not spaces:  # run out of space
                 return True
 
@@ -36,7 +36,7 @@ class Intuitive(AllocateUEList):
                 self.undo()
 
     @staticmethod
-    def update_empty_space(nb: Union[GNodeB, ENodeB]) -> Tuple[Space, ...]:
+    def update_empty_space(nb: Union[GNodeB, ENodeB], ue: UE) -> Tuple[Space, ...]:
         # find the last occupied BU
         last_layer, last_freq_up_bound, last_time = Intuitive.find_row_last_bu(nb)
 
@@ -55,11 +55,17 @@ class Intuitive(AllocateUEList):
             bu_layer: int = space_para[0]
             bu_freq: int = space_para[1]
             bu_time: int = space_para[2]
-            if bu_time != 0:
-                first_space: Space = Space(
-                    nb.frame.layer[bu_layer], bu_freq, bu_time, last_freq_low_bound, nb.frame.frame_time - 1)
-                first_space.assert_is_empty()
-                spaces: List[Space] = [first_space]     # FIXME 長度要是自己用的numerology freq，注意lte
+            if bu_time != 0:  # is a smaller space
+                in_use_numerology_freq: int = ue.numerology_in_use.freq if nb.nb_type == NodeBType.G else LTEResourceBlock.E.freq  # TODO: refactor or redesign
+                space_end_i: int = bu_freq + in_use_numerology_freq - 1
+                if space_end_i >= nb.frame.frame_freq:
+                    bu_layer += 1
+                    spaces: List[Space] = []
+                else:
+                    first_space: Space = Space(nb.frame.layer[bu_layer],
+                                               bu_freq, bu_time, space_end_i, nb.frame.frame_time - 1)
+                    first_space.assert_is_empty()
+                    spaces: List[Space] = [first_space]
             else:
                 spaces: List[Space] = []
         else:  # run out of space
@@ -68,8 +74,7 @@ class Intuitive(AllocateUEList):
                 len(spaces) == 0), 'Should be a space smaller than frame time.'
 
         # find other large spaces
-        assert 0 <= bu_layer < nb.frame.max_layer
-        for l in range(bu_layer, nb.frame.max_layer):     # FIXME 如果有first “可能”要縮短large
+        for l in range(bu_layer, nb.frame.max_layer):
             new_spaces: Tuple[Space, ...] = empty_space(nb.frame.layer[l])
 
             # find a space at the end of the frame
@@ -78,10 +83,17 @@ class Intuitive(AllocateUEList):
                         s.width == nb.frame.frame_time) and (s.ending_i == nb.frame.frame_freq - 1)),
                 None)
             if space_at_bottom:
-                if l == bu_layer and spaces:  # found a small space earlier
-                    assert space_at_bottom.starting_i - 1 == spaces[0].ending_i, 'Algorithm error'
-                elif l != bu_layer:
-                    assert space_at_bottom.starting_i == space_at_bottom.starting_j == 0, 'Algorithm error'
+                if l == bu_layer and len(spaces) == 1:  # found a small space earlier
+                    assert spaces[0].width < nb.frame.frame_time, 'Not a smaller space.'
+                    if spaces[0].ending_i >= space_at_bottom.starting_i:
+                        starting_i: int = spaces[0].ending_i + 1
+                    else:
+                        starting_i: int = space_at_bottom.starting_i
+                    if starting_i >= nb.frame.frame_freq:
+                        continue
+                    space_at_bottom: Space = Space(
+                        space_at_bottom.layer, starting_i, space_at_bottom.starting_j,
+                        space_at_bottom.ending_i, space_at_bottom.ending_j)
                 spaces.append(space_at_bottom)
         return tuple(spaces)
 
@@ -133,7 +145,7 @@ class Intuitive(AllocateUEList):
                 for t in range(nb.frame.frame_time - 1, -1, -1):
                     if nb.frame.layer[l].bu_status[f][t] is True:
                         return l, f, t
-        return -1, -1, -1   # empty NB
+        return -1, -1, -1  # empty NB
 
     @staticmethod
     def find_row_lower_bound(layer: int, freq: int, time: int, nb: Union[GNodeB, ENodeB]):
