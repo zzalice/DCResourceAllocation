@@ -2,6 +2,7 @@ import json
 import os
 import re
 from datetime import datetime
+from json import JSONDecodeError
 from os import walk
 from typing import Dict, List, Tuple, Union
 
@@ -44,9 +45,13 @@ class GraphGenerator:
         return True
 
     def read_result(self, file_path: str, file_result: str, kwargs):
-        with open(f'{file_path}/{file_result}', 'r') as f:
-            algo_result: RESULT = json.load(f)
-            self.collect_data(algo_result, file_path, kwargs)
+        result_file_path: str = f'{file_path}/{file_result}'
+        with open(result_file_path, 'r') as f:
+            try:
+                algo_result: RESULT = json.load(f)
+                self.collect_data(algo_result, file_path, kwargs)
+            except JSONDecodeError:
+                print(f'JSONDecodeError: {file_path}/{file_result}')
         return True
 
     def collect_data(self, algo_result: RESULT, file_path: str, kwargs):
