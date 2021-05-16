@@ -49,9 +49,9 @@ class GraphGenerator:
         with open(result_file_path, 'r') as f:
             try:
                 algo_result: RESULT = json.load(f)
+                self.collect_data(algo_result, file_path, kwargs)
             except JSONDecodeError:
                 print(f'JSONDecodeError: {file_path}/{file_result}')
-        self.collect_data(algo_result, file_path, kwargs)
         return True
 
     def collect_data(self, algo_result: RESULT, file_path: str, kwargs):
