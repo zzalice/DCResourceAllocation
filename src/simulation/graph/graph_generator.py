@@ -44,9 +44,14 @@ class GraphGenerator:
         return True
 
     def read_result(self, file_path: str, file_result: str, kwargs):
-        with open(f'{file_path}/{file_result}', 'r') as f:
-            algo_result: RESULT = json.load(f)
-            self.collect_data(algo_result, file_path, kwargs)
+        result_file_path: str = f'{file_path}/{file_result}'
+        try:
+            with open(result_file_path, 'r') as f:
+                algo_result: RESULT = json.load(f)
+                self.collect_data(algo_result, file_path, kwargs)
+        except ValueError:
+            print(result_file_path)
+            raise ValueError
         return True
 
     def collect_data(self, algo_result: RESULT, file_path: str, kwargs):
