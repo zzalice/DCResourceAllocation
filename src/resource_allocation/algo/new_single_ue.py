@@ -8,6 +8,7 @@ from src.resource_allocation.ds.space import Space
 from src.resource_allocation.ds.ue import UserEquipment
 from src.resource_allocation.ds.undo import Undo
 from src.resource_allocation.ds.util_enum import E_MCS, G_MCS, LTEResourceBlock, NodeBType, Numerology, UEType
+from utils.assertion import ThroughputError
 
 
 class AllocateUE(Undo):
@@ -146,8 +147,12 @@ class DCProportionAllocate(Undo):
         return has_succeed
 
     def allocate_nb(self, spaces: Tuple[Space, ...], request_data_rate):
+        is_allocated: bool = False
         allocate_ue: AllocateUE = AllocateUE(self.ue, spaces, self.channel_model, request_data_rate=request_data_rate)
-        is_allocated: bool = allocate_ue.allocate()
+        try:
+            is_allocated: bool = allocate_ue.allocate()
+        except ThroughputError:
+            pass
         self.append_undo(lambda a_u=allocate_ue: a_u.undo(), lambda a_u=allocate_ue: a_u.purge_undo())
         return is_allocated
 

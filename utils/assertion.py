@@ -1,8 +1,11 @@
-from typing import List, Union
+from __future__ import annotations
 
-from src.resource_allocation.ds.nodeb import ENBInfo, GNBInfo
-from src.resource_allocation.ds.rb import ResourceBlock
-from src.resource_allocation.ds.ue import UserEquipment
+from typing import List, TYPE_CHECKING, Union
+
+if TYPE_CHECKING:
+    from src.resource_allocation.ds.nodeb import ENBInfo, GNBInfo
+    from src.resource_allocation.ds.rb import ResourceBlock
+    from src.resource_allocation.ds.ue import UserEquipment
 
 
 class CopyRB:
@@ -87,3 +90,8 @@ def assert_throughput(ue: UserEquipment):
 
     assert ue.throughput == ue.calc_throughput()
     assert ue.throughput >= ue.request_data_rate
+
+
+class ThroughputError(Exception):
+    def __init__(self, message='Throughput is lower than request.'):
+        super().__init__(message)

@@ -3,6 +3,7 @@ from __future__ import annotations
 from typing import Any, Dict, List, Optional, TYPE_CHECKING
 from uuid import UUID, uuid4
 
+from utils.assertion import ThroughputError
 from .nodeb import ENBInfo, GNBInfo
 from .rb import ResourceBlock
 from .util_enum import Numerology, UEType
@@ -92,7 +93,8 @@ class UserEquipment:
                 assert self.enb_info.mcs is None and not self.enb_info.rb, "The MCS is not up-to-date."
 
         self._throughput = self.calc_throughput()
-        assert self._throughput >= self.request_data_rate
+        if self._throughput < self.request_data_rate:
+            raise ThroughputError
 
     def calc_throughput(self) -> float:
         """ Won't change any value in UserEquipment. """
