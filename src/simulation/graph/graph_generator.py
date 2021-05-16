@@ -15,10 +15,14 @@ RESULT = Dict[str, Dict[str, Tuple[Dict, Dict, List[Dict], List[Dict], List[Dict
 
 
 class GraphGenerator:
-    def __init__(self, graph_type: str, iteration: int, algorithm: Tuple[str, ...], folder_result: Tuple[str],
-                 **kwargs):
+    def __init__(self, graph_type: str, topic_parameter: List[int], iter_range: Tuple[int, int],
+                 algorithm: Tuple[str, ...], folder_result: Tuple[str], **kwargs):
         self.graph_type: str = graph_type
-        self.iteration: int = iteration
+        self.topic_parameter_int: List[int] = topic_parameter
+        self.topic_parameter_str: List[str] = self.append_parameter_description()
+        assert len(iter_range) == 2 and iter_range[0] <= iter_range[1]
+        self.iteration_range: Tuple[int, int] = iter_range
+        self.iteration: int = iter_range[1] - iter_range[0] + 1
         self.algorithm: Tuple[str, ...] = algorithm
         self.output_file_path: List[str] = []
         for f in folder_result:
@@ -27,7 +31,6 @@ class GraphGenerator:
         # parameters for graph generating usage
         self.data = {}
         self.data2 = {}
-        self.count_iter = {}
         self.frame_time: int = -1
 
         self.main(kwargs)
@@ -56,11 +59,10 @@ class GraphGenerator:
 
     def collect_data(self, algo_result: RESULT, file_path: str, kwargs):
         if '- throughput' in self.graph_type:
-            topic_parameter_str: List[str] = self.append_parameter_description(kwargs['topic_parameter'])
             try:
-                self.collect_sys_throughput(topic_parameter_str, algo_result, kwargs['collect_unallo_ue'])
+                self.collect_sys_throughput(algo_result, kwargs['collect_unallo_ue'])
             except KeyError:
-                self.collect_sys_throughput(topic_parameter_str, algo_result)
+                self.collect_sys_throughput(algo_result)
         elif self.graph_type == 'used percentage':
             self.collect_used_percentage(algo_result)
         elif self.graph_type == 'deployment':
@@ -72,41 +74,38 @@ class GraphGenerator:
         elif self.graph_type == 'CQI':
             self.collect_ue_cqi(kwargs['layer_or_ue'], kwargs['algorithm'], algo_result, file_path)
         elif 'fairness' in self.graph_type:
-            topic_parameter_str: List[str] = self.append_parameter_description(kwargs['topic_parameter'])
-            self.collect_fairness(topic_parameter_str, algo_result)
+            self.collect_fairness(algo_result)
         elif self.graph_type == 'gnb bw - INI':
-            topic_parameter_str: List[str] = self.append_parameter_description(kwargs['topic_parameter'])
-            self.collect_ini(topic_parameter_str, algo_result)
+            self.collect_ini(algo_result)
         else:
             raise AssertionError('Undefined graph type.')
 
     def gen_graph(self, file_path: str, kwargs):
         if '- throughput' in self.graph_type:
             try:
-                self.gen_sys_throughput(kwargs['topic_parameter'], file_path, kwargs['collect_unallo_ue'])
+                self.gen_sys_throughput(file_path, kwargs['collect_unallo_ue'])
             except KeyError:
-                self.gen_sys_throughput(kwargs['topic_parameter'], file_path)
+                self.gen_sys_throughput(file_path)
         elif self.graph_type == 'used percentage':
-            self.gen_used_percentage(kwargs['layers'], file_path)
+            self.gen_used_percentage(file_path)
         elif self.graph_type == 'deployment':
-            self.gen_deployment(kwargs['layers'], file_path)
+            self.gen_deployment(file_path)
         elif self.graph_type == 'allocated ue':
-            self.gen_allocated_ue(kwargs['layers'], file_path,
-                                  ue_label=('eUE', 'dUE_in_eNB', 'gUE', 'dUE_in_gNB', 'dUE_cross_BS'))
+            self.gen_allocated_ue(file_path, ue_label=('eUE', 'dUE_in_eNB', 'gUE', 'dUE_in_gNB', 'dUE_cross_BS'))
         elif self.graph_type == 'total_allocated_ue':
-            self.gen_allocated_ue(kwargs['layers'], file_path, ue_label=('total',))
+            self.gen_allocated_ue(file_path, ue_label=('total',))
         elif self.graph_type == 'NOMA':
             self.gen_noma_overlap_status(kwargs['algorithm'], file_path)
         elif self.graph_type == 'CQI':
             self.gen_ue_cqi(file_path)
         elif 'fairness' in self.graph_type:
-            self.gen_fairness(kwargs['topic_parameter'], file_path)
+            self.gen_fairness(file_path)
         elif self.graph_type == 'gnb bw - INI':
-            self.gen_ini(kwargs['topic_parameter'], file_path)
+            self.gen_ini(file_path)
         else:
             raise AssertionError('Undefined graph type.')
 
-    def append_parameter_description(self, topic_parameter_int: List[int]) -> List[str]:
+    def append_parameter_description(self) -> List[str]:
         if 'proportion due - ' in self.graph_type:
             topic_description: str = 'p_due'
         elif 'layer - ' in self.graph_type:
@@ -119,16 +118,15 @@ class GraphGenerator:
             topic_description: str = 'bw_co'
         else:
             raise AssertionError("Function calling fairness-graph-generator isn't defined.")
-        return [str(i) + topic_description for i in topic_parameter_int]
+        return [str(i) + topic_description for i in self.topic_parameter_int]
 
     # ==================================================================================================================
-    def collect_sys_throughput(self, topic_parameter_str: List[str], result: RESULT,
-                               collect_unallocated_ue: bool = False):
+    def collect_sys_throughput(self, result: RESULT, collect_unallocated_ue: bool = False):
         # collect_data:  Dict[Union[str, int], Dict[str, float]]
         #                          layer/#ue   algo sum of system throughput
         # collect_data2: Dict[Union[str, int], Dict[str, float]]
         #                          layer/#ue   algo sum of #unallocated ue
-        topic, algo = self._topic_and_algo(topic_parameter_str, result)
+        topic, algo = self._topic_and_algo(result)
         if topic == '' or algo == '':
             return True  # don't continue
 
@@ -144,48 +142,42 @@ class GraphGenerator:
             self.data2[topic][algo] += len(unallocated_ue)
         return True
 
-    def gen_sys_throughput(self, topic_parameter_int: List[int], output_file_path: str,
-                           collect_unallocated_ue: bool = False):
-        self.gen_avg_sys_throughput(topic_parameter_int, output_file_path)
+    def gen_sys_throughput(self, output_file_path: str, collect_unallocated_ue: bool = False):
+        self.gen_avg_sys_throughput(output_file_path)
 
         if collect_unallocated_ue:
-            self.gen_unallocated_ue(topic_parameter_int, output_file_path)
+            self.gen_unallocated_ue(output_file_path)
 
-    def gen_avg_sys_throughput(self, topic_parameter_int: List[int], output_file_path: str):
-        topic_parameter_str: List[str] = self.append_parameter_description(topic_parameter_int)
-
+    def gen_avg_sys_throughput(self, output_file_path: str):
         avg_system_throughput: Dict[str, List[float]] = {algo: [] for algo in next(iter(self.data.values()))}
         #                           algo      avg throughput of each layer
-        for t in topic_parameter_str:
+        for t in self.topic_parameter_str:
             for algo in self.data[t]:
-                assert self.count_iter[t][algo] == self.iteration
                 self.data[t][algo] /= self.iteration
                 assert self.frame_time > 0
                 self.data[t][algo] = bpframe_to_mbps(self.data[t][algo], self.frame_time)
                 avg_system_throughput[algo].append(self.data[t][algo])
 
         x_label: str = self._x_label()
-        scale_x: List[str] = self._x_scale(topic_parameter_int)
+        scale_x: List[str] = self._x_scale(self.topic_parameter_int)
         line_chart('', x_label, scale_x,
                    'System throughput(Mbps)', avg_system_throughput,
-                   output_file_path, {'iteration': self.iteration})
+                   output_file_path, {'iteration': self.iteration_range})
 
-    def gen_unallocated_ue(self, topic_parameter_int: List[int], output_file_path: str):
-        topic_parameter_str: List[str] = self.append_parameter_description(topic_parameter_int)
-
+    def gen_unallocated_ue(self, output_file_path: str):
         avg_unallocated_ue: Dict[str, List[float]] = {algo: [] for algo in next(iter(self.data2.values()))}
         #                        algo      avg unallocated ue
-        for t in topic_parameter_str:
+        for t in self.topic_parameter_str:
             for algo in self.data2[t]:
                 self.data2[t][algo] /= self.iteration
                 avg_unallocated_ue[algo].append(self.data2[t][algo])
 
         x_label: str = self._x_label()
-        scale_x: List[str] = self._x_scale(topic_parameter_int)
+        scale_x: List[str] = self._x_scale(self.topic_parameter_int)
         bar_chart('', x_label, scale_x,
                   'The number of unallocated UE', avg_unallocated_ue,
                   f'{output_file_path}/unallocatedUE_numOfUE_{datetime.today().strftime("%m%d-%H%M")}',
-                  {'iteration': self.iteration})
+                  {'iteration': self.iteration_range})
 
     # ==================================================================================================================
     def collect_used_percentage(self, result: RESULT):
@@ -194,8 +186,7 @@ class GraphGenerator:
         for max_layer_str in result:  # only one
             l: int = int(max_layer_str.replace('layer', ''))
             for algo in result[max_layer_str]:
-                if not self._increase_iter(l, algo):
-                    return True
+                self.first_data(l)
                 gnb: Dict = result[max_layer_str][algo][0]
                 assert l == gnb['frame']['max_layer']
 
@@ -212,7 +203,7 @@ class GraphGenerator:
                 except KeyError:
                     self.data[l][algo] = [count_used_bu, count_bu]
 
-    def gen_used_percentage(self, layers: List[int], output_file_path: str):
+    def gen_used_percentage(self, output_file_path: str):
         # x_labels: List[str]
         #                max layer
         #           e.g. ['1 layer', '2 layer', '3 layer']
@@ -221,7 +212,7 @@ class GraphGenerator:
         #              e.g. {'DC-RA': [0.98, 0.55, 0.32], 'Baseline': [0.97, 0.44, 0.22]}
         x_labels: List[str] = []
         percentages: Dict[str, List[float]] = {}
-        for layer in layers:
+        for layer in self.topic_parameter_int:
             if layer not in self.data:
                 continue
             x_labels.append(str(layer) + ' layer')
@@ -237,7 +228,7 @@ class GraphGenerator:
         y_label: str = 'Frame Usage(%)'
         bar_chart('Frame used', x_label, x_labels, y_label, percentages,
                   f'{output_file_path}/{x_label}_{y_label}_{datetime.today().strftime("%m%d-%H%M")}',
-                  {'iteration': self.iteration})
+                  {'iteration': self.iteration_range})
 
     # ==================================================================================================================
     def collect_deployment(self, result: RESULT):
@@ -247,8 +238,7 @@ class GraphGenerator:
         for layer in result:  # only one
             l: int = int(layer.replace('layer', ''))
             for algo in result[layer]:
-                if not self._increase_iter(l, algo):
-                    return True
+                self.first_data(l)
                 try:
                     self.data[l][algo]['allocated_ue'].extend(
                         self.purge_ue(result[layer][algo][2] + result[layer][algo][3] + result[layer][algo][4]))
@@ -271,9 +261,9 @@ class GraphGenerator:
                 purged_ue.append((ue['ue_type'], ue['x'], ue['y']))
         return purged_ue
 
-    def gen_deployment(self, layers: List[int], output_file_path: str):
+    def gen_deployment(self, output_file_path: str):
         for layer in self.data:
-            if layer in layers:
+            if layer in self.topic_parameter_int:
                 for algo in self.data[layer]:
                     gnb_radius: float = self.data[layer][algo]['nb_info'][0]
                     gnb_coordinate: List[float] = self.data[layer][algo]['nb_info'][1]
@@ -287,7 +277,7 @@ class GraphGenerator:
                                   x, y, color,
                                   (-enb_radius, gnb_coordinate[0] + gnb_radius), (-enb_radius, enb_radius),
                                   f'{output_file_path}/deployment_{layer}_{algo}_{datetime.today().strftime("%m%d-%H%M")}',
-                                  {'iteration': self.iteration})
+                                  {'iteration': self.iteration_range})
 
     @staticmethod
     def _ue_deployment(all_ue: List[Tuple[UEType, float, float]],
@@ -313,8 +303,7 @@ class GraphGenerator:
         for layer in result:  # only one
             l: int = int(layer.replace('layer', ''))
             for algo in result[layer]:
-                if not self._increase_iter(l, algo):
-                    return True
+                self.first_data(l)
                 try:
                     self.count_allocated_ue(result[layer][algo][2], result[layer][algo][3], result[layer][algo][4],
                                             self.data[l][algo])
@@ -343,16 +332,15 @@ class GraphGenerator:
                 collect_data['eUE'] += 1
         collect_data['total'] = collect_data['dUE_cross_BS'] + collect_data['dUE_in_gNB'] + collect_data['dUE_in_eNB'] + collect_data['gUE'] + collect_data['eUE']
 
-    def gen_allocated_ue(self, layers: List[int], output_file_path: str, ue_label: Tuple[str, ...]):
+    def gen_allocated_ue(self, output_file_path: str, ue_label: Tuple[str, ...]):
         """
-        :param layers: The display order of the number of layers in gNB
         :param output_file_path:
         :param ue_label: The display order of bar stack in the form of Dict name.
         """
         collect_data: Dict[str, Dict[int, Dict[str, float]]] = {}
         #                  algo      layer     ue   avg allocated ue
         for layer in self.data:  # FIXME: Adding an axes using the same arguments as a previous axes
-            if layer in layers:
+            if layer in self.topic_parameter_int:
                 for algo in self.data[layer]:
                     for ue in self.data[layer][algo]:
                         self.data[layer][algo][ue] /= self.iteration
@@ -364,15 +352,15 @@ class GraphGenerator:
         num_of_allo_ue: Dict[str, List[List[float]]] = {}  # algo(str) -> layers(list) -> UEs(float)
         for algo in self.algorithm:
             num_of_allo_ue[algo] = []  # layers(list) -> UEs(float)
-            for layer in layers:
+            for layer in self.topic_parameter_int:
                 num_of_allo_ue[algo].append([])
                 for ue in ue_label:
                     num_of_allo_ue[algo][-1].append(collect_data[algo][layer][ue])
 
         bar_chart_grouped_stacked('The allocated UEs', 'The number of layers in gNB', 'The number of allocated UE',
                                   f'{output_file_path}/num_of_allocated_ue_{datetime.today().strftime("%m%d-%H%M")}',
-                                  {'iteration': self.iteration}, num_of_allo_ue, [str(i) for i in layers], ue_label,
-                                  self.algorithm)
+                                  {'iteration': self.iteration_range}, num_of_allo_ue,
+                                  [str(i) for i in self.topic_parameter_int], ue_label, self.algorithm)
 
     # ==================================================================================================================
     def collect_noma(self, layer_or_ue: List[str], algorithm: List[str], result: RESULT):
@@ -380,12 +368,11 @@ class GraphGenerator:
         #                    algo iter layer freq time CQI index, '0' for empty
         for topic in result:  # only one. e.g. '300ue' or '1layer'
             if topic not in layer_or_ue:
-                continue
+                raise AssertionError("The json file name doesn't match the data saved inside.")
             for algo in result[topic]:
                 if algo not in algorithm:
-                    continue
-                if not self._increase_iter(topic, algo):
-                    return True
+                    raise AssertionError("The json file name doesn't match the data saved inside.")
+                self.first_data(topic)
                 gnb: Dict = result[topic][algo][0]
                 try:
                     self.data[topic][algo].append(self.collect_cqi(gnb))
@@ -462,11 +449,11 @@ class GraphGenerator:
                       'The number of overlapped UE', [i for i in range(self.data[topic]['gnb_info']['max_layer'] + 1)],
                       'Percentage of BU(%)', data_count_layer,
                       f'{output_file_path}/noma_lap_{topic}_{datetime.today().strftime("%m%d-%H%M")}',
-                      {'iteration': self.iteration, 'layer_or_ue': topic})
+                      {'iteration': self.iteration_range, 'layer_or_ue': topic})
             bar_chart_grouped_stacked(f'The MCS used in a frame of {topic}',
                                       'The number of overlapped UE', 'The number BU',
                                       f'{output_file_path}/noma_mcs_{topic}_{datetime.today().strftime("%m%d-%H%M")}',
-                                      {'iteration': self.iteration, 'layer_or_ue': topic},
+                                      {'iteration': self.iteration_range, 'layer_or_ue': topic},
                                       data_count_bu,
                                       [str(i + 1) for i in range(self.data[topic]['gnb_info']['max_layer'])],
                                       ['CQI' + str(i) for i in range(cqi[0], cqi[1] + 1)], algorithm,
@@ -479,12 +466,11 @@ class GraphGenerator:
         #                    algo      NB   CQI  number of allocated ue using the CQI
         for topic in result:  # only one. e.g. '300ue' or '1layer'
             if topic not in layer_or_ue:
-                continue
+                raise AssertionError("The json file name doesn't match the data saved inside.")
             for algo in result[topic]:
                 if algo not in algorithm:
-                    continue
-                if not self._increase_iter(topic, algo):
-                    return True
+                    raise AssertionError("The json file name doesn't match the data saved inside.")
+                self.first_data(topic)
                 gnb_cqi: List[int] = self.get_cqi(output_file_path, 'gNB')
                 enb_cqi: List[int] = self.get_cqi(output_file_path, 'eNB')
                 try:
@@ -532,18 +518,18 @@ class GraphGenerator:
                       'The available CQI in gNB', [str(i) for i in range(gnb_cqi[0], gnb_cqi[1] + 1)],
                       'The number of allocated UE', gnb_cqi_data,
                       f'{output_file_path}/cqi_{topic}_gNB_{datetime.today().strftime("%m%d-%H%M")}',
-                      {'iteration': self.iteration, 'layer_or_ue': topic})
+                      {'iteration': self.iteration_range, 'layer_or_ue': topic})
             bar_chart(f'The CQI in {topic}',
                       'The available CQI in eNB', [str(i) for i in range(enb_cqi[0], enb_cqi[1] + 1)],
                       'The number of allocated UE', enb_cqi_data,
                       f'{output_file_path}/cqi_{topic}_eNB_{datetime.today().strftime("%m%d-%H%M")}',
-                      {'iteration': self.iteration, 'layer_or_ue': topic})
+                      {'iteration': self.iteration_range, 'layer_or_ue': topic})
 
     # ==================================================================================================================
-    def collect_fairness(self, topic_parameter_str: List[str], result: RESULT):
+    def collect_fairness(self, result: RESULT):
         # collect_data: Dict[str, Dict[str, float]]
         #                    topic     algo sum of fairness
-        topic, algo = self._topic_and_algo(topic_parameter_str, result)
+        topic, algo = self._topic_and_algo(result)
         if topic == '' or algo == '':
             return True  # don't continue
 
@@ -554,22 +540,19 @@ class GraphGenerator:
             self.data[topic][algo] = fairness
         return True
 
-    def gen_fairness(self, topic_parameter_int: List[int], output_file_path: str):
-        topic_parameter_str: List[str] = self.append_parameter_description(topic_parameter_int)
-
+    def gen_fairness(self, output_file_path: str):
         avg_fairness: Dict[str, List[float]] = {algo: [] for algo in next(iter(self.data.values()))}
-        for t in topic_parameter_str:
+        for t in self.topic_parameter_str:
             for algo in self.data[t]:
-                assert self.count_iter[t][algo] == self.iteration
                 avg_fairness[algo].append(self.data[t][algo] / self.iteration)
 
         x_label: str = self._x_label()
-        scale_x: List[str] = self._x_scale(topic_parameter_int)
+        scale_x: List[str] = self._x_scale(self.topic_parameter_int)
         line_chart('', x_label, scale_x, "Jain's Fairness Index", avg_fairness,
-                   output_file_path, {'iteration': self.iteration})
+                   output_file_path, {'iteration': self.iteration_range})
 
     # ==================================================================================================================
-    def collect_ini(self, topic_parameter_str: List[str], result: RESULT):
+    def collect_ini(self, result: RESULT):
         """
         Includes Inter-Carrier Interference in eNB and INI in gNB.
         eNB happens in co-channel frequency, which will be considered when going through gNB.
@@ -577,7 +560,7 @@ class GraphGenerator:
         """
         # collect_data: Dict[str, Dict[str, int]]
         #                    topic     algo ICI
-        topic, algo = self._topic_and_algo(topic_parameter_str, result)
+        topic, algo = self._topic_and_algo(result)
         if topic == '' or algo == '':
             return True  # don't continue
 
@@ -589,30 +572,24 @@ class GraphGenerator:
                 if len(gnb['frame']['layer'][0]['bu'][i][j]['lapped_numerology']) > 1:  # happens ICI
                     self.data[topic][algo] += 1
 
-    def gen_ini(self, topic_parameter_int: List[int], output_file_path: str):
-        topic_parameter_str: List[str] = self.append_parameter_description(topic_parameter_int)
-
+    def gen_ini(self, output_file_path: str):
         avg_ini: Dict[str, List[float]] = {algo: [] for algo in next(iter(self.data.values()))}
-        for t in topic_parameter_str:
+        for t in self.topic_parameter_str:
             for algo in self.data[t]:
                 avg_ini[algo].append(self.data[t][algo] / self.iteration)
 
         x_label: str = self._x_label()
-        scale_x: List[str] = self._x_scale(topic_parameter_int)
+        scale_x: List[str] = self._x_scale(self.topic_parameter_int)
         bar_chart('', x_label, scale_x,
                   'The Average Number of BU with ICI', avg_ini,
-                  output_file_path, {'iteration': self.iteration})
+                  output_file_path, {'iteration': self.iteration_range})
 
     # ==================================================================================================================
-    def _topic_and_algo(self, topic_parameter_str: List[str], result: RESULT) -> Tuple[str, str]:
+    def _topic_and_algo(self, result: RESULT) -> Tuple[str, str]:
         topic: str = list(result.keys())[0]
-        if topic not in topic_parameter_str:
-            return '', ''  # not the request data for X label
         algo: str = list(result[topic].keys())[0]
-        if algo not in self.algorithm:
-            return '', ''  # not the algorithm to draw
-        if not self._increase_iter(topic, algo):
-            return '', ''  # has already reached the iteration
+        if topic not in self.topic_parameter_str or algo not in self.algorithm:
+            raise AssertionError("The json file name doesn't match the data saved inside.")
         return topic, algo
 
     def _x_label(self) -> str:
@@ -641,26 +618,10 @@ class GraphGenerator:
             raise AssertionError("The graph type isn't defined.")
         return scale_x
 
-    def _increase_iter(self, topic: Union[str, int], algorithm: str) -> bool:
-        """
-        Monitors the iteration.
-        :param topic: Layer, number of UE, etc.
-        :param algorithm: The name of the algorithm saved in json file.
-        :return: If returns False means the iteration of data collection has reached the request.
-        """
-        try:
-            if self.count_iter[topic][algorithm] >= self.iteration:
-                return False
-            else:
-                self.count_iter[topic][algorithm] += 1
-        except KeyError:
-            try:
-                self.count_iter[topic][algorithm] = 1
-            except KeyError:
-                self.count_iter[topic] = {algorithm: 1}
-                self.data[topic] = {}
-                self.data2[topic] = {}
-        return True
+    def first_data(self, topic: Union[str, int]):
+        if topic not in self.data:
+            self.data[topic] = {}
+            self.data2[topic] = {}
 
     @staticmethod
     def get_cqi(output_file_path: str, nb: str = 'gNB') -> List[int]:
@@ -670,16 +631,17 @@ class GraphGenerator:
 
     def input_result_files(self, directory: str) -> List[str]:
         """
+        Read only the require results.
+        Raise assertion if the file is not found.
         :param directory: The directory to result files.
         :return: A list of result.json to read. That are within the iteration
         """
         filenames = next(walk(directory))[2]
-        file_to_find: List[str] = [f'_iter{j}_algo{k}' for j in range(self.iteration) for k in self.algorithm]
-        result_file_to_read: List[str] = []
-        for i in file_to_find:
-            has_found: bool = False
-            for filename in filter(lambda x: i in x, filenames):
-                has_found: bool = True
-                result_file_to_read.append(filename)
-            assert has_found, 'Input iteration is higher than the executed data.'
+        result_file_to_read: List[str] = [f'topic{i}_iter{j}_algo{k}.json'
+                                          for i in self.topic_parameter_str
+                                          for j in range(self.iteration_range[0], self.iteration_range[1] + 1)
+                                          for k in self.algorithm]
+        for i in result_file_to_read:
+            if i not in filenames:
+                raise AssertionError(f"Can't find the result of {i}.")
         return result_file_to_read
