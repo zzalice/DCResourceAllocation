@@ -107,12 +107,12 @@ class GraphGenerator:
             raise AssertionError('Undefined graph type.')
 
     def append_parameter_description(self, topic_parameter_int: List[int]) -> List[str]:
-        if 'ue - ' in self.graph_type:
-            topic_description: str = 'ue'
+        if 'proportion due - ' in self.graph_type:
+            topic_description: str = 'p_due'
         elif 'layer - ' in self.graph_type:
             topic_description: str = 'layer'
-        elif 'proportion due - ' in self.graph_type:
-            topic_description: str = 'p_due'
+        elif 'ue - ' in self.graph_type:
+            topic_description: str = 'ue'
         elif 'gnb bw - ' in self.graph_type:
             topic_description: str = 'bw_gnb'
         elif 'cochannel bw - ' in self.graph_type:
