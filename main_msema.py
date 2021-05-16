@@ -5,7 +5,7 @@ from typing import List, Tuple
 
 from main_mcuphm import mcup_hm
 from src.resource_allocation.algo.algo_msema import Msema
-from src.resource_allocation.algo.new_ue import SimpleDC
+from src.resource_allocation.algo.new_ue_list import SimpleDC
 from src.resource_allocation.algo.utils import divide_ue
 from src.resource_allocation.ds.eutran import ENodeB, EUserEquipment
 from src.resource_allocation.ds.ngran import DUserEquipment, GNodeB, GUserEquipment

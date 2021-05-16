@@ -1,7 +1,7 @@
 from typing import List, Tuple, Union
 
 from src.channel_model.sinr import ChannelModel
-from src.resource_allocation.algo.new_ue import AllocateUEList, AllocateUEListSameNumerology
+from src.resource_allocation.algo.new_ue_list import AllocateUEList, AllocateUEListSameNumerology
 from src.resource_allocation.algo.utils import sort_by_channel_quality
 from src.resource_allocation.ds.eutran import ENodeB, EUserEquipment
 from src.resource_allocation.ds.ngran import DUserEquipment, GNodeB, GUserEquipment

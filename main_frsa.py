@@ -7,7 +7,7 @@ from main_mcuphm import mcup_hm
 from src.resource_allocation.algo.frsa.frsa_phase1 import FRSAPhase1
 from src.resource_allocation.algo.frsa.frsa_phase2 import FRSAPhase2
 from src.resource_allocation.algo.frsa.frsa_phase3 import FRSAPhase3
-from src.resource_allocation.algo.new_ue import SimpleDC
+from src.resource_allocation.algo.new_ue_list import SimpleDC
 from src.resource_allocation.algo.utils import divide_ue
 from src.resource_allocation.ds.eutran import ENodeB, EUserEquipment
 from src.resource_allocation.ds.ngran import DUserEquipment, GNodeB, GUserEquipment

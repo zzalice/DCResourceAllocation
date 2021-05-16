@@ -22,17 +22,11 @@ def intuitive_resource_allocation(data_set, visualize_the_algo: bool = False) ->
         g_nb, e_nb, channel_model, g_ue_list, d_ue_list, e_ue_list, _, _, _, _ = pickle.load(file)
 
     # main
-    Intuitive(g_nb, g_ue_list + d_ue_list, tuple(), channel_model).allocate(allow_lower_mcs=False)
+    Intuitive(g_nb, e_nb, g_ue_list + d_ue_list, tuple(), channel_model).allocate(allow_lower_mcs=False)
     gue_allocated, _ = divide_ue(g_ue_list)
-    due_allocated, _ = divide_ue(d_ue_list)
-    Intuitive(e_nb, e_ue_list + due_allocated, gue_allocated + due_allocated, channel_model).allocate(
-        allow_lower_mcs=False)
-    # FIXME: don't force cross BS. Cross when run out of space
-
-    # DC UEs must connect to two BSs
-    for due in due_allocated:
-        if not due.cross_nb and due.is_allocated:
-            due.remove_ue()
+    due_allocated, due_unallocated = divide_ue(d_ue_list)
+    Intuitive(e_nb, g_nb, e_ue_list + due_unallocated, gue_allocated + due_allocated, channel_model).allocate(
+        allow_lower_mcs=False)  # FIXME 還需要input due_unallocated嗎？
 
     if visualize_the_algo:
         visualize_phase_uncategorized_ue(visualization_file_path, 'wb',
@@ -41,7 +35,7 @@ def intuitive_resource_allocation(data_set, visualize_the_algo: bool = False) ->
 
 
 if __name__ == '__main__':
-    file_path: str = '0417-155801avg_deploy/30p_due/0'
+    file_path: str = '0513-010046L_/3layer/0'
     if len(sys.argv) == 2:
         file_path: str = sys.argv[1]
     intuitive_resource_allocation(data_set=file_path, visualize_the_algo=True)
