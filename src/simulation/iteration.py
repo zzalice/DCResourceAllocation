@@ -123,3 +123,40 @@ class IterateAlgo:
                      'gNB MCS': [G_MCS.get_worst().name, G_MCS.get_best().name],
                      'eNB MCS': [E_MCS.get_worst().name, E_MCS.get_best().name]}
         return parameter
+
+
+class OneIterationAlgo:
+    def __init__(self, folder_data: str, folder_topic: str, iteration_index: int, algorithm_name: str):
+        self.folder_data: str = folder_data  # e.g. '0507-164827PDUE_5MHz_qos800'
+        self.topic: str = folder_topic  # e.g. '80p_due'
+        self.iter_idx: int = iteration_index  # e.g. 59
+        assert algorithm_name in ['DC-RA', 'FRSA', 'MSEMA', 'Baseline'], 'The name of the algorithm not found.'
+        self.algorithm: str = algorithm_name
+
+    def run(self):
+        if self.algorithm == 'DC-RA':
+            self._run_one_iter(dc_resource_allocation)
+        elif self.algorithm == 'FRSA':
+            self._run_one_iter(frsa)
+        elif self.algorithm == 'MSEMA':
+            self._run_one_iter(msema_rb_ra)
+        elif self.algorithm == 'Baseline':
+            self._run_one_iter(intuitive_resource_allocation)
+        else:
+            raise AssertionError('Algorithm name not found.')
+
+    def _run_one_iter(self, func_algo: Callable):
+        file_data: str = f'{self.folder_data}/{self.topic}/{self.iter_idx}'
+        folder_result: str = f'{os.path.dirname(__file__)}/graph/{self.folder_data}'
+        folder_result += f'/gNB{G_MCS.get_worst().name}{G_MCS.get_best().name}_eNB{E_MCS.get_worst().name}{E_MCS.get_best().name}'
+        folder_result += f'/result'
+        file_result: str = f'topic{self.topic}_iter{self.iter_idx}_algo{self.algorithm}.json'
+
+        result = func_algo(file_data)
+        json_result = [result[0].to_json(),
+                       result[1].to_json(),
+                       [due.to_json() for due in result[2]],
+                       [gue.to_json() for gue in result[3]],
+                       [eue.to_json() for eue in result[4]]]
+        with open(f'{folder_result}/{file_result}', 'w') as f:
+            json.dump({f'{self.topic}': {self.algorithm: json_result}}, f)

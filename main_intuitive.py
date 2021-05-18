@@ -26,7 +26,7 @@ def intuitive_resource_allocation(data_set, visualize_the_algo: bool = False) ->
     gue_allocated, _ = divide_ue(g_ue_list)
     due_allocated, due_unallocated = divide_ue(d_ue_list)
     Intuitive(e_nb, g_nb, e_ue_list + due_unallocated, gue_allocated + due_allocated, channel_model).allocate(
-        allow_lower_mcs=False)  # FIXME 還需要input due_unallocated嗎？
+        allow_lower_mcs=False)
 
     if visualize_the_algo:
         visualize_phase_uncategorized_ue(visualization_file_path, 'wb',

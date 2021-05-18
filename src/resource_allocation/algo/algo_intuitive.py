@@ -27,18 +27,12 @@ class Intuitive(AllocateUEList):
     def allocate(self, allow_lower_mcs: bool = True, allow_lower_than_cqi0: bool = True):
         while self.ue_to_allocate:
             ue: UE = self.ue_to_allocate.pop(0)
-            # from tests.assertion import check_undo_copy   FIXME
-            # copy_ue = check_undo_copy([ue] + self.gue_allocated + self.due_allocated + self.eue_allocated)
             is_allocated: bool = self._allocate(ue, (), allow_lower_mcs, allow_lower_than_cqi0)
             if is_allocated:
                 self.allocated_ue.append(ue)
                 self.purge_undo()
             else:
                 self.undo()
-                # from tests.assertion import check_undo_compare
-                # check_undo_compare([ue] + self.gue_allocated + self.due_allocated + self.eue_allocated, copy_ue)
-            # from tests.assertion import assert_is_empty
-            # assert_is_empty(spaces, ue, is_allocated)
 
     def allocate_one_ue(self, ue: UE, spaces: Tuple = ()) -> bool:
         """
