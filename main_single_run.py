@@ -5,4 +5,4 @@ if __name__ == '__main__':
     folder_topic: str = '3layer'
     file_iter: int = 33
     algorithm: str = 'DC-RA'  # 'DC-RA', 'FRSA', 'MSEMA', 'Baseline'
-    OneIterationAlgo(folder_data, folder_topic, file_iter, algorithm)
+    OneIterationAlgo(folder_data, folder_topic, file_iter, algorithm).run()
