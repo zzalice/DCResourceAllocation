@@ -527,6 +527,7 @@ class GraphGenerator:
         # collect_data: Dict[str, Dict[str, float]]
         #                    topic     algo sum of fairness
         topic, algo = self._topic_and_algo(result)
+        self.first_data(topic)
 
         fairness: float = fairness_index_json(result[topic][algo][2] + result[topic][algo][3] + result[topic][algo][4])
         try:
@@ -556,6 +557,7 @@ class GraphGenerator:
         # collect_data: Dict[str, Dict[str, int]]
         #                    topic     algo ICI
         topic, algo = self._topic_and_algo(result)
+        self.first_data(topic)
 
         gnb: Dict = result[topic][algo][0]
         for i in range(gnb['frame']['frame_freq']):
