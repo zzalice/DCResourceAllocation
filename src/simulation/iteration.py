@@ -150,6 +150,7 @@ class OneIterationAlgo:
         folder_result: str = f'{os.path.dirname(__file__)}/graph/{self.folder_data}'
         folder_result += f'/gNB{G_MCS.get_worst().name}{G_MCS.get_best().name}_eNB{E_MCS.get_worst().name}{E_MCS.get_best().name}'
         folder_result += f'/result'
+        self.check_folder_exist(folder_result)
         file_result: str = f'topic{self.topic}_iter{self.iter_idx}_algo{self.algorithm}.json'
 
         result = func_algo(file_data)
@@ -160,3 +161,8 @@ class OneIterationAlgo:
                        [eue.to_json() for eue in result[4]]]
         with open(f'{folder_result}/{file_result}', 'w') as f:
             json.dump({f'{self.topic}': {self.algorithm: json_result}}, f)
+
+    @staticmethod
+    def check_folder_exist(folder_path: str):
+        if not os.path.exists(folder_path):
+            raise AssertionError('Wrong folder.')
