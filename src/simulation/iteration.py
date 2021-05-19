@@ -24,7 +24,7 @@ class IterateAlgo:
         assert self.num_thread > 0
         self.topic: Dict[str, Any] = {'topic': '', 'item': [], 'folder description': ''}
         self.folder_graph: str = ''
-        self.exist_result: List[str] = []   # the iteration of algorithm that has already run
+        self.exist_result: List[str] = []  # the iteration of algorithm that has already run
 
     def iter_layer(self, layers: List[int]):
         self.topic: Dict[str, Any] = {'topic': 'layers', 'item': layers, 'folder description': 'layer'}
@@ -52,7 +52,8 @@ class IterateAlgo:
         program_start_time = time.time()
         for i in range(math.ceil(self.iteration / self.num_thread)):
             iter_lower_bound = i * self.num_thread
-            iter_higher_bound = iter_lower_bound + (self.num_thread - 1) if iter_lower_bound + (self.num_thread - 1) < self.iteration else self.iteration - 1
+            iter_higher_bound = iter_lower_bound + (self.num_thread - 1) if iter_lower_bound + (
+                        self.num_thread - 1) < self.iteration else self.iteration - 1
             t = threading.Thread(target=self.iter, args=(iter_lower_bound, iter_higher_bound))
             t.start()
             threads.append(t)
@@ -126,6 +127,10 @@ class IterateAlgo:
 
 
 class OneIterationAlgo:
+    """
+    This algorithm is for rerunning a single json file in large iteration.
+    """
+
     def __init__(self, folder_data: str, folder_topic: str, iteration_index: int, algorithm_name: str):
         self.folder_data: str = folder_data  # e.g. '0507-164827PDUE_5MHz_qos800'
         self.topic: str = folder_topic  # e.g. '80p_due'

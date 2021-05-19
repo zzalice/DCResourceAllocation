@@ -1,62 +1,56 @@
 from datetime import datetime
+from enum import Enum
 from typing import Any, Dict, List
 
 from main_gen_data_layer import main_gen_data
 
 
-def gnb_mhz_to_bu(mhz: int):
-    if mhz == 0:
-        return 0
-    elif mhz == 5:
-        return 25
-    elif mhz == 10:
-        return 52
-    elif mhz == 15:
-        return 79
-    elif mhz == 20:
-        return 106
-    elif mhz == 25:
-        return 133
-    elif mhz == 30:
-        return 160
-    elif mhz == 35:
-        return 188
-    elif mhz == 40:
-        return 216
-    elif mhz == 45:
-        return 243
-    elif mhz == 50:
-        return 270
-    elif mhz == 55:
-        return 297
-    elif mhz == 60:
-        return 324
-    elif mhz == 65:
-        return 351
-    elif mhz == 70:
-        return 378
-    elif mhz == 75:
-        return 406
-    elif mhz == 80:
-        return 434
-    elif mhz == 85:
-        return 462
-    elif mhz == 90:
-        return 490
-    elif mhz == 95:
-        return 518
-    elif mhz == 100:
-        return 546
-    else:
-        raise AssertionError
+class GnbMhzBuConvertor(Enum):
+    mhz0 = 0
+    mhz5 = 25
+    mhz10 = 52
+    mhz15 = 79
+    mhz20 = 106
+    mhz25 = 133
+    mhz30 = 160
+    mhz35 = 188
+    mhz40 = 216
+    mhz45 = 243
+    mhz50 = 270
+    mhz55 = 297
+    mhz60 = 324
+    mhz65 = 351
+    mhz70 = 378
+    mhz75 = 406
+    mhz80 = 434
+    mhz85 = 462
+    mhz90 = 490
+    mhz95 = 518
+    mhz100 = 546
+
+    @staticmethod
+    def mhz_to_bu(mhz: int) -> int:
+        enum_name: str = f'mhz{mhz}'
+        try:
+            count_bu: int = getattr(GnbMhzBuConvertor, enum_name).value
+            return count_bu
+        except AttributeError:
+            raise AttributeError('Undefined bandwidth.')
+
+    @staticmethod
+    def bu_to_mhz(count_bu: int) -> int:
+        for mhz_enum in GnbMhzBuConvertor:
+            if mhz_enum.value == count_bu:
+                return int(mhz_enum.name.replace('mhz', ''))
+        raise AttributeError('Undefined bandwidth.')
 
 
 def gen_data_bw_gnb(gnb_bw: List[int], cochannel_bw: int, parameter: Dict[str, Any], folder: str):
-    gnb_bw_in_bu: List[int] = [gnb_mhz_to_bu(i) for i in gnb_bw]
+    gnb_bw_in_bu: List[int] = [GnbMhzBuConvertor.mhz_to_bu(i) for i in gnb_bw]
     gnb_bw_in_bu.sort()
     assert cochannel_bw <= gnb_bw_in_bu[0] and cochannel_bw <= parameter[
         'enb_freq'], 'Co-channel BW is wider than NB BW.'
-    parameter['cochannel_bandwidth'] = gnb_mhz_to_bu(cochannel_bw)
+    parameter['cochannel_bandwidth'] = GnbMhzBuConvertor.mhz_to_bu(cochannel_bw)
 
     for i in gnb_bw_in_bu:
         parameter['output_file_path'] = f'{folder}/{i}bw_gnb'
@@ -65,9 +59,9 @@ def gen_data_bw_gnb(gnb_bw: List[int], cochannel_bw: int, parameter: Dict[str, A
 
 
 def gen_data_bw_cochannel(cochannel_bw: List[int], gnb_bw: int, parameter: Dict[str, Any], folder: str):
-    cochannel_bw_in_bu: List[int] = [gnb_mhz_to_bu(i) for i in cochannel_bw]
+    cochannel_bw_in_bu: List[int] = [GnbMhzBuConvertor.mhz_to_bu(i) for i in cochannel_bw]
     cochannel_bw_in_bu.sort()
-    parameter['gnb_freq'] = gnb_mhz_to_bu(gnb_bw)
+    parameter['gnb_freq'] = GnbMhzBuConvertor.mhz_to_bu(gnb_bw)
     assert cochannel_bw_in_bu[-1] <= parameter['gnb_freq'] and cochannel_bw_in_bu[-1] <= parameter[
         'enb_freq'], 'Co-channel BW is wider than NB BW.'
 

@@ -5,6 +5,7 @@ from datetime import datetime
 from os import walk
 from typing import Dict, List, Tuple, Union
 
+from main_gen_data_bw import GnbMhzBuConvertor
 from src.resource_allocation.algo.utils import bpframe_to_mbps, calc_system_throughput_json, divide_ue_json
 from src.resource_allocation.ds.util_enum import UEType
 from src.simulation.graph.util_graph import bar_chart, bar_chart_grouped_stacked, line_chart, scatter_chart
@@ -595,9 +596,9 @@ class GraphGenerator:
         elif 'ue - ' in self.graph_type:
             x_label: str = 'The Number of UE'
         elif 'gnb bw - ' in self.graph_type:
-            x_label: str = 'The Bandwidth of gNB'
+            x_label: str = 'The Bandwidth of gNB(MHz)'
         elif 'cochannel bw - ' in self.graph_type:
-            x_label: str = 'The Bandwidth of Sharing Spectrum'
+            x_label: str = 'The Bandwidth of Sharing Spectrum(MHz)'
         else:
             raise AssertionError("The graph type isn't defined.")
         return x_label
@@ -605,11 +606,10 @@ class GraphGenerator:
     def _x_scale(self, parameter: List[int]) -> List[str]:
         if 'proportion due - ' in self.graph_type:
             scale_x: List[str] = [str(i / 100) for i in parameter]
-        elif ('layer - ' in self.graph_type) or (
-                'ue - ' in self.graph_type) or (
-                'gnb bw - ' in self.graph_type) or (
-                'cochannel bw - ' in self.graph_type):
+        elif ('layer - ' in self.graph_type) or ('ue - ' in self.graph_type):
             scale_x: List[str] = [str(i) for i in parameter]
+        elif ('gnb bw - ' in self.graph_type) or ('cochannel bw - ' in self.graph_type):
+            scale_x: List[str] = [str(GnbMhzBuConvertor.bu_to_mhz(i)) for i in parameter]    # MHz
         else:
             raise AssertionError("The graph type isn't defined.")
         return scale_x
