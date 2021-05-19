@@ -72,9 +72,9 @@ def bar_chart_auto_label(rects, ax):
                     ha='center', va='bottom')
 
 
-def bar_chart_grouped_stacked(title: str, x_label: str, y_label: str, output_file_path: str, parameter: Dict,
-                              data: Dict[str, List[List[float]]], x_index: List[str], stack_label: List[str],
-                              labels=None, H="/", color_gradient: bool = False):
+def bar_chart_grouped_stacked(title: str, x_label: str, x_index: List[str],
+                              y_label: str, stack_label: List[str], data: Dict[str, List[List[float]]],
+                              output_file_path: str, parameter: Dict, labels=None, H="/", color_gradient: bool = False):
     # https://stackoverflow.com/questions/22787209/how-to-have-clusters-of-stacked-bars-with-python-pandas
     # Colormap: https://matplotlib.org/stable/tutorials/colors/colormaps.html
     dfall: List[pandas.DataFrame] = []
