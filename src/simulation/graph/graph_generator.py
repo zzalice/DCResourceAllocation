@@ -64,7 +64,7 @@ class GraphGenerator:
                 self.collect_sys_throughput(algo_result)
         elif self.graph_type == 'layer - used percentage':
             self.collect_used_percentage(algo_result)
-        elif self.graph_type == 'deployment':
+        elif self.graph_type == 'layer - deployment':
             self.collect_deployment(algo_result)
         elif self.graph_type == 'layer - allocated ue' or self.graph_type == 'layer - total_allocated_ue':
             self.collect_allocated_ue(algo_result)
@@ -87,7 +87,7 @@ class GraphGenerator:
                 self.gen_sys_throughput(file_path)
         elif self.graph_type == 'layer - used percentage':
             self.gen_used_percentage(file_path)
-        elif self.graph_type == 'deployment':
+        elif self.graph_type == 'layer - deployment':
             self.gen_deployment(file_path)
         elif self.graph_type == 'layer - allocated ue':
             self.gen_allocated_ue(file_path, ue_label=('eUE', 'dUE_in_eNB', 'gUE', 'dUE_in_gNB', 'dUE_cross_BS'))
@@ -209,22 +209,20 @@ class GraphGenerator:
         # collect_data: Dict[str, Dict[str, Dict[str, Any]]
         #                    layer     algo      nb   [nb_radius, nb_coordinate]
         #                                        ue   [[ue.x, ue.y], ...]
-        for layer in result:  # only one
-            l: int = int(layer.replace('layer', ''))
-            for algo in result[layer]:
-                self.first_data(l)
-                try:
-                    self.data[l][algo]['allocated_ue'].extend(
-                        self.purge_ue(result[layer][algo][2] + result[layer][algo][3] + result[layer][algo][4]))
-                except KeyError:
-                    self.data[l][algo] = {
-                        'nb_info': [result[layer][algo][0]['radius'],  # gNB
-                                    [result[layer][algo][0]['x'], result[layer][algo][0]['y']],
-                                    result[layer][algo][1]['radius'],  # eNB
-                                    [result[layer][algo][1]['x'], result[layer][algo][1]['y']]
-                                    ],
-                        'allocated_ue': self.purge_ue(
-                            result[layer][algo][2] + result[layer][algo][3] + result[layer][algo][4])}
+        layer, algo = self._topic_and_algo(result)
+        self.first_data(layer)
+        try:
+            self.data[layer][algo]['allocated_ue'].extend(
+                self.purge_ue(result[layer][algo][2] + result[layer][algo][3] + result[layer][algo][4]))
+        except KeyError:
+            self.data[layer][algo] = {
+                'nb_info': [result[layer][algo][0]['radius'],  # gNB
+                            [result[layer][algo][0]['x'], result[layer][algo][0]['y']],
+                            result[layer][algo][1]['radius'],  # eNB
+                            [result[layer][algo][1]['x'], result[layer][algo][1]['y']]
+                            ],
+                'allocated_ue': self.purge_ue(
+                    result[layer][algo][2] + result[layer][algo][3] + result[layer][algo][4])}
         return True
 
     @staticmethod
@@ -236,22 +234,22 @@ class GraphGenerator:
         return purged_ue
 
     def gen_deployment(self, output_file_path: str):
-        for layer in self.data:
-            if layer in self.topic_parameter_int:
-                for algo in self.data[layer]:
-                    gnb_radius: float = self.data[layer][algo]['nb_info'][0]
-                    gnb_coordinate: List[float] = self.data[layer][algo]['nb_info'][1]
-                    enb_radius: float = self.data[layer][algo]['nb_info'][2]
-                    enb_coordinate: List[float] = self.data[layer][algo]['nb_info'][3]
-                    x = [gnb_coordinate[0], enb_coordinate[0]]
-                    y = [gnb_coordinate[1], enb_coordinate[1]]
-                    color = ['r'] * 2
-                    x, y, color = self._ue_deployment(self.data[layer][algo]['allocated_ue'], x, y, color)
-                    scatter_chart(f'The deployment of {layer} layer gNBs, eNBs, and UEs({algo})',
-                                  x, y, color,
-                                  (-enb_radius, gnb_coordinate[0] + gnb_radius), (-enb_radius, enb_radius),
-                                  f'{output_file_path}/deployment_{layer}_{algo}_{datetime.today().strftime("%m%d-%H%M")}',
-                                  {'iteration': self.iteration})
+        for layer in self.topic_parameter_str:
+            for algo in self.algorithm:
+                gnb_radius: float = self.data[layer][algo]['nb_info'][0]
+                gnb_coordinate: List[float] = self.data[layer][algo]['nb_info'][1]
+                enb_radius: float = self.data[layer][algo]['nb_info'][2]
+                enb_coordinate: List[float] = self.data[layer][algo]['nb_info'][3]
+                x = [gnb_coordinate[0], enb_coordinate[0]]
+                y = [gnb_coordinate[1], enb_coordinate[1]]
+                color = ['r'] * 2
+                x, y, color = self._ue_deployment(self.data[layer][algo]['allocated_ue'], x, y, color)
+                l: str = layer.replace('layer', '')
+                scatter_chart(f'The deployment of {l} layer gNBs, eNBs, and UEs({algo})',
+                              x, y, color,
+                              (-enb_radius, gnb_coordinate[0] + gnb_radius), (-enb_radius, enb_radius),
+                              f'{output_file_path}/deployment_{l}_{algo}_{datetime.today().strftime("%m%d-%H%M")}',
+                              {'iteration': self.iteration})
 
     @staticmethod
     def _ue_deployment(all_ue: List[Tuple[UEType, float, float]],
