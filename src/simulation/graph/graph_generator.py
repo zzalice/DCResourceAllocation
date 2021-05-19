@@ -590,10 +590,10 @@ class GraphGenerator:
     def _x_label(self) -> str:
         if 'layer - ' in self.graph_type:
             x_label: str = 'The number of gNB layer'
-        elif 'ue - ' in self.graph_type:
-            x_label: str = 'The Number of UE'
         elif 'proportion due - ' in self.graph_type:
             x_label: str = 'The Proportion of dUE'
+        elif 'ue - ' in self.graph_type:
+            x_label: str = 'The Number of UE'
         elif 'gnb bw - ' in self.graph_type:
             x_label: str = 'The Bandwidth of gNB'
         elif 'cochannel bw - ' in self.graph_type:
@@ -603,12 +603,13 @@ class GraphGenerator:
         return x_label
 
     def _x_scale(self, parameter: List[int]) -> List[str]:
-
-        if ('layer - ' in self.graph_type) or ('ue - ' in self.graph_type) or ('gnb bw - ' in self.graph_type) or (
+        if 'proportion due - ' in self.graph_type:
+            scale_x: List[str] = [str(i / 100) for i in parameter]
+        elif ('layer - ' in self.graph_type) or (
+                'ue - ' in self.graph_type) or (
+                'gnb bw - ' in self.graph_type) or (
                 'cochannel bw - ' in self.graph_type):
             scale_x: List[str] = [str(i) for i in parameter]
-        elif 'proportion due - ' in self.graph_type:
-            scale_x: List[str] = [str(i / 100) for i in parameter]
         else:
             raise AssertionError("The graph type isn't defined.")
         return scale_x
