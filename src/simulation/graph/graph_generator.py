@@ -62,7 +62,7 @@ class GraphGenerator:
                 self.collect_sys_throughput(algo_result, kwargs['collect_unallo_ue'])
             except KeyError:
                 self.collect_sys_throughput(algo_result)
-        elif self.graph_type == 'used percentage':
+        elif self.graph_type == 'layer - used percentage':
             self.collect_used_percentage(algo_result)
         elif self.graph_type == 'deployment':
             self.collect_deployment(algo_result)
@@ -85,7 +85,7 @@ class GraphGenerator:
                 self.gen_sys_throughput(file_path, kwargs['collect_unallo_ue'])
             except KeyError:
                 self.gen_sys_throughput(file_path)
-        elif self.graph_type == 'used percentage':
+        elif self.graph_type == 'layer - used percentage':
             self.gen_used_percentage(file_path)
         elif self.graph_type == 'deployment':
             self.gen_deployment(file_path)
@@ -103,21 +103,6 @@ class GraphGenerator:
             self.gen_ini(file_path)
         else:
             raise AssertionError('Undefined graph type.')
-
-    def append_parameter_description(self) -> List[str]:
-        if 'proportion due - ' in self.graph_type:
-            topic_description: str = 'p_due'
-        elif 'layer - ' in self.graph_type:
-            topic_description: str = 'layer'
-        elif 'ue - ' in self.graph_type:
-            topic_description: str = 'ue'
-        elif 'gnb bw - ' in self.graph_type:
-            topic_description: str = 'bw_gnb'
-        elif 'cochannel bw - ' in self.graph_type:
-            topic_description: str = 'bw_co'
-        else:
-            raise AssertionError("Function calling fairness-graph-generator isn't defined.")
-        return [str(i) + topic_description for i in self.topic_parameter_int]
 
     # ==================================================================================================================
     def collect_sys_throughput(self, result: RESULT, collect_unallocated_ue: bool = False):
@@ -181,40 +166,30 @@ class GraphGenerator:
     def collect_used_percentage(self, result: RESULT):
         # collect_data: Dict[str, Dict[str, [int,        int]]
         #                    layer     algo  used BU     number of BU in gNBs
-        for max_layer_str in result:  # only one
-            l: int = int(max_layer_str.replace('layer', ''))
-            for algo in result[max_layer_str]:
-                self.first_data(l)
-                gnb: Dict = result[max_layer_str][algo][0]
-                assert l == gnb['frame']['max_layer']
+        topic, algo = self._topic_and_algo(result)
+        self.first_data(topic)
+        gnb: Dict = result[topic][algo][0]
 
-                count_used_bu: int = 0
-                for layer in range(gnb['frame']['max_layer']):
-                    for i in gnb['frame']['layer'][layer]['bu_status']:
-                        for j in i:
-                            count_used_bu += 1 if j else 0
+        count_used_bu: int = 0
+        for layer in range(gnb['frame']['max_layer']):
+            for i in gnb['frame']['layer'][layer]['bu_status']:
+                for j in i:
+                    count_used_bu += 1 if j else 0
 
-                count_bu: int = gnb['frame']['frame_time'] * gnb['frame']['frame_freq'] * gnb['frame']['max_layer']
-                try:
-                    self.data[l][algo][0] += count_used_bu
-                    self.data[l][algo][1] += count_bu
-                except KeyError:
-                    self.data[l][algo] = [count_used_bu, count_bu]
+        count_bu: int = gnb['frame']['frame_time'] * gnb['frame']['frame_freq'] * gnb['frame']['max_layer']
+        try:
+            self.data[topic][algo][0] += count_used_bu
+            self.data[topic][algo][1] += count_bu
+        except KeyError:
+            self.data[topic][algo] = [count_used_bu, count_bu]
 
     def gen_used_percentage(self, output_file_path: str):
-        # x_labels: List[str]
-        #                max layer
-        #           e.g. ['1 layer', '2 layer', '3 layer']
         # percentages: Dict[str, List[float]]
         #                   algo      percentage
         #              e.g. {'DC-RA': [0.98, 0.55, 0.32], 'Baseline': [0.97, 0.44, 0.22]}
-        x_labels: List[str] = []
         percentages: Dict[str, List[float]] = {}
-        for layer in self.topic_parameter_int:
-            if layer not in self.data:
-                continue
-            x_labels.append(str(layer) + ' layer')
-            for algo in self.data[layer]:
+        for layer in self.topic_parameter_str:
+            for algo in self.algorithm:
                 percent: float = self.data[layer][algo][0] / self.data[layer][algo][1]
                 assert 0.0 <= percent <= 1.0, 'Error in counting used BU.'
                 try:
@@ -222,9 +197,10 @@ class GraphGenerator:
                 except KeyError:
                     percentages[algo] = [percent]
 
-        x_label: str = 'The number of layer in a gNB'
+        x_label: str = self._x_label()
+        x_scale: List[str] = self._x_scale(self.topic_parameter_int)
         y_label: str = 'Frame Usage(%)'
-        bar_chart('Frame used', x_label, x_labels, y_label, percentages,
+        bar_chart('Frame used', x_label, x_scale, y_label, percentages,
                   f'{output_file_path}/{x_label}_{y_label}_{datetime.today().strftime("%m%d-%H%M")}',
                   {'iteration': self.iteration})
 
@@ -588,6 +564,21 @@ class GraphGenerator:
             raise AssertionError("The json file name doesn't match the data saved inside.")
         return topic, algo
 
+    def append_parameter_description(self) -> List[str]:
+        if 'layer - ' in self.graph_type:
+            topic_description: str = 'layer'
+        elif 'proportion due - ' in self.graph_type:
+            topic_description: str = 'p_due'
+        elif 'ue - ' in self.graph_type:
+            topic_description: str = 'ue'
+        elif 'gnb bw - ' in self.graph_type:
+            topic_description: str = 'bw_gnb'
+        elif 'cochannel bw - ' in self.graph_type:
+            topic_description: str = 'bw_co'
+        else:
+            raise AssertionError("Undefined graph type.")
+        return [str(i) + topic_description for i in self.topic_parameter_int]
+
     def _x_label(self) -> str:
         if 'layer - ' in self.graph_type:
             x_label: str = 'The number of gNB layer'
@@ -600,7 +591,7 @@ class GraphGenerator:
         elif 'cochannel bw - ' in self.graph_type:
             x_label: str = 'The Bandwidth of Sharing Spectrum(MHz)'
         else:
-            raise AssertionError("The graph type isn't defined.")
+            raise AssertionError("Undefined graph type.")
         return x_label
 
     def _x_scale(self, parameter: List[int]) -> List[str]:
