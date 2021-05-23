@@ -11,24 +11,22 @@ from src.resource_allocation.ds.rb import ResourceBlock
 from src.resource_allocation.ds.space import empty_space, Space
 from src.resource_allocation.ds.ue import UserEquipment
 from src.resource_allocation.ds.undo import Undo
-from src.resource_allocation.ds.util_enum import NodeBType, Numerology, UEType
+from src.resource_allocation.ds.util_enum import E_MCS, G_MCS, LTEResourceBlock, NodeBType, Numerology, UEType
 from src.resource_allocation.ds.util_type import LappingPosition, LappingPositionList
 from src.resource_allocation.ds.zone import Zone
 
 
 class Phase3(Undo):
-    def __init__(self, channel_model: ChannelModel, gnb: GNodeB, enb: ENodeB):
+    def __init__(self, channel_model: ChannelModel):
         super().__init__()
-        self.gnb: GNodeB = gnb
-        self.enb: ENodeB = enb
         self.channel_model: ChannelModel = channel_model
 
         self.throughput_threshold: int = 10  # bit per frame
 
-    def phase2_ue_adjust_mcs(self, nb_type: NodeBType, zones: List[List[Zone]]):
+    def phase2_ue_adjust_mcs(self, nb: Union[GNodeB, ENodeB], zones: List[List[Zone]]):
         """
         Adjust the MCS of the allocated UEs in Phase 2.
-        :param nb_type: Adjust the MCS of the UEs in this BS.
+        :param nb: Adjust the MCS of the UEs in this BS.
         :param zones: The zones in each layer.
         """
         # FIXME: add dUE cut!!!!
@@ -40,9 +38,9 @@ class Phase3(Undo):
         for zone in zones[layer_index]:
             for ue in zone.ue_list:
                 self.channel_model.sinr_ue(ue)
-                AdjustMCS().from_highest_mcs(ue, ue.gnb_info.rb if nb_type == NodeBType.G else ue.enb_info.rb,
+                AdjustMCS().from_highest_mcs(ue, ue.gnb_info.rb if nb.nb_type == NodeBType.G else ue.enb_info.rb,
                                              self.channel_model)
-                if nb_type == NodeBType.G:
+                if nb.nb_type == NodeBType.G:
                     self.marking_occupied_position(ue.gnb_info.rb, position)
 
         # layers above 0. (For gFrame only.)
@@ -66,23 +64,24 @@ class Phase3(Undo):
             else:
                 position[rb.numerology].append(LappingPosition([rb.i_start, rb.j_start], rb.numerology))
 
-    def allocate_new_ue(self, nb_type: NodeBType, ue_to_allocate: Tuple[UserEquipment],
+    def allocate_new_ue(self, nb: Union[GNodeB, ENodeB], ue_to_allocate: Tuple[UserEquipment],
                         allocated_ue: Tuple[UserEquipment], worsen_threshold: float = 0.0):
-        nb: Union[GNodeB, ENodeB] = self.gnb if nb_type == NodeBType.G else self.enb
         unallocated_ue: List[UserEquipment] = list(ue_to_allocate)
         unallocated_next_round: List[UserEquipment] = []
         allocated_ue: List[UserEquipment] = list(allocated_ue)
-        spaces: List[Space] = self.update_empty_space(nb)
+        spaces: Tuple[Space] = self.update_empty_space(nb)
         system_throughput: float = calc_system_throughput(tuple(allocated_ue))
         while (unallocated_ue or unallocated_next_round) and spaces:
             ue: UserEquipment = unallocated_ue.pop(0)
+            filtered_space: Tuple[Space] = self.filter_space(
+                spaces, nb.nb_type, ue.numerology_in_use, ue.request_data_rate)
             is_allocated: bool = False
-            for space in spaces:
+            for space in filtered_space:
                 # from utils.assertion import check_undo_copy
                 # copy_ue = check_undo_copy(ue_allocated)
-                is_allocated: bool = self.allocate(ue, (space,), nb_type, allocated_ue, worsen_threshold)
+                is_allocated: bool = self.allocate(ue, (space,), nb.nb_type, allocated_ue, worsen_threshold)
                 if is_allocated:
-                    spaces: List[Space] = self.update_empty_space(nb)
+                    spaces: Tuple[Space] = self.update_empty_space(nb)
                     self.purge_undo()
                     break
                 else:
@@ -149,8 +148,21 @@ class Phase3(Undo):
                 return True
 
     @staticmethod
-    def update_empty_space(nb: Union[GNodeB, ENodeB]) -> List[Space]:
+    def update_empty_space(nb: Union[GNodeB, ENodeB]) -> Tuple[Space]:
         spaces: List[Space] = [space for layer in nb.frame.layer for space in empty_space(layer)]  # sort by layer
         spaces.sort(key=lambda s: s.starting_j)  # sort by time
         spaces.sort(key=lambda s: s.starting_i)  # sort by freq
-        return spaces
+        return tuple(spaces)
+
+    @staticmethod
+    def filter_space(spaces: Tuple[Space], nb_type: NodeBType, rb_type: Union[Numerology, LTEResourceBlock],
+                     ue_request: float) -> Tuple[Space]:
+        if nb_type == NodeBType.E:
+            rb_type: LTEResourceBlock = LTEResourceBlock.E  # TODO: refactor or redesign
+
+        filter_spaces: List[Space] = list(spaces)
+        for space in spaces:
+            best_mcs: Union[G_MCS, E_MCS] = (G_MCS if nb_type == NodeBType.G else E_MCS).get_best()
+            if not space.request_fits(ue_request, rb_type, best_mcs):
+                filter_spaces.remove(space)
+        return tuple(filter_spaces)

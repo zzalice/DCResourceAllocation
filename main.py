@@ -10,7 +10,6 @@ from src.resource_allocation.algo.phase3 import Phase3
 from src.resource_allocation.algo.utils import divide_ue
 from src.resource_allocation.ds.eutran import ENodeB, EUserEquipment
 from src.resource_allocation.ds.ngran import DUserEquipment, GNodeB, GUserEquipment
-from src.resource_allocation.ds.util_enum import NodeBType
 from src.resource_allocation.ds.zone import Zone, ZoneGroup
 from utils.pickle_generator import visualize_phase_uncategorized_ue
 
@@ -61,9 +60,9 @@ def dc_resource_allocation(data_set, visualize_the_algo: bool = False) -> Tuple[
                                          "Phase2", g_nb, e_nb, g_ue_list, d_ue_list, e_ue_list, is_assert=False)
 
     # phase 3 step 1
-    phase3: Phase3 = Phase3(channel_model, g_nb, e_nb)
-    phase3.phase2_ue_adjust_mcs(NodeBType.E, e_zone_allocated)
-    phase3.phase2_ue_adjust_mcs(NodeBType.G, g_zone_allocated)
+    phase3: Phase3 = Phase3(channel_model)
+    phase3.phase2_ue_adjust_mcs(e_nb, e_zone_allocated)
+    phase3.phase2_ue_adjust_mcs(g_nb, g_zone_allocated)
 
     if visualize_the_algo:
         visualize_phase_uncategorized_ue(visualization_file_path, "ab+",
@@ -73,14 +72,14 @@ def dc_resource_allocation(data_set, visualize_the_algo: bool = False) -> Tuple[
     g_ue_list_allocated, g_ue_list_unallocated = divide_ue(g_ue_list)
     d_ue_list_allocated, d_ue_list_unallocated = divide_ue(d_ue_list)
     e_ue_list_allocated, e_ue_list_unallocated = divide_ue(e_ue_list)
-    phase3.allocate_new_ue(g_nb.nb_type, d_ue_list_unallocated + g_ue_list_unallocated,
+    phase3.allocate_new_ue(g_nb, d_ue_list_unallocated + g_ue_list_unallocated,
                            d_ue_list_allocated + g_ue_list_allocated + e_ue_list_allocated, worsen_threshold)
 
     # eNB step 2
     g_ue_list_allocated, g_ue_list_unallocated = divide_ue(g_ue_list)
     d_ue_list_allocated, d_ue_list_unallocated = divide_ue(d_ue_list)
     e_ue_list_allocated, _ = divide_ue(e_ue_list)  # for the concern of co-channel area
-    phase3.allocate_new_ue(e_nb.nb_type, d_ue_list_unallocated + e_ue_list_unallocated,
+    phase3.allocate_new_ue(e_nb, d_ue_list_unallocated + e_ue_list_unallocated,
                            d_ue_list_allocated + g_ue_list_allocated + e_ue_list_allocated, worsen_threshold)
 
     if visualize_the_algo:
@@ -91,7 +90,7 @@ def dc_resource_allocation(data_set, visualize_the_algo: bool = False) -> Tuple[
 
 
 if __name__ == '__main__':
-    file_path: str = '0407-204705follow_wang/1layer/0'
+    file_path: str = '0513-010046L_/5layer/0'
     if len(sys.argv) == 2:
         file_path: str = sys.argv[1]
     dc_resource_allocation(data_set=file_path, visualize_the_algo=True)

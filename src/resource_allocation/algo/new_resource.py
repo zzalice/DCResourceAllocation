@@ -34,7 +34,6 @@ class NewResource(Undo):
             last_rb_enb: Optional[ResourceBlock] = ue.enb_info.highest_frequency_rb()
         if last_rb_gnb and last_rb_enb:
             # pick the one with higher efficiency
-            # FIXME: Is this what I want? Or the BS with higher MCS?
             if last_rb_gnb.mcs.efficiency > last_rb_enb.mcs.efficiency:
                 last_rb: ResourceBlock = last_rb_gnb
             else:

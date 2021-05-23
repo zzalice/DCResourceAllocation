@@ -4,7 +4,7 @@ from typing import Dict, List, Optional, Tuple, Union
 from uuid import UUID, uuid4
 
 from src.resource_allocation.ds.frame import Layer
-from src.resource_allocation.ds.util_enum import LTEResourceBlock, NodeBType, Numerology
+from src.resource_allocation.ds.util_enum import E_MCS, G_MCS, LTEResourceBlock, NodeBType, Numerology
 
 
 class Space:
@@ -51,6 +51,16 @@ class Space:
             if rb_type is rb[0]:
                 return rb[1]
         return 0
+
+    def request_fits(self, request_throughput: float, rb_type: Union[Numerology, LTEResourceBlock],
+                     mcs: Union[G_MCS, E_MCS]) -> bool:
+        assert (self.layer.nodeb.nb_type == NodeBType.G and mcs in G_MCS) or (
+                self.layer.nodeb.nb_type == NodeBType.E and mcs in E_MCS
+        ), "The MCS doesn't match the type of the NB."
+        if self.num_of_rb(rb_type) >= mcs.calc_required_rb_count(request_throughput):
+            return True
+        else:
+            return False
 
     @property
     def rb_type(self) -> List[Numerology]:

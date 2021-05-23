@@ -299,7 +299,7 @@ class GraphGenerator:
             collect_data['dUE_in_eNB'] + collect_data['gUE'] + collect_data['eUE']
 
     def gen_allocated_ue(self, output_file_path: str):
-        for layer in self.topic_parameter_str:  # FIXME: Adding an axes using the same arguments as a previous axes
+        for layer in self.topic_parameter_str:
             for algo in self.algorithm:
                 for ue in self.data[layer][algo]:
                     self.data[layer][algo][ue] /= self.iteration
