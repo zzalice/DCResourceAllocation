@@ -5,8 +5,8 @@ from src.channel_model.sinr import ChannelModel
 from src.resource_allocation.algo.dual_connection import DualConnection
 from src.resource_allocation.algo.new_single_ue import AllocateUE
 from src.resource_allocation.algo.utils import calc_system_throughput
-from src.resource_allocation.ds.eutran import ENodeB
-from src.resource_allocation.ds.ngran import GNodeB
+from src.resource_allocation.ds.eutran import ENodeB, EUserEquipment
+from src.resource_allocation.ds.ngran import DUserEquipment, GNodeB, GUserEquipment
 from src.resource_allocation.ds.rb import ResourceBlock
 from src.resource_allocation.ds.space import empty_space, Space
 from src.resource_allocation.ds.ue import UserEquipment
@@ -14,6 +14,8 @@ from src.resource_allocation.ds.undo import Undo
 from src.resource_allocation.ds.util_enum import E_MCS, G_MCS, LTEResourceBlock, NodeBType, Numerology, UEType
 from src.resource_allocation.ds.util_type import LappingPosition, LappingPositionList
 from src.resource_allocation.ds.zone import Zone
+
+UE = Union[UserEquipment, DUserEquipment, GUserEquipment, EUserEquipment]
 
 
 class Phase3(Undo):
@@ -29,13 +31,11 @@ class Phase3(Undo):
         :param nb: Adjust the MCS of the UEs in this BS.
         :param zones: The zones in each layer.
         """
-        # FIXME: add dUE cut!!!!
         position: Dict[Numerology, LappingPositionList] = {numerology: LappingPositionList() for numerology in
                                                            Numerology.gen_candidate_set()}
 
         # layer 0
-        layer_index: int = 0
-        for zone in zones[layer_index]:
+        for zone in zones[0]:
             for ue in zone.ue_list:
                 self.channel_model.sinr_ue(ue)
                 AdjustMCS().from_highest_mcs(ue, ue.gnb_info.rb if nb.nb_type == NodeBType.G else ue.enb_info.rb,
@@ -44,8 +44,7 @@ class Phase3(Undo):
                     self.marking_occupied_position(ue.gnb_info.rb, position)
 
         # layers above 0. (For gFrame only.)
-        layer_index += 1
-        for zones_in_layer in zones[layer_index:]:
+        for zones_in_layer in zones[1:]:
             for zone in zones_in_layer:
                 for ue in zone.ue_list:
                     assert ue.gnb_info, "The UE isn't allocated to gNB."
@@ -54,6 +53,7 @@ class Phase3(Undo):
                     self.marking_occupied_position(ue.gnb_info.rb, position)
 
         # FIXME: 受影響的UE還要調整，要重新統計position。留意是否有UE已被移除
+        # self.ue_cut()  # FIXME: add dUE cut!!!!
 
     @staticmethod
     def marking_occupied_position(rb_list: List[ResourceBlock], position: Dict[Numerology, LappingPositionList]):
@@ -64,15 +64,15 @@ class Phase3(Undo):
             else:
                 position[rb.numerology].append(LappingPosition([rb.i_start, rb.j_start], rb.numerology))
 
-    def allocate_new_ue(self, nb: Union[GNodeB, ENodeB], ue_to_allocate: Tuple[UserEquipment],
-                        allocated_ue: Tuple[UserEquipment], worsen_threshold: float = 0.0):
-        unallocated_ue: List[UserEquipment] = list(ue_to_allocate)
-        unallocated_next_round: List[UserEquipment] = []
-        allocated_ue: List[UserEquipment] = list(allocated_ue)
+    def allocate_new_ue(self, nb: Union[GNodeB, ENodeB], ue_to_allocate: Tuple[UE, ...], allocated_ue: Tuple[UE, ...],
+                        worsen_threshold: float = 0.0):
+        unallocated_ue: List[UE] = list(ue_to_allocate)
+        unallocated_next_round: List[UE] = []
+        allocated_ue: List[UE] = list(allocated_ue)
         spaces: Tuple[Space] = self.update_empty_space(nb)
         system_throughput: float = calc_system_throughput(tuple(allocated_ue))
         while (unallocated_ue or unallocated_next_round) and spaces:
-            ue: UserEquipment = unallocated_ue.pop(0)
+            ue: UE = unallocated_ue.pop(0)
             filtered_space: Tuple[Space] = self.filter_space(
                 spaces, nb.nb_type, ue.numerology_in_use, ue.request_data_rate)
             is_allocated: bool = False
@@ -96,23 +96,19 @@ class Phase3(Undo):
                 new_system_throughput: float = calc_system_throughput(tuple(allocated_ue))
                 if (new_system_throughput - system_throughput) <= self.throughput_threshold:
                     break
-                unallocated_ue: List[UserEquipment] = unallocated_next_round
-                unallocated_next_round: List[UserEquipment] = []
+                unallocated_ue: List[UE] = unallocated_next_round
+                unallocated_next_round: List[UE] = []
                 system_throughput: float = new_system_throughput
 
     @Undo.undo_func_decorator
-    def allocate(self, ue: UserEquipment, spaces: Tuple[Space, ...], nb_type: NodeBType,
-                 ue_allocated: List[UserEquipment], worsen_threshold: float) -> bool:
+    def allocate(self, ue: UE, spaces: Tuple[Space, ...], nb_type: NodeBType,
+                 ue_allocated: List[UE], worsen_threshold: float) -> bool:
         # allocate new ue
         allocate_ue: AllocateUE = AllocateUE(ue, spaces, self.channel_model)
         is_allocated: bool = allocate_ue.allocate()
         self.append_undo(lambda a_u=allocate_ue: a_u.undo(), lambda a_u=allocate_ue: a_u.purge_undo())
 
-        if is_allocated and ue.ue_type == UEType.D:
-            dc: DualConnection = DualConnection(ue, self.channel_model)
-            is_cut: bool = dc.cutting(ue.gnb_info if nb_type == NodeBType.G else ue.enb_info)
-            if is_cut:
-                self.append_undo(lambda d=dc: d.undo(), lambda d=dc: d.purge_undo())
+        self.ue_cut(ue, nb_type, to_undo=True)
 
         # the effected UEs
         if is_allocated:
@@ -121,7 +117,7 @@ class Phase3(Undo):
                                                                origin_sys_throughput, worsen_threshold)
         return is_allocated
 
-    def adjust_mcs_allocated_ues(self, ue_allocated: List[UserEquipment],
+    def adjust_mcs_allocated_ues(self, ue_allocated: List[UE],
                                  origin_sys_throughput, worsen_threshold) -> bool:
         self.assert_undo_function()
         while True:
@@ -166,3 +162,22 @@ class Phase3(Undo):
             if not space.request_fits(ue_request, rb_type, best_mcs):
                 filter_spaces.remove(space)
         return tuple(filter_spaces)
+
+    def ue_cut(self, ue: UE, nb_type: NodeBType, to_undo: bool = False):
+        if ue.ue_type == UEType.G or ue.ue_type == UEType.E:
+            self.ue_cross_spaces(ue, to_undo)
+        elif ue.ue_type == UEType.D:
+            self.ue_cross_bs(ue, nb_type, to_undo)
+        else:
+            raise AssertionError('UE type undefined.')
+
+    def ue_cross_spaces(self, ue: UE, to_undo: bool):
+        # FIXME 切較差的一半到別的空間，而且MCS要>=目前的
+        pass
+
+    def ue_cross_bs(self, ue: DUserEquipment, nb_type: NodeBType, to_undo: bool):
+        dc: DualConnection = DualConnection(ue, self.channel_model)
+        is_cut: bool = dc.cutting(ue.gnb_info if nb_type == NodeBType.G else ue.enb_info)
+        if is_cut and to_undo:
+            self.assert_undo_function()
+            self.append_undo(lambda d=dc: d.undo(), lambda d=dc: d.purge_undo())
