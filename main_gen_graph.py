@@ -38,7 +38,7 @@ if __name__ == '__main__':
     # GraphGenerator(graph_type='layer - deployment', topic_parameter=l, iteration=i, algorithm=algo, folder_result=(f'{f_data}/{f_mcs}',))
 
     # ---Graphs for ue---
-    ut: List[int] = [300, 400, 500, 600, 700, 800, 900]  # <-- change
+    ut: List[int] = [j for j in range(300, 901, 100)]  # <-- change
     # IterateAlgo(iteration=i, algorithm=algo, folder_data=f_data, to_start_over=to_start_over).iter_ue(ut)
     # GraphGenerator(graph_type='ue - throughput', collect_unallo_ue=False, topic_parameter=ut, iteration=i, algorithm=algo, folder_result=(f'{f_data}/{f_mcs}',))
     # GraphGenerator(graph_type='ue - fairness', topic_parameter=ut, iteration=i, algorithm=algo, folder_result=(f'{f_data}/{f_mcs}',))
@@ -50,7 +50,7 @@ if __name__ == '__main__':
     # GraphGenerator(graph_type='proportion due - fairness', topic_parameter=p_due, iteration=i, algorithm=algo, folder_result=(f'{f_data}/{f_mcs}',))
 
     # ---Graphs for gNB bandwidth---
-    gnb_bw = [10, 20, 30, 40, 50, 60, 70, 80, 90, 100]  # <-- change
+    gnb_bw = [j for j in range(10, 101, 10)]  # <-- change
     gnb_bw = [GnbMhzBuConvertor.mhz_to_bu(i) for i in gnb_bw]
     # IterateAlgo(iteration=i, algorithm=algo, folder_data=f_data, to_start_over=to_start_over).iter_gnb_bw(gnb_bw)
     # GraphGenerator(graph_type='gnb bw - throughput', topic_parameter=gnb_bw, iteration=i, algorithm=algo, folder_result=(f'{f_data}/{f_mcs}',))

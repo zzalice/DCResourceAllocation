@@ -65,7 +65,7 @@ if __name__ == '__main__':
 
     # '''
     gen_data_number_ue(
-        num_of_total_ue=[300, 400, 500, 600, 700, 800, 900],
+        num_of_total_ue=[i for i in range(300, 901, 100)],
         deploy_type=0,  # 0: random, 1: cell edge, 2: hot spot
         cell_edge_radius_proportion=0.1, edge_ue_proportion=0.4,
         hotspots=(),  # e.g. ((0.4, 0.0, 0.09, 0.4),) => (x, y, radius, proportion of ue)

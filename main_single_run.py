@@ -5,4 +5,5 @@ if __name__ == '__main__':
     folder_topic: str = '3layer'
     file_iter: int = 33
     algorithm: str = 'DC-RA'  # 'DC-RA', 'FRSA', 'MSEMA', 'Baseline'
+    # Don't forget to change CQI range in /src/resource_allocation/ds/util_enum.py
     OneIterationAlgo(folder_data, folder_topic, file_iter, algorithm).run()

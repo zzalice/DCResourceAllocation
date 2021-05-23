@@ -103,7 +103,7 @@ if __name__ == '__main__':
     # # gnb_freq(MHz/#): 5/25, 10/52, 15/79, 20/106, 25/133, 30/160, 40/216, 50/270, 60/324, 70/378, 80/434, 90/490, 100/546
     # '''
     gen_data_bw_gnb(
-        gnb_bw=[10, 20, 30, 40, 50, 60, 70, 80, 90, 100],  # MHz
+        gnb_bw=[i for i in range(10, 101, 10)],  # MHz
         cochannel_bw=0,  # MHz
         parameter=para, folder=output_folder)
     '''
