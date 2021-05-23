@@ -33,7 +33,6 @@ if __name__ == '__main__':
     # GraphGenerator(graph_type='layer - throughput', topic_parameter=l, iteration=i, algorithm=algo, folder_result=(f'{f_data}/{f_mcs}',))
     # GraphGenerator(graph_type='layer - used percentage', topic_parameter=l, iteration=i, algorithm=algo, folder_result=(f'{f_data}/{f_mcs}',))
     # GraphGenerator(graph_type='layer - allocated ue', topic_parameter=l, iteration=i, algorithm=algo, folder_result=(f'{f_data}/{f_mcs}',))
-    # GraphGenerator(graph_type='layer - total_allocated_ue', topic_parameter=l, iteration=i, algorithm=algo, folder_result=(f'{f_data}/{f_mcs}',))
     # GraphGenerator(graph_type='layer - fairness', topic_parameter=l, iteration=i, algorithm=algo, folder_result=(f'{f_data}/{f_mcs}',))
     # GraphGenerator(graph_type='layer - deployment', topic_parameter=l, iteration=i, algorithm=algo, folder_result=(f'{f_data}/{f_mcs}',))
 

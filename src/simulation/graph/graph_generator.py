@@ -66,7 +66,7 @@ class GraphGenerator:
             self.collect_used_percentage(algo_result)
         elif self.graph_type == 'layer - deployment':
             self.collect_deployment(algo_result)
-        elif self.graph_type == 'layer - allocated ue' or self.graph_type == 'layer - total_allocated_ue':
+        elif self.graph_type == 'layer - allocated ue':
             self.collect_allocated_ue(algo_result)
         elif self.graph_type == 'NOMA':
             self.collect_noma(kwargs['layer_or_ue'], kwargs['algorithm'], algo_result)
@@ -90,9 +90,7 @@ class GraphGenerator:
         elif self.graph_type == 'layer - deployment':
             self.gen_deployment(file_path)
         elif self.graph_type == 'layer - allocated ue':
-            self.gen_allocated_ue(file_path, ue_label=('eUE', 'dUE_in_eNB', 'gUE', 'dUE_in_gNB', 'dUE_cross_BS'))
-        elif self.graph_type == 'layer - total_allocated_ue':
-            self.gen_allocated_ue(file_path, ue_label=('total',))
+            self.gen_allocated_ue(file_path)
         elif self.graph_type == 'NOMA':
             self.gen_noma_overlap_status(kwargs['algorithm'], file_path)
         elif self.graph_type == 'CQI':
@@ -187,15 +185,12 @@ class GraphGenerator:
         # percentages: Dict[str, List[float]]
         #                   algo      percentage
         #              e.g. {'DC-RA': [0.98, 0.55, 0.32], 'Baseline': [0.97, 0.44, 0.22]}
-        percentages: Dict[str, List[float]] = {}
+        percentages: Dict[str, List[float]] = {algo: [] for algo in self.algorithm}
         for layer in self.topic_parameter_str:
             for algo in self.algorithm:
                 percent: float = self.data[layer][algo][0] / self.data[layer][algo][1]
                 assert 0.0 <= percent <= 1.0, 'Error in counting used BU.'
-                try:
-                    percentages[algo].append(percent)
-                except KeyError:
-                    percentages[algo] = [percent]
+                percentages[algo].append(percent)
 
         x_label: str = self._x_label()
         x_scale: List[str] = self._x_scale(self.topic_parameter_int)
@@ -245,7 +240,7 @@ class GraphGenerator:
                 color = ['r'] * 2
                 x, y, color = self._ue_deployment(self.data[layer][algo]['allocated_ue'], x, y, color)
                 l: str = layer.replace('layer', '')
-                scatter_chart(f'The deployment of {l} layer gNBs, eNBs, and UEs({algo})',
+                scatter_chart(f'The deployment of {l} layer gNBs, eNBs, and UE({algo})',
                               x, y, color,
                               (-enb_radius, gnb_coordinate[0] + gnb_radius), (-enb_radius, enb_radius),
                               f'{output_file_path}/deployment_{l}_{algo}_{datetime.today().strftime("%m%d-%H%M")}',
@@ -300,38 +295,64 @@ class GraphGenerator:
         for eue in eue_list:
             if eue['is_allocated']:
                 collect_data['eUE'] += 1
-        collect_data['total'] = collect_data['dUE_cross_BS'] + collect_data['dUE_in_gNB'] + collect_data['dUE_in_eNB'] + collect_data['gUE'] + collect_data['eUE']
+        collect_data['total'] = collect_data['dUE_cross_BS'] + collect_data['dUE_in_gNB'] + \
+            collect_data['dUE_in_eNB'] + collect_data['gUE'] + collect_data['eUE']
 
-    def gen_allocated_ue(self, output_file_path: str, ue_label: Tuple[str, ...]):
-        """
-        :param output_file_path:
-        :param ue_label: The display order of bar stack in the form of Dict name.
-        """
-        collect_data: Dict[str, Dict[int, Dict[str, float]]] = {algo: {layer: {} for layer in self.topic_parameter_int}
-                                                                for algo in self.algorithm}
-        #                  algo      layer     ue   avg allocated ue
+    def gen_allocated_ue(self, output_file_path: str):
         for layer in self.topic_parameter_str:  # FIXME: Adding an axes using the same arguments as a previous axes
-            l: int = int(layer.replace('layer', ''))
             for algo in self.algorithm:
                 for ue in self.data[layer][algo]:
                     self.data[layer][algo][ue] /= self.iteration
-                collect_data[algo][l] = self.data[layer][algo]
 
-        num_of_allo_ue: Dict[str, List[List[float]]] = {}  # algo(str) -> layers(list) -> UEs(float)
+        self.gen_all_allocated_ue(output_file_path)
+        self.gen_allocated_due(output_file_path)
+        self.gen_total_allocated_ue(output_file_path)
+
+    def gen_all_allocated_ue(self, output_file_path: str):
+        ue_label = ['eUE', 'dUE_in_eNB', 'gUE', 'dUE_in_gNB',
+                    'dUE_cross_BS']  # The display order of bar stack in the form of Dict name.
+
+        num_of_allo_ue: Dict[str, List[List[float]]] = {}  # algo(str) -> layers(list) -> UE(float)
         for algo in self.algorithm:
-            num_of_allo_ue[algo] = []  # layers(list) -> UEs(float)
-            for layer in self.topic_parameter_int:
+            num_of_allo_ue[algo] = []  # layers(list) -> UE(float)
+            for layer in self.topic_parameter_str:
                 num_of_allo_ue[algo].append([])
                 for ue in ue_label:
-                    num_of_allo_ue[algo][-1].append(collect_data[algo][layer][ue])
+                    num_of_allo_ue[algo][-1].append(self.data[layer][algo][ue])
 
         x_label: str = self._x_label()
         x_scale: List[str] = self._x_scale(self.topic_parameter_int)
-        bar_chart_grouped_stacked('The allocated UEs', x_label, x_scale,
-                                  'The number of allocated UE', ue_label, num_of_allo_ue,
+        bar_chart_grouped_stacked('The Allocated UE', x_label, x_scale,
+                                  'The Number of Allocated UE', ue_label, num_of_allo_ue,
                                   f'{output_file_path}/num_of_allocated_ue_{datetime.today().strftime("%m%d-%H%M")}',
                                   {'iteration': self.iteration},
                                   self.algorithm)
+
+    def gen_allocated_due(self, output_file_path: str):
+        num_of_dc_ue: Dict[str, List[float]] = {algo: [] for algo in self.algorithm}
+        for layer in self.topic_parameter_str:
+            for algo in self.algorithm:
+                num_of_dc_ue[algo].append(self.data[layer][algo]['dUE_cross_BS'])
+
+        x_label: str = self._x_label()
+        x_scale: List[str] = self._x_scale(self.topic_parameter_int)
+        y_label: str = 'The Number of DC UE'
+        bar_chart('The Allocated Cross BS UE', x_label, x_scale, y_label, num_of_dc_ue,
+                  f'{output_file_path}/{x_label}_{y_label}_{datetime.today().strftime("%m%d-%H%M")}',
+                  {'iteration': self.iteration})
+
+    def gen_total_allocated_ue(self, output_file_path: str):
+        num_of_total_ue: Dict[str, List[float]] = {algo: [] for algo in self.algorithm}
+        for layer in self.topic_parameter_str:
+            for algo in self.algorithm:
+                num_of_total_ue[algo].append(self.data[layer][algo]['total'])
+
+        x_label: str = self._x_label()
+        x_scale: List[str] = self._x_scale(self.topic_parameter_int)
+        y_label: str = 'The Number of Total UE'
+        bar_chart('The Total Allocated UE', x_label, x_scale, y_label, num_of_total_ue,
+                  f'{output_file_path}/{x_label}_{y_label}_{datetime.today().strftime("%m%d-%H%M")}',
+                  {'iteration': self.iteration})
 
     # ==================================================================================================================
     def collect_noma(self, layer_or_ue: List[str], algorithm: List[str], result: RESULT):
@@ -401,7 +422,7 @@ class GraphGenerator:
                             for l in range(self.data[topic]['gnb_info']['max_layer']):
                                 if frame[l][f][t] > 0:  # BU in layer l is used
                                     count_lapped += 1
-                            data_count_layer[algo][count_lapped] += 1  # tmp_count of UEs lap on BU(f, t)
+                            data_count_layer[algo][count_lapped] += 1  # tmp_count of UE lap on BU(f, t)
 
                             for l in range(self.data[topic]['gnb_info']['max_layer']):
                                 if frame[l][f][t] > 0:  # BU in layer l is used
@@ -597,7 +618,7 @@ class GraphGenerator:
         elif ('layer - ' in self.graph_type) or ('ue - ' in self.graph_type):
             scale_x: List[str] = [str(i) for i in parameter]
         elif ('gnb bw - ' in self.graph_type) or ('cochannel bw - ' in self.graph_type):
-            scale_x: List[str] = [str(GnbMhzBuConvertor.bu_to_mhz(i)) for i in parameter]    # MHz
+            scale_x: List[str] = [str(GnbMhzBuConvertor.bu_to_mhz(i)) for i in parameter]  # MHz
         else:
             raise AssertionError("The graph type isn't defined.")
         return scale_x
