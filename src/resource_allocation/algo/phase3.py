@@ -34,26 +34,33 @@ class Phase3(Undo):
         position: Dict[Numerology, LappingPositionList] = {numerology: LappingPositionList() for numerology in
                                                            Numerology.gen_candidate_set()}
 
-        # layer 0
-        for zone in zones[0]:
-            for ue in zone.ue_list:
-                self.channel_model.sinr_ue(ue)
-                AdjustMCS().from_highest_mcs(ue, ue.gnb_info.rb if nb.nb_type == NodeBType.G else ue.enb_info.rb,
-                                             self.channel_model)
-                if nb.nb_type == NodeBType.G:
-                    self.marking_occupied_position(ue.gnb_info.rb, position)
-
-        # layers above 0. (For gFrame only.)
-        for zones_in_layer in zones[1:]:
+        for layer, zones_in_layer in enumerate(zones):
             for zone in zones_in_layer:
                 for ue in zone.ue_list:
-                    assert ue.gnb_info, "The UE isn't allocated to gNB."
                     self.channel_model.sinr_ue(ue)
-                    AdjustMCS().from_lapped_rb(ue, position[ue.numerology_in_use], self.channel_model)
-                    self.marking_occupied_position(ue.gnb_info.rb, position)
+                    if layer == 0:
+                        AdjustMCS().from_highest_mcs(
+                            ue, ue.gnb_info.rb if nb.nb_type == NodeBType.G else ue.enb_info.rb, self.channel_model)
+                    else:
+                        assert ue.gnb_info, "The UE isn't allocated to gNB."
+                        AdjustMCS().from_lapped_rb(ue, position[ue.numerology_in_use], self.channel_model)
 
-        # FIXME: 受影響的UE還要調整，要重新統計position。留意是否有UE已被移除
-        # self.ue_cut()  # FIXME: add dUE cut!!!!
+                    if nb.nb_type == NodeBType.G:
+                        self.marking_occupied_position(ue.gnb_info.rb, position)
+
+        # adjust MCS of effected UE
+        ue_allocated: List[UE] = []
+        for zones_in_layer in zones:
+            for zone in zones_in_layer:
+                for ue in zone.ue_list:
+                    if ue.is_allocated:
+                        ue_allocated.append(ue)
+        self.adjust_mcs_allocated_ues(ue_allocated, to_undo=False)  # only the UE in this BS
+
+        # ue cut
+        for ue in ue_allocated:
+            if ue.is_allocated:
+                self.ue_cut(ue, nb.nb_type)
 
     @staticmethod
     def marking_occupied_position(rb_list: List[ResourceBlock], position: Dict[Numerology, LappingPositionList]):
@@ -117,9 +124,9 @@ class Phase3(Undo):
                                                                origin_sys_throughput, worsen_threshold)
         return is_allocated
 
-    def adjust_mcs_allocated_ues(self, ue_allocated: List[UE],
-                                 origin_sys_throughput, worsen_threshold) -> bool:
-        self.assert_undo_function()
+    def adjust_mcs_allocated_ues(self, ue_allocated: List[UE], origin_sys_throughput: float = 0.0,
+                                 worsen_threshold: float = -1000000000, to_undo: bool = True) -> bool:
+        self.assert_undo_function() if to_undo else None
         while True:
             # check if the new movement lowers down the system throughput
             if not (calc_system_throughput(tuple(ue_allocated)) - origin_sys_throughput) >= worsen_threshold:
@@ -132,11 +139,13 @@ class Phase3(Undo):
                     assert ue.is_allocated
                     is_all_adjusted: bool = False
                     self.channel_model.sinr_ue(ue)
-                    self.append_undo(lambda: self.channel_model.undo(), lambda: self.channel_model.purge_undo())
+                    self.append_undo(lambda: self.channel_model.undo(),
+                                     lambda: self.channel_model.purge_undo()) if to_undo else None
                     adjust_mcs: AdjustMCS = AdjustMCS()
                     is_fulfilled: bool = adjust_mcs.remove_worst_rb(ue, allow_lower_than_cqi0=False,
                                                                     channel_model=self.channel_model)
-                    self.append_undo(lambda a_m=adjust_mcs: a_m.undo(), lambda a_m=adjust_mcs: a_m.purge_undo())
+                    self.append_undo(lambda a_m=adjust_mcs: a_m.undo(),
+                                     lambda a_m=adjust_mcs: a_m.purge_undo()) if to_undo else None
                     if not is_fulfilled:
                         # the mcs of the ue is lowered down by another UE.
                         return False
