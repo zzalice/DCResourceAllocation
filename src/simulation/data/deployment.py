@@ -53,7 +53,7 @@ class Deploy:
         assert 0 < len(in_area) <= 2
         assert 0.0 < radius_proportion_of_cell_edge < 1.0, 'Radius of cell edge too narrow/wide.'
         assert 0.0 < proportion_of_ue_in_edge <= 1.0, 'Proportion of UE in cell edge too low or out of range.'
-        # TODO: Raise warning 面積比要低於proportion, 'Proportion of UE in cell edge is too low.'
+        # FIXME: Raise warning 面積比要低於proportion, 'Proportion of UE in cell edge is too low.'
         num_of_ue_in_cell_edge: int = math.ceil(total_ue * proportion_of_ue_in_edge)
         num_of_ue_in_cell_center: int = total_ue - num_of_ue_in_cell_edge
         assert num_of_ue_in_cell_edge > 0, 'Calculation error.'
@@ -159,7 +159,7 @@ class Deploy:
                             in_area], 'The hotspot is not in any BS area.'
             total_proportion += hotspot.ue_proportion
         assert 0.0 < total_proportion <= 1.0, 'The proportion of UE in hotspots are too low/high.'
-        # TODO: Raise warning hot spot not HOT!
+        # FIXME: Raise warning hot spot not HOT!
 
         # Main
         # Deploy UE in hotspots

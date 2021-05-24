@@ -63,7 +63,7 @@ if __name__ == '__main__':
     # GraphGenerator(graph_type='cochannel bw - throughput', topic_parameter=cochannel_bw, iteration=i, algorithm=algo, folder_result=(f'{f_data}/{f_mcs}',))
     # GraphGenerator(graph_type='cochannel bw - fairness', topic_parameter=cochannel_bw, iteration=i, algorithm=algo, folder_result=(f'{f_data}/{f_mcs}',))
 
-    # ---Graphs for CQI/NOMA---            # TODO: add topic_parameter
+    # ---Graphs for CQI/NOMA---            # FIXME: add topic_parameter
     l_or_u: int = 0  # 0 for layer, 1 for ue     <-- change
     layer_or_ue: List[str] = layer_or_ue(l_or_u, l, ut)
     # GraphGenerator(graph_type='NOMA', layer_or_ue=layer_or_ue, iteration=i, algorithm=algo, folder_result=(f'{f_data}/{f_mcs}',))
