@@ -64,7 +64,7 @@ class GraphGenerator:
                 self.collect_sys_throughput(algo_result)
         elif ' - allocated ue' in self.graph_type:
             self.collect_allocated_ue(algo_result)
-        elif self.graph_type == ' - INI':
+        elif ' - INI' in self.graph_type:
             self.collect_ini(algo_result)
         elif ' - fairness' in self.graph_type:
             self.collect_fairness(algo_result)
@@ -87,7 +87,7 @@ class GraphGenerator:
                 self.gen_sys_throughput(file_path)
         elif ' - allocated ue' in self.graph_type:
             self.gen_allocated_ue(file_path)
-        elif self.graph_type == ' - INI':
+        elif ' - INI' in self.graph_type:
             self.gen_ini(file_path)
         elif ' - fairness' in self.graph_type:
             self.gen_fairness(file_path)

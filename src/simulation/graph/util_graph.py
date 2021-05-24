@@ -6,14 +6,14 @@ import matplotlib.pyplot as plt
 import numpy as np
 import pandas
 
-color_unify = ['r', 'g', 'orange', 'b', 'y', 'm']
+color_unify = ['#1f77b4', '#ff7f0e', '#2ca02c', '#d62728', '#9467bd', '#8c564b', '#e377c2', '#7f7f7f', '#bcbd22', '#17becf']
 
 
 def line_chart(title: str, x_label: str, scale_x: List[Any], y_label: str, scale_y: Dict[str, List[Any]],
                output_folder: str, parameter: Dict):
     # https://newaurora.pixnet.net/blog/post/227933636-python-使用matplotlib畫折線圖%28line-chart%29
     marker = ['o', 's', '^', 'd', 'x']
-    line_style = ['solid', 'dotted', 'dashed', 'dashdot']
+    line_style = ['solid', 'dashdot', 'dashed', 'dotted']
     plt.figure(linewidth=2)
     for i, data_y in enumerate(scale_y):
         plt.plot(scale_x, scale_y[data_y], label=data_y, marker=marker[i], color=color_unify[i], linestyle=line_style[i])
