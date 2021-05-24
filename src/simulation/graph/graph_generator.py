@@ -193,8 +193,8 @@ class GraphGenerator:
 
         x_label: str = self._x_label()
         x_scale: List[str] = self._x_scale(self.topic_parameter_int)
-        y_label: str = 'Frame Usage(%)'
-        bar_chart('Frame used', x_label, x_scale, y_label, percentages,
+        y_label: str = 'Resource Usage(%)'
+        bar_chart('Resource Efficiency', x_label, x_scale, y_label, percentages,
                   output_file_path, {'iteration': self.iteration})
 
     # ==================================================================================================================
