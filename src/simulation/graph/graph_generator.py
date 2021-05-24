@@ -62,20 +62,20 @@ class GraphGenerator:
                 self.collect_sys_throughput(algo_result, kwargs['collect_unallo_ue'])
             except KeyError:
                 self.collect_sys_throughput(algo_result)
+        elif ' - allocated ue' in self.graph_type:
+            self.collect_allocated_ue(algo_result)
+        elif self.graph_type == ' - INI':
+            self.collect_ini(algo_result)
+        elif ' - fairness' in self.graph_type:
+            self.collect_fairness(algo_result)
         elif self.graph_type == 'layer - used percentage':
             self.collect_used_percentage(algo_result)
         elif self.graph_type == 'layer - deployment':
             self.collect_deployment(algo_result)
-        elif self.graph_type == 'layer - allocated ue':
-            self.collect_allocated_ue(algo_result)
         elif self.graph_type == 'NOMA':
             self.collect_noma(kwargs['layer_or_ue'], kwargs['algorithm'], algo_result)
         elif self.graph_type == 'CQI':
             self.collect_ue_cqi(kwargs['layer_or_ue'], kwargs['algorithm'], algo_result, file_path)
-        elif 'fairness' in self.graph_type:
-            self.collect_fairness(algo_result)
-        elif self.graph_type == 'gnb bw - INI':
-            self.collect_ini(algo_result)
         else:
             raise AssertionError('Undefined graph type.')
 
@@ -85,20 +85,20 @@ class GraphGenerator:
                 self.gen_sys_throughput(file_path, kwargs['collect_unallo_ue'])
             except KeyError:
                 self.gen_sys_throughput(file_path)
+        elif ' - allocated ue' in self.graph_type:
+            self.gen_allocated_ue(file_path)
+        elif self.graph_type == ' - INI':
+            self.gen_ini(file_path)
+        elif ' - fairness' in self.graph_type:
+            self.gen_fairness(file_path)
         elif self.graph_type == 'layer - used percentage':
             self.gen_used_percentage(file_path)
         elif self.graph_type == 'layer - deployment':
             self.gen_deployment(file_path)
-        elif self.graph_type == 'layer - allocated ue':
-            self.gen_allocated_ue(file_path)
         elif self.graph_type == 'NOMA':
             self.gen_noma_overlap_status(kwargs['algorithm'], file_path)
         elif self.graph_type == 'CQI':
             self.gen_ue_cqi(file_path)
-        elif 'fairness' in self.graph_type:
-            self.gen_fairness(file_path)
-        elif self.graph_type == 'gnb bw - INI':
-            self.gen_ini(file_path)
         else:
             raise AssertionError('Undefined graph type.')
 
@@ -263,7 +263,7 @@ class GraphGenerator:
     # ==================================================================================================================
     def collect_allocated_ue(self, result: RESULT):
         # collect_data: Dict[str, Dict[str, Dict[str, int]]
-        #                    layer     algo,     ue   num of allocated ue
+        #                    topic     algo,     ue   num of allocated ue
         topic, algo = self._topic_and_algo(result)
         self.first_data(topic)
         try:
@@ -296,10 +296,10 @@ class GraphGenerator:
             collect_data['dUE_in_eNB'] + collect_data['gUE'] + collect_data['eUE']
 
     def gen_allocated_ue(self, output_file_path: str):
-        for layer in self.topic_parameter_str:
+        for topic in self.topic_parameter_str:
             for algo in self.algorithm:
-                for ue in self.data[layer][algo]:
-                    self.data[layer][algo][ue] /= self.iteration
+                for ue in self.data[topic][algo]:
+                    self.data[topic][algo][ue] /= self.iteration
 
         self.gen_all_allocated_ue(output_file_path)
         self.gen_allocated_due(output_file_path)
