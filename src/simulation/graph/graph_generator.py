@@ -130,10 +130,10 @@ class GraphGenerator:
             self.gen_unallocated_ue(output_file_path)
 
     def gen_avg_sys_throughput(self, output_file_path: str):
-        avg_system_throughput: Dict[str, List[float]] = {algo: [] for algo in next(iter(self.data.values()))}
+        avg_system_throughput: Dict[str, List[float]] = {algo: [] for algo in self.algorithm}
         #                           algo      avg throughput of each layer
         for t in self.topic_parameter_str:
-            for algo in self.data[t]:
+            for algo in self.algorithm:
                 self.data[t][algo] /= self.iteration
                 assert self.frame_time > 0
                 self.data[t][algo] = bpframe_to_mbps(self.data[t][algo], self.frame_time)
@@ -532,9 +532,9 @@ class GraphGenerator:
         return True
 
     def gen_fairness(self, output_file_path: str):
-        avg_fairness: Dict[str, List[float]] = {algo: [] for algo in next(iter(self.data.values()))}
+        avg_fairness: Dict[str, List[float]] = {algo: [] for algo in self.algorithm}
         for t in self.topic_parameter_str:
-            for algo in self.data[t]:
+            for algo in self.algorithm:
                 avg_fairness[algo].append(self.data[t][algo] / self.iteration)
 
         x_label: str = self._x_label()
@@ -563,16 +563,18 @@ class GraphGenerator:
                     self.data[topic][algo] += 1
 
     def gen_ini(self, output_file_path: str):
-        avg_ini: Dict[str, List[float]] = {algo: [] for algo in next(iter(self.data.values()))}
+        avg_ini: Dict[str, List[float]] = {algo: [] for algo in self.algorithm}
         for t in self.topic_parameter_str:
-            for algo in self.data[t]:
+            for algo in self.algorithm:
                 avg_ini[algo].append(self.data[t][algo] / self.iteration)
 
         x_label: str = self._x_label()
         scale_x: List[str] = self._x_scale(self.topic_parameter_int)
+        y_label: str = 'The Average Number of BU with ICI'
         bar_chart('', x_label, scale_x,
-                  'The Average Number of BU with ICI', avg_ini,
-                  output_file_path, {'iteration': self.iteration})
+                  y_label, avg_ini,
+                  f'{output_file_path}/{x_label}_{y_label}_{datetime.today().strftime("%m%d-%H%M")}',
+                  {'iteration': self.iteration})
 
     # ==================================================================================================================
     def _topic_and_algo(self, result: RESULT) -> Tuple[str, str]:
