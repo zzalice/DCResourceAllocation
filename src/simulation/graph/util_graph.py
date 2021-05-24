@@ -6,30 +6,29 @@ import matplotlib.pyplot as plt
 import numpy as np
 import pandas
 
+color_unify = ['r', 'g', 'orange', 'b', 'y', 'm']
+
 
 def line_chart(title: str, x_label: str, scale_x: List[Any], y_label: str, scale_y: Dict[str, List[Any]],
                output_folder: str, parameter: Dict):
     # https://newaurora.pixnet.net/blog/post/227933636-python-使用matplotlib畫折線圖%28line-chart%29
     marker = ['o', 's', '^', 'd', 'x']
-    color = ['r', 'b', 'g', 'c', 'm', 'y']
     line_style = ['solid', 'dotted', 'dashed', 'dashdot']
     plt.figure(linewidth=2)
     for i, data_y in enumerate(scale_y):
-        plt.plot(scale_x, scale_y[data_y], label=data_y, marker=marker[i], color=color[i], linestyle=line_style[i])
+        plt.plot(scale_x, scale_y[data_y], label=data_y, marker=marker[i], color=color_unify[i], linestyle=line_style[i])
 
     plt.title(title)
     plt.xlabel(x_label)
     plt.ylabel(y_label)
     plt.legend(loc="best")
 
-    file_name: str = f'{x_label}_{y_label}_{datetime.today().strftime("%m%d-%H%M")}'
-    plt.savefig(f'{output_folder}/{file_name}.png')
-    plt.show()
-    dump_json(f'{output_folder}/{file_name}', [title, x_label, scale_x, y_label, scale_y, output_folder, parameter])
+    dump_png_and_json(plt, x_label, y_label, output_folder,
+                      [title, x_label, scale_x, y_label, scale_y, output_folder, parameter])
 
 
 def bar_chart(title: str, x_label: str, x_tick_labels: List[Any], y_label: str, data: Dict[str, List[float]],
-              output_file_path: str, parameter: Dict):
+              output_folder: str, parameter: Dict):
     # https://matplotlib.org/stable/gallery/lines_bars_and_markers/barchart.html
     # https://pylibraries.com/matplotlib/tutorials/grouped-bar-charts-with-matplotlib-pyplot/#Triple-grouped-bar-chart
     x = np.arange(len(x_tick_labels))  # the label locations
@@ -40,7 +39,7 @@ def bar_chart(title: str, x_label: str, x_tick_labels: List[Any], y_label: str, 
     rects = []
     for i, label in enumerate(data):
         data[label] = [round(j, 3) for j in data[label]]
-        rects.append(ax.bar(pos + i * width, data[label], width, label=label))
+        rects.append(ax.bar(pos + i * width, data[label], width, label=label, color=color_unify[i]))
 
     # Add some text for labels, title and custom x-axis tick labels, etc.
     ax.set_title(title)
@@ -55,10 +54,8 @@ def bar_chart(title: str, x_label: str, x_tick_labels: List[Any], y_label: str, 
 
     fig.tight_layout()
 
-    plt.savefig(f'{output_file_path}.png')
-    plt.show()
-    dump_json(f'{output_file_path}',
-              [title, x_label, x_tick_labels, y_label, data, output_file_path, parameter])
+    dump_png_and_json(plt, x_label, y_label, output_folder,
+                      [title, x_label, x_tick_labels, y_label, data, output_folder, parameter])
 
 
 def bar_chart_auto_label(rects, ax):
@@ -74,7 +71,7 @@ def bar_chart_auto_label(rects, ax):
 
 def bar_chart_grouped_stacked(title: str, x_label: str, x_index: List[str],
                               y_label: str, stack_label: List[str], data: Dict[str, List[List[float]]],
-                              output_file_path: str, parameter: Dict, labels=None, H="/", color_gradient: bool = False):
+                              output_folder: str, parameter: Dict, labels=None, H="/", color_gradient: bool = False):
     # https://stackoverflow.com/questions/22787209/how-to-have-clusters-of-stacked-bars-with-python-pandas
     # Colormap: https://matplotlib.org/stable/tutorials/colors/colormaps.html
     dfall: List[pandas.DataFrame] = []
@@ -117,14 +114,14 @@ def bar_chart_grouped_stacked(title: str, x_label: str, x_index: List[str],
     axe.add_artist(l1)
 
     plt.tight_layout()
-    plt.savefig(f'{output_file_path}.png', bbox_inches='tight')
-    plt.show()
-    dump_json(output_file_path,
-              [title, x_label, y_label, output_file_path, parameter, data, x_index, stack_label, labels, H])
+
+    dump_png_and_json(plt, x_label, y_label, output_folder,
+                      [title, x_label, y_label, output_folder, parameter, data, x_index, stack_label, labels, H],
+                      bbox_inches='tight')
 
 
 def scatter_chart(title, x, y, color, x_lim: Tuple[float, float], y_lim: Tuple[float, float],
-                  output_file: str, parameter: Dict):
+                  output_folder: str, parameter: Dict):
     # https://www.pythonpool.com/matplotlib-circle/
     # https://matplotlib.org/stable/gallery/shapes_and_collections/scatter.html
     plt.scatter(x, y, c=color)
@@ -132,9 +129,19 @@ def scatter_chart(title, x, y, color, x_lim: Tuple[float, float], y_lim: Tuple[f
     plt.ylim(y_lim[0], y_lim[1])
 
     plt.title(title)
-    plt.savefig(f'{output_file}.png')
-    plt.show()
-    dump_json(output_file, [title, x, y, color, x_lim, y_lim, output_file, parameter])
+
+    dump_png_and_json(plt, '(km)', '(km)', output_folder,
+                      [title, x, y, color, x_lim, y_lim, output_folder, parameter])
+
+
+def dump_png_and_json(plot, x_label: str, y_label: str, output_folder: str, input_para: List[Any], bbox_inches=None):
+    file_name: str = f'{x_label}_{y_label}_{datetime.today().strftime("%m%d-%H%M")}'
+    if bbox_inches:
+        plot.savefig(f'{output_folder}/{file_name}.png', bbox_inches=bbox_inches)
+    else:
+        plot.savefig(f'{output_folder}/{file_name}.png')
+    plot.show()
+    dump_json(f'{output_folder}/{file_name}', input_para)
 
 
 def dump_json(path: str, data: Any):

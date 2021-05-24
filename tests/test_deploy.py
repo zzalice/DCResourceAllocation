@@ -20,7 +20,7 @@ def gen_graph_deployment(in_area: Tuple[CircularRegion, ...],
         x, y, color = _ue_deployment(coordinates, x, y, color, c[i])
     scatter_chart('', x, y, color,
                   (bound['left'], bound['right']), (bound['up'], bound['down']),
-                  f'{os.path.dirname(__file__)}/deployment', {})
+                  os.path.dirname(__file__), {})
 
 
 def _ue_deployment(ue_list, x, y, color, c):

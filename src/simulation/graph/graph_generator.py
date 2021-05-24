@@ -155,10 +155,9 @@ class GraphGenerator:
 
         x_label: str = self._x_label()
         scale_x: List[str] = self._x_scale(self.topic_parameter_int)
-        bar_chart('', x_label, scale_x,
-                  'The number of unallocated UE', avg_unallocated_ue,
-                  f'{output_file_path}/unallocatedUE_numOfUE_{datetime.today().strftime("%m%d-%H%M")}',
-                  {'iteration': self.iteration})
+        y_label: str = 'The number of unallocated UE'
+        bar_chart('', x_label, scale_x, y_label, avg_unallocated_ue,
+                  output_file_path, {'iteration': self.iteration})
 
     # ==================================================================================================================
     def collect_used_percentage(self, result: RESULT):
@@ -196,8 +195,7 @@ class GraphGenerator:
         x_scale: List[str] = self._x_scale(self.topic_parameter_int)
         y_label: str = 'Frame Usage(%)'
         bar_chart('Frame used', x_label, x_scale, y_label, percentages,
-                  f'{output_file_path}/{x_label}_{y_label}_{datetime.today().strftime("%m%d-%H%M")}',
-                  {'iteration': self.iteration})
+                  output_file_path, {'iteration': self.iteration})
 
     # ==================================================================================================================
     def collect_deployment(self, result: RESULT):
@@ -243,8 +241,7 @@ class GraphGenerator:
                 scatter_chart(f'The deployment of {l} layer gNBs, eNBs, and UE({algo})',
                               x, y, color,
                               (-enb_radius, gnb_coordinate[0] + gnb_radius), (-enb_radius, enb_radius),
-                              f'{output_file_path}/deployment_{l}_{algo}_{datetime.today().strftime("%m%d-%H%M")}',
-                              {'iteration': self.iteration})
+                              output_file_path, {'iteration': self.iteration})
 
     @staticmethod
     def _ue_deployment(all_ue: List[Tuple[UEType, float, float]],
@@ -324,9 +321,7 @@ class GraphGenerator:
         x_scale: List[str] = self._x_scale(self.topic_parameter_int)
         bar_chart_grouped_stacked('The Allocated UE', x_label, x_scale,
                                   'The Number of Allocated UE', ue_label, num_of_allo_ue,
-                                  f'{output_file_path}/num_of_allocated_ue_{datetime.today().strftime("%m%d-%H%M")}',
-                                  {'iteration': self.iteration},
-                                  self.algorithm)
+                                  output_file_path, {'iteration': self.iteration}, self.algorithm)
 
     def gen_allocated_due(self, output_file_path: str):
         num_of_dc_ue: Dict[str, List[float]] = {algo: [] for algo in self.algorithm}
@@ -336,10 +331,9 @@ class GraphGenerator:
 
         x_label: str = self._x_label()
         x_scale: List[str] = self._x_scale(self.topic_parameter_int)
-        y_label: str = 'The Number of DC UE'
+        y_label: str = 'The Number of Allocated DC UE'
         bar_chart('The Allocated Cross BS UE', x_label, x_scale, y_label, num_of_dc_ue,
-                  f'{output_file_path}/{x_label}_{y_label}_{datetime.today().strftime("%m%d-%H%M")}',
-                  {'iteration': self.iteration})
+                  output_file_path, {'iteration': self.iteration})
 
     def gen_total_allocated_ue(self, output_file_path: str):
         num_of_total_ue: Dict[str, List[float]] = {algo: [] for algo in self.algorithm}
@@ -349,10 +343,9 @@ class GraphGenerator:
 
         x_label: str = self._x_label()
         x_scale: List[str] = self._x_scale(self.topic_parameter_int)
-        y_label: str = 'The Number of Total UE'
+        y_label: str = 'The Number of Total Allocated UE'
         bar_chart('The Total Allocated UE', x_label, x_scale, y_label, num_of_total_ue,
-                  f'{output_file_path}/{x_label}_{y_label}_{datetime.today().strftime("%m%d-%H%M")}',
-                  {'iteration': self.iteration})
+                  output_file_path, {'iteration': self.iteration})
 
     # ==================================================================================================================
     def collect_noma(self, layer_or_ue: List[str], algorithm: List[str], result: RESULT):
@@ -440,15 +433,13 @@ class GraphGenerator:
             bar_chart(f'Frame overlap of {topic}',
                       'The number of overlapped UE', [i for i in range(self.data[topic]['gnb_info']['max_layer'] + 1)],
                       'Percentage of BU(%)', data_count_layer,
-                      f'{output_file_path}/noma_lap_{topic}_{datetime.today().strftime("%m%d-%H%M")}',
-                      {'iteration': self.iteration, 'layer_or_ue': topic})
+                      output_file_path, {'iteration': self.iteration, 'layer_or_ue': topic})
             bar_chart_grouped_stacked(f'The MCS used in a frame of {topic}',
                                       'The number of overlapped UE',
                                       [str(i + 1) for i in range(self.data[topic]['gnb_info']['max_layer'])],
                                       'The number BU', ['CQI' + str(i) for i in range(cqi[0], cqi[1] + 1)],
                                       data_count_bu,
-                                      f'{output_file_path}/noma_mcs_{topic}_{datetime.today().strftime("%m%d-%H%M")}',
-                                      {'iteration': self.iteration, 'layer_or_ue': topic},
+                                      output_file_path, {'iteration': self.iteration, 'layer_or_ue': topic},
                                       algorithm, color_gradient=True)
 
     # ==================================================================================================================
@@ -509,13 +500,11 @@ class GraphGenerator:
             bar_chart(f'The CQI in {topic}',
                       'The available CQI in gNB', [str(i) for i in range(gnb_cqi[0], gnb_cqi[1] + 1)],
                       'The number of allocated UE', gnb_cqi_data,
-                      f'{output_file_path}/cqi_{topic}_gNB_{datetime.today().strftime("%m%d-%H%M")}',
-                      {'iteration': self.iteration, 'layer_or_ue': topic})
+                      output_file_path, {'iteration': self.iteration, 'layer_or_ue': topic})
             bar_chart(f'The CQI in {topic}',
                       'The available CQI in eNB', [str(i) for i in range(enb_cqi[0], enb_cqi[1] + 1)],
                       'The number of allocated UE', enb_cqi_data,
-                      f'{output_file_path}/cqi_{topic}_eNB_{datetime.today().strftime("%m%d-%H%M")}',
-                      {'iteration': self.iteration, 'layer_or_ue': topic})
+                      output_file_path, {'iteration': self.iteration, 'layer_or_ue': topic})
 
     # ==================================================================================================================
     def collect_fairness(self, result: RESULT):
@@ -571,10 +560,8 @@ class GraphGenerator:
         x_label: str = self._x_label()
         scale_x: List[str] = self._x_scale(self.topic_parameter_int)
         y_label: str = 'The Average Number of BU with ICI'
-        bar_chart('', x_label, scale_x,
-                  y_label, avg_ini,
-                  f'{output_file_path}/{x_label}_{y_label}_{datetime.today().strftime("%m%d-%H%M")}',
-                  {'iteration': self.iteration})
+        bar_chart('', x_label, scale_x, y_label, avg_ini,
+                  output_file_path, {'iteration': self.iteration})
 
     # ==================================================================================================================
     def _topic_and_algo(self, result: RESULT) -> Tuple[str, str]:

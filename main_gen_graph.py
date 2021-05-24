@@ -35,6 +35,7 @@ if __name__ == '__main__':
     # GraphGenerator(graph_type='layer - allocated ue', topic_parameter=l, iteration=i, algorithm=algo, folder_result=(f'{f_data}/{f_mcs}',))
     # GraphGenerator(graph_type='layer - fairness', topic_parameter=l, iteration=i, algorithm=algo, folder_result=(f'{f_data}/{f_mcs}',))
     # GraphGenerator(graph_type='layer - deployment', topic_parameter=l, iteration=i, algorithm=algo, folder_result=(f'{f_data}/{f_mcs}',))
+    # FIXME INI
 
     # ---Graphs for ue---
     ut: List[int] = [j for j in range(300, 901, 100)]  # <-- change
@@ -62,6 +63,7 @@ if __name__ == '__main__':
     # IterateAlgo(iteration=i, algorithm=algo, folder_data=f_data, to_start_over=to_start_over).iter_cochannel(cochannel_bw)
     # GraphGenerator(graph_type='cochannel bw - throughput', topic_parameter=cochannel_bw, iteration=i, algorithm=algo, folder_result=(f'{f_data}/{f_mcs}',))
     # GraphGenerator(graph_type='cochannel bw - fairness', topic_parameter=cochannel_bw, iteration=i, algorithm=algo, folder_result=(f'{f_data}/{f_mcs}',))
+    # FIXME allocated UE
 
     # ---Graphs for CQI/NOMA---            # FIXME: add topic_parameter
     l_or_u: int = 0  # 0 for layer, 1 for ue     <-- change
