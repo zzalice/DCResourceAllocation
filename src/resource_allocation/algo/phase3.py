@@ -176,7 +176,8 @@ class Phase3(Undo):
 
     def ue_cut(self, ue: UE, nb_type: NodeBType, to_undo: bool = False):
         if ue.ue_type == UEType.G or ue.ue_type == UEType.E:
-            self.ue_cross_spaces(ue, to_undo)
+            pass
+            # self.ue_cross_spaces(ue, to_undo)
         elif ue.ue_type == UEType.D:
             self.ue_cross_bs(ue, nb_type, to_undo)
         else:
