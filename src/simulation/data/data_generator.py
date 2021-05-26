@@ -72,73 +72,84 @@ class DataGenerator:
 
     def generate_data(self):
         for i in range(self.iteration):
-            # Set up BSs
-            e_nb: ENodeB = ENodeB(
-                region=CircularRegion(x=self.enb_coordinate[0], y=self.enb_coordinate[1], radius=self.enb_radius),
-                power_tx=self.enb_tx_power, frame_freq=self.enb_freq, frame_time=self.enb_time)
-            g_nb: GNodeB = GNodeB(
-                region=CircularRegion(x=self.gnb_coordinate[0], y=self.gnb_coordinate[1], radius=self.gnb_radius),
-                power_tx=self.gnb_tx_power, frame_freq=self.gnb_freq, frame_time=self.gnb_time,
-                frame_max_layer=self.gnb_layer)
-            setup_noma([g_nb])
-            cochannel_index: Dict = cochannel(e_nb, g_nb, cochannel_bandwidth=self.cochannel_bandwidth)
-            channel_model: ChannelModel = ChannelModel(cochannel_index)
-
-            sec_to_frame: int = 1000 // (e_nb.frame.frame_time // 8)
-            worsen_threshold: float = self.worsen_threshold / sec_to_frame  # bit per frame
-
-            # Set up UE
-            coordinates_sc, coordinates_dc = self.deploy_ue((e_nb.region, g_nb.region))
-            self.eue_num: int = len(coordinates_sc[0])
-            self.gue_num: int = len(coordinates_sc[1])
-            self.due_num: int = len(coordinates_dc)
-            e_profiles: UEProfiles = UEProfiles(
-                self.eue_num,
-                tuple(random.randrange(self.eue_qos_range[0] // sec_to_frame, self.eue_qos_range[1] // sec_to_frame + 1,
-                                       10_000 // sec_to_frame) for _ in range(self.eue_num)),
-                LTEResourceBlock.gen_candidate_set() * self.eue_num,  # dummy (unused)
-                coordinates_sc[0]
-            )
-            g_profiles: UEProfiles = UEProfiles(
-                self.gue_num,
-                tuple(random.randrange(self.gue_qos_range[0] // sec_to_frame, self.gue_qos_range[1] // sec_to_frame + 1,
-                                       10_000 // sec_to_frame) for _ in range(self.gue_num)),
-                tuple(Numerology.gen_candidate_set(random_pick=True) for _ in range(self.gue_num)),
-                coordinates_sc[1]
-            )
-            d_profiles: UEProfiles = UEProfiles(
-                self.due_num,
-                tuple(random.randrange(self.due_qos_range[0] // sec_to_frame, self.due_qos_range[1] // sec_to_frame + 1,
-                                       10_000 // sec_to_frame) for _ in range(self.due_num)),
-                tuple(Numerology.gen_candidate_set(random_pick=True) for _ in range(self.due_num)),
-                coordinates_dc
-            )
-            e_ue_list: Tuple[EUserEquipment] = tuple(
-                EUserEquipment(e.request_data_rate, e.candidate_set, e.coordinate) for e in e_profiles)
-            g_ue_list: Tuple[GUserEquipment] = tuple(
-                GUserEquipment(g.request_data_rate, g.candidate_set, g.coordinate) for g in g_profiles)
-            d_ue_list: Tuple[DUserEquipment] = tuple(
-                DUserEquipment(d.request_data_rate, d.candidate_set, d.coordinate) for d in d_profiles)
-
-            # noinspection PyTypeChecker
-            for ue in (e_ue_list + g_ue_list + d_ue_list):
-                ue.register_nb(e_nb, g_nb)
-
-            # tmp: use last (lowest latency) numerology in candidate set
-            for g_ue in g_ue_list:
-                g_ue.numerology_in_use = g_ue.candidate_set[-1]
-            for d_ue in d_ue_list:
-                d_ue.numerology_in_use = d_ue.candidate_set[-1]
-
-            # Output
-            with open(f'{self.output_file_path}/{str(i)}.P', "wb") as file_of_frame_and_ue:     # FIXME: save to json
-                pickle.dump(
-                    [g_nb, e_nb, channel_model,
-                     g_ue_list, d_ue_list, e_ue_list, self.gue_qos_range, self.eue_qos_range,
-                     self.inr_discount, worsen_threshold],
-                    file_of_frame_and_ue)
-
+            self.gen_one_data(i)
         self.gen_txt_parameter()
+
+    def gen_one_data(self, iter_idx: int):
+        e_nb, g_nb = self.setup_nb()
+
+        cochannel_index: Dict = cochannel(e_nb, g_nb, cochannel_bandwidth=self.cochannel_bandwidth)
+        channel_model: ChannelModel = ChannelModel(cochannel_index)
+
+        sec_to_frame: int = 1000 // (e_nb.frame.frame_time // 8)
+        g_ue_list, d_ue_list, e_ue_list = self.setup_ue(e_nb, g_nb, sec_to_frame)
+
+        worsen_threshold: float = self.worsen_threshold / sec_to_frame  # bit per frame
+
+        # Output
+        with open(f'{self.output_file_path}/{str(iter_idx)}.P', "wb") as file_of_frame_and_ue:
+            pickle.dump(
+                [g_nb, e_nb, channel_model,
+                 g_ue_list, d_ue_list, e_ue_list, self.gue_qos_range, self.eue_qos_range,
+                 self.inr_discount, worsen_threshold],
+                file_of_frame_and_ue)
+
+    def setup_nb(self) -> Tuple[ENodeB, GNodeB]:
+        e_nb: ENodeB = ENodeB(
+            region=CircularRegion(x=self.enb_coordinate[0], y=self.enb_coordinate[1], radius=self.enb_radius),
+            power_tx=self.enb_tx_power, frame_freq=self.enb_freq, frame_time=self.enb_time)
+        g_nb: GNodeB = GNodeB(
+            region=CircularRegion(x=self.gnb_coordinate[0], y=self.gnb_coordinate[1], radius=self.gnb_radius),
+            power_tx=self.gnb_tx_power, frame_freq=self.gnb_freq, frame_time=self.gnb_time,
+            frame_max_layer=self.gnb_layer)
+        setup_noma([g_nb])
+        return e_nb, g_nb
+
+    def setup_ue(self, e_nb: ENodeB, g_nb: GNodeB, sec_to_frame: int
+                 ) -> Tuple[Tuple[GUserEquipment], Tuple[DUserEquipment], Tuple[EUserEquipment]]:
+        coordinates_sc, coordinates_dc = self.deploy_ue((e_nb.region, g_nb.region))
+        self.eue_num: int = len(coordinates_sc[0])
+        self.gue_num: int = len(coordinates_sc[1])
+        self.due_num: int = len(coordinates_dc)
+        e_profiles: UEProfiles = UEProfiles(
+            self.eue_num,
+            tuple(random.randrange(self.eue_qos_range[0] // sec_to_frame, self.eue_qos_range[1] // sec_to_frame + 1,
+                                   10_000 // sec_to_frame) for _ in range(self.eue_num)),
+            LTEResourceBlock.gen_candidate_set() * self.eue_num,  # dummy (unused)
+            coordinates_sc[0]
+        )
+        g_profiles: UEProfiles = UEProfiles(
+            self.gue_num,
+            tuple(random.randrange(self.gue_qos_range[0] // sec_to_frame, self.gue_qos_range[1] // sec_to_frame + 1,
+                                   10_000 // sec_to_frame) for _ in range(self.gue_num)),
+            tuple(Numerology.gen_candidate_set(random_pick=True) for _ in range(self.gue_num)),
+            coordinates_sc[1]
+        )
+        d_profiles: UEProfiles = UEProfiles(
+            self.due_num,
+            tuple(random.randrange(self.due_qos_range[0] // sec_to_frame, self.due_qos_range[1] // sec_to_frame + 1,
+                                   10_000 // sec_to_frame) for _ in range(self.due_num)),
+            tuple(Numerology.gen_candidate_set(random_pick=True) for _ in range(self.due_num)),
+            coordinates_dc
+        )
+        e_ue_list: Tuple[EUserEquipment] = tuple(
+            EUserEquipment(e.request_data_rate, e.candidate_set, e.coordinate) for e in e_profiles)
+        g_ue_list: Tuple[GUserEquipment] = tuple(
+            GUserEquipment(g.request_data_rate, g.candidate_set, g.coordinate) for g in g_profiles)
+        d_ue_list: Tuple[DUserEquipment] = tuple(
+            DUserEquipment(d.request_data_rate, d.candidate_set, d.coordinate) for d in d_profiles)
+
+        # noinspection PyTypeChecker
+        for ue in (e_ue_list + g_ue_list + d_ue_list):
+            ue.register_nb(e_nb, g_nb)
+
+        # tmp: use last (lowest latency) numerology in candidate set
+        for g_ue in g_ue_list:
+            g_ue.numerology_in_use = g_ue.candidate_set[-1]
+        for d_ue in d_ue_list:
+            d_ue.numerology_in_use = d_ue.candidate_set[-1]
+
+        return g_ue_list, d_ue_list, e_ue_list
 
     def deploy_ue(self, areas: Tuple[CircularRegion, ...]):
         assert areas, 'No input areas.'
