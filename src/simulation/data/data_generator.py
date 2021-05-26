@@ -1,15 +1,10 @@
+import json
 import os
-import pickle
 import random
 from typing import Dict, Tuple
 
-from src.channel_model.sinr import ChannelModel
-from src.resource_allocation.ds.cochannel import cochannel
-from src.resource_allocation.ds.eutran import ENodeB, EUserEquipment
-from src.resource_allocation.ds.ngran import DUserEquipment, GNodeB, GUserEquipment
-from src.resource_allocation.ds.noma import setup_noma
-from src.resource_allocation.ds.util_enum import LTEResourceBlock, Numerology
-from src.resource_allocation.ds.util_type import CircularRegion
+from src.resource_allocation.ds.util_enum import LTEResourceBlock, Numerology, UEType
+from src.resource_allocation.ds.util_type import CircularRegion, Coordinate
 from src.simulation.data.deployment import Deploy
 from src.simulation.data.util_type import HotSpot, UEProfiles
 
@@ -76,80 +71,92 @@ class DataGenerator:
         self.gen_txt_parameter()
 
     def gen_one_data(self, iter_idx: int):
-        e_nb, g_nb = self.setup_nb()
+        parameter: Dict = {}
 
-        cochannel_index: Dict = cochannel(e_nb, g_nb, cochannel_bandwidth=self.cochannel_bandwidth)
-        channel_model: ChannelModel = ChannelModel(cochannel_index)
+        e_nb, g_nb = self.nb_parameter()
+        parameter.update(e_nb)
+        parameter.update(g_nb)
 
-        sec_to_frame: int = 1000 // (e_nb.frame.frame_time // 8)
-        g_ue_list, d_ue_list, e_ue_list = self.setup_ue(e_nb, g_nb, sec_to_frame)
+        parameter['cochannel_bandwidth'] = self.cochannel_bandwidth
 
-        worsen_threshold: float = self.worsen_threshold / sec_to_frame  # bit per frame
+        g_ue_list, d_ue_list, e_ue_list = self.setup_ue()
+        parameter.update(g_ue_list)
+        parameter.update(d_ue_list)
+        parameter.update(e_ue_list)
 
-        # Output
-        with open(f'{self.output_file_path}/{str(iter_idx)}.P', "wb") as file_of_frame_and_ue:
-            pickle.dump(
-                [g_nb, e_nb, channel_model,
-                 g_ue_list, d_ue_list, e_ue_list, self.gue_qos_range, self.eue_qos_range,
-                 self.inr_discount, worsen_threshold],
-                file_of_frame_and_ue)
+        parameter['gue_qos_range'] = self.gue_qos_range
+        parameter['eue_qos_range'] = self.eue_qos_range
+        parameter['inr_discount'] = self.inr_discount
+        parameter['worsen_threshold'] = self.worsen_threshold
 
-    def setup_nb(self) -> Tuple[ENodeB, GNodeB]:
-        e_nb: ENodeB = ENodeB(
-            region=CircularRegion(x=self.enb_coordinate[0], y=self.enb_coordinate[1], radius=self.enb_radius),
-            power_tx=self.enb_tx_power, frame_freq=self.enb_freq, frame_time=self.enb_time)
-        g_nb: GNodeB = GNodeB(
-            region=CircularRegion(x=self.gnb_coordinate[0], y=self.gnb_coordinate[1], radius=self.gnb_radius),
-            power_tx=self.gnb_tx_power, frame_freq=self.gnb_freq, frame_time=self.gnb_time,
-            frame_max_layer=self.gnb_layer)
-        setup_noma([g_nb])
+        with open(f'{self.output_file_path}/{str(iter_idx)}.json', 'w') as f:
+            json.dump(parameter, f)
+
+    def nb_parameter(self) -> Tuple[Dict, Dict]:
+        e_nb: Dict = {'e_nb': {
+            'coordinate': self.enb_coordinate,
+            'radius': self.enb_radius,
+            'tx_power': self.enb_tx_power,
+            'freq': self.enb_freq,
+            'time': self.enb_time
+        }}
+        g_nb: Dict = {'g_nb': {
+            'coordinate': self.gnb_coordinate,
+            'radius': self.gnb_radius,
+            'tx_power': self.gnb_tx_power,
+            'freq': self.gnb_freq,
+            'time': self.gnb_time,
+            'layer': self.gnb_layer
+        }}
         return e_nb, g_nb
 
-    def setup_ue(self, e_nb: ENodeB, g_nb: GNodeB, sec_to_frame: int
-                 ) -> Tuple[Tuple[GUserEquipment], Tuple[DUserEquipment], Tuple[EUserEquipment]]:
-        coordinates_sc, coordinates_dc = self.deploy_ue((e_nb.region, g_nb.region))
+    def setup_ue(self) -> Tuple[Dict, Dict, Dict]:
+        sec_to_frame: int = 1000 // (self.enb_time // 8)
+        enb_region: CircularRegion = CircularRegion(x=self.enb_coordinate[0], y=self.enb_coordinate[1],
+                                                    radius=self.enb_radius)
+        gnb_region: CircularRegion = CircularRegion(x=self.gnb_coordinate[0], y=self.gnb_coordinate[1],
+                                                    radius=self.gnb_radius)
+
+        coordinates_sc, coordinates_dc = self.deploy_ue((enb_region, gnb_region))
         self.eue_num: int = len(coordinates_sc[0])
         self.gue_num: int = len(coordinates_sc[1])
         self.due_num: int = len(coordinates_dc)
-        e_profiles: UEProfiles = UEProfiles(
-            self.eue_num,
-            tuple(random.randrange(self.eue_qos_range[0] // sec_to_frame, self.eue_qos_range[1] // sec_to_frame + 1,
-                                   10_000 // sec_to_frame) for _ in range(self.eue_num)),
-            LTEResourceBlock.gen_candidate_set() * self.eue_num,  # dummy (unused)
-            coordinates_sc[0]
-        )
-        g_profiles: UEProfiles = UEProfiles(
-            self.gue_num,
-            tuple(random.randrange(self.gue_qos_range[0] // sec_to_frame, self.gue_qos_range[1] // sec_to_frame + 1,
-                                   10_000 // sec_to_frame) for _ in range(self.gue_num)),
-            tuple(Numerology.gen_candidate_set(random_pick=True) for _ in range(self.gue_num)),
-            coordinates_sc[1]
-        )
-        d_profiles: UEProfiles = UEProfiles(
-            self.due_num,
-            tuple(random.randrange(self.due_qos_range[0] // sec_to_frame, self.due_qos_range[1] // sec_to_frame + 1,
-                                   10_000 // sec_to_frame) for _ in range(self.due_num)),
-            tuple(Numerology.gen_candidate_set(random_pick=True) for _ in range(self.due_num)),
-            coordinates_dc
-        )
-        e_ue_list: Tuple[EUserEquipment] = tuple(
-            EUserEquipment(e.request_data_rate, e.candidate_set, e.coordinate) for e in e_profiles)
-        g_ue_list: Tuple[GUserEquipment] = tuple(
-            GUserEquipment(g.request_data_rate, g.candidate_set, g.coordinate) for g in g_profiles)
-        d_ue_list: Tuple[DUserEquipment] = tuple(
-            DUserEquipment(d.request_data_rate, d.candidate_set, d.coordinate) for d in d_profiles)
+        e_profiles: UEProfiles = self.gen_ue_profile(
+            UEType.E, self.eue_num, self.eue_qos_range, coordinates_sc[0], sec_to_frame)
+        g_profiles: UEProfiles = self.gen_ue_profile(
+            UEType.G, self.gue_num, self.gue_qos_range, coordinates_sc[1], sec_to_frame)
+        d_profiles: UEProfiles = self.gen_ue_profile(
+            UEType.D, self.due_num, self.due_qos_range, coordinates_dc, sec_to_frame)
 
-        # noinspection PyTypeChecker
-        for ue in (e_ue_list + g_ue_list + d_ue_list):
-            ue.register_nb(e_nb, g_nb)
-
-        # tmp: use last (lowest latency) numerology in candidate set
-        for g_ue in g_ue_list:
-            g_ue.numerology_in_use = g_ue.candidate_set[-1]
-        for d_ue in d_ue_list:
-            d_ue.numerology_in_use = d_ue.candidate_set[-1]
+        e_ue_list: Dict = {'e_ue_list': self.convert_ue_profile_to_json(e_profiles)}
+        g_ue_list: Dict = {'g_ue_list': self.convert_ue_profile_to_json(g_profiles)}
+        d_ue_list: Dict = {'d_ue_list': self.convert_ue_profile_to_json(d_profiles)}
 
         return g_ue_list, d_ue_list, e_ue_list
+
+    @staticmethod
+    def gen_ue_profile(ue_type: UEType, ue_num: int, qos_range: Tuple[int, int], coordinates: Tuple[Coordinate, ...],
+                       sec_to_frame: int) -> UEProfiles:
+        return UEProfiles(
+            ue_num,
+            tuple(
+                random.randrange(qos_range[0] // sec_to_frame, qos_range[1] // sec_to_frame + 1, 10_000 // sec_to_frame)
+                for _ in range(ue_num)),
+            tuple(LTEResourceBlock.gen_candidate_set() for _ in range(ue_num)) if ue_type == UEType.E else (
+                tuple(Numerology.gen_candidate_set(random_pick=True) for _ in range(ue_num))),
+            coordinates
+        )
+
+    @staticmethod
+    def convert_ue_profile_to_json(ue_profile: UEProfiles) -> Dict:
+        profile_json: Dict = {}
+        for i, p in enumerate(ue_profile):
+            profile_json[i] = {}
+            profile_json[i]['request_data_rate'] = p.request_data_rate
+            profile_json[i]['candidate_set'] = tuple(c.name for c in p.candidate_set)
+            profile_json[i]['coordinate_x'] = p.coordinate.x
+            profile_json[i]['coordinate_y'] = p.coordinate.y
+        return profile_json
 
     def deploy_ue(self, areas: Tuple[CircularRegion, ...]):
         assert areas, 'No input areas.'

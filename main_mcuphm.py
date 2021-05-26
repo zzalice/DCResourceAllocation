@@ -1,11 +1,11 @@
 import os
-import pickle
 import sys
 from typing import List, Tuple, Union
 
 from src.resource_allocation.algo.algo_mcuphm import McupHm
 from src.resource_allocation.ds.eutran import ENodeB, EUserEquipment
 from src.resource_allocation.ds.ngran import DUserEquipment, GNodeB, GUserEquipment
+from src.simulation.data.data_loader import DataLoader
 
 
 def mcup_hm(g_nb: GNodeB, e_nb: ENodeB, g_ue_list: Tuple[GUserEquipment, ...], d_ue_list: Tuple[DUserEquipment, ...],
@@ -49,13 +49,13 @@ def mcup_hm(g_nb: GNodeB, e_nb: ENodeB, g_ue_list: Tuple[GUserEquipment, ...], d
 
 
 def main(data_set: str):
-    with open(f'{os.path.dirname(__file__)}/src/simulation/data/{data_set}.P', "rb") as file:
-        g_nb, e_nb, _, g_ue_list, d_ue_list, e_ue_list, gue_qos, eue_qos, _, _ = pickle.load(file)
+    data_set_file_path = f'{os.path.dirname(__file__)}/src/simulation/data/{data_set}.json'
+    g_nb, e_nb, _, g_ue_list, d_ue_list, e_ue_list, gue_qos, eue_qos, _, _ = DataLoader().run(data_set_file_path)
     mcup_hm(g_nb, e_nb, g_ue_list, d_ue_list, e_ue_list, gue_qos, eue_qos)
 
 
 if __name__ == '__main__':
-    file_path: str = '0409-143305test_mcup/3layer/0'
+    file_path: str = '0526-180322L_/4layer/2'
 
     if len(sys.argv) == 2:
         file_path: str = sys.argv[1]

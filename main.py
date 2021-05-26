@@ -1,5 +1,4 @@
 import os
-import pickle
 import sys
 from datetime import datetime
 from typing import List, Tuple
@@ -11,22 +10,21 @@ from src.resource_allocation.algo.utils import divide_ue
 from src.resource_allocation.ds.eutran import ENodeB, EUserEquipment
 from src.resource_allocation.ds.ngran import DUserEquipment, GNodeB, GUserEquipment
 from src.resource_allocation.ds.zone import Zone, ZoneGroup
+from src.simulation.data.data_loader import DataLoader
 from utils.pickle_generator import visualize_phase_uncategorized_ue
 
 
 def dc_resource_allocation(data_set, visualize_the_algo: bool = False) -> Tuple[
-    GNodeB, ENodeB, List[DUserEquipment], List[GUserEquipment], List[EUserEquipment]]:
+    GNodeB, ENodeB, Tuple[DUserEquipment, ...], Tuple[GUserEquipment, ...], Tuple[EUserEquipment, ...]]:
     dirname = os.path.dirname(__file__)
     file_name_vis = "vis_" + datetime.today().strftime('%Y%m%d') + ".P"
     visualization_file_path = os.path.join(dirname, 'utils/frame_visualizer', file_name_vis)
 
-    data_set_file_path = os.path.join(dirname, 'src/simulation/data', data_set + '.P')
-    with open(data_set_file_path, "rb") as file:
-        g_nb, e_nb, channel_model, g_ue_list, d_ue_list, e_ue_list, _, _, inr_discount, worsen_threshold = pickle.load(
-            file)
+    data_set_file_path = os.path.join(dirname, 'src/simulation/data', data_set + '.json')
+    g_nb, e_nb, channel_model, g_ue_list, d_ue_list, e_ue_list, _, _, inr_discount, worsen_threshold = DataLoader().run(
+        data_set_file_path)
 
     # gNB phase 1
-    # noinspection PyTypeChecker
     g_phase1: Phase1 = Phase1(d_ue_list + g_ue_list)
     g_phase1.calc_inr(inr_discount)
     g_phase1.select_init_numerology()
@@ -45,7 +43,6 @@ def dc_resource_allocation(data_set, visualize_the_algo: bool = False) -> Tuple[
     _, d_ue_list_unallocated = divide_ue(d_ue_list, is_assert=False)
 
     # eNB phase 1
-    # noinspection PyTypeChecker
     e_phase1: Phase1 = Phase1(d_ue_list_unallocated + e_ue_list)
     e_zone_fit, e_zone_undersized = e_phase1.form_zones(e_nb)
     e_zone_merged: Tuple[Zone, ...] = e_phase1.merge_zone(e_zone_undersized)
@@ -90,7 +87,7 @@ def dc_resource_allocation(data_set, visualize_the_algo: bool = False) -> Tuple[
 
 
 if __name__ == '__main__':
-    file_path: str = '0513-010046L_/5layer/0'
+    file_path: str = '0526-180322L_/4layer/2'
     if len(sys.argv) == 2:
         file_path: str = sys.argv[1]
     dc_resource_allocation(data_set=file_path, visualize_the_algo=True)

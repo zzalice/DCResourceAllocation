@@ -20,7 +20,7 @@ if __name__ == '__main__':
     MCS parameter can be set in resource_allocation/ds/util_enum.py
     and record in IterateAlgo output pickle.
     """
-    f_data: str = '0513-010046L_'  # <-- change
+    f_data: str = '0526-180322L_'  # <-- change
     f_mcs: str = 'gNBCQI1CQI15_eNBCQI1CQI15'  # <-- change
     i: int = 100  # <-- change
     algo: Tuple[str, ...] = ('DC-RA', 'FRSA', 'MSEMA', 'Baseline')  # <-- change

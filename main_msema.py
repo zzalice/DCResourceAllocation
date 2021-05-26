@@ -1,7 +1,6 @@
 import os
-import pickle
 from datetime import datetime
-from typing import List, Tuple
+from typing import Tuple
 
 from main_mcuphm import mcup_hm
 from src.resource_allocation.algo.algo_msema import Msema
@@ -9,18 +8,19 @@ from src.resource_allocation.algo.new_ue_list import SimpleDC
 from src.resource_allocation.algo.utils import divide_ue
 from src.resource_allocation.ds.eutran import ENodeB, EUserEquipment
 from src.resource_allocation.ds.ngran import DUserEquipment, GNodeB, GUserEquipment
+from src.simulation.data.data_loader import DataLoader
 from utils.pickle_generator import visualize_phase_uncategorized_ue
 
 
 def msema_rb_ra(data_set: str, visualize_the_algo: bool = False) -> Tuple[
-                                    GNodeB, ENodeB, List[DUserEquipment], List[GUserEquipment], List[EUserEquipment]]:
+    GNodeB, ENodeB, Tuple[DUserEquipment, ...], Tuple[GUserEquipment, ...], Tuple[EUserEquipment, ...]]:
     dirname = os.path.dirname(__file__)
     file_name_vis = "vis_msema_" + datetime.today().strftime('%Y%m%d') + ".P"
     visualization_file_path = os.path.join(dirname, 'utils/frame_visualizer', file_name_vis)
 
-    data_set_file_path = os.path.join(dirname, 'src/simulation/data', data_set + '.P')
-    with open(data_set_file_path, "rb") as file:
-        g_nb, e_nb, channel_model, g_ue_list, d_ue_list, e_ue_list, gue_qos, eue_qos, _, _ = pickle.load(file)
+    data_set_file_path = os.path.join(dirname, 'src/simulation/data', data_set + '.json')
+    g_nb, e_nb, channel_model, g_ue_list, d_ue_list, e_ue_list, gue_qos, eue_qos, _, _ = DataLoader().run(
+        data_set_file_path)
 
     # main
     # DC user association
