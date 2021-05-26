@@ -58,11 +58,6 @@ class Phase3(Undo):
                         ue_allocated.append(ue)
         self.adjust_mcs_allocated_ues(ue_allocated, to_undo=False)  # only the UE in this BS
 
-        # ue cut
-        for ue in ue_allocated:
-            if ue.is_allocated:
-                self.ue_cut(ue, nb.nb_type)
-
     @staticmethod
     def marking_occupied_position(rb_list: List[ResourceBlock], position: Dict[Numerology, LappingPositionList]):
         for rb in rb_list:
