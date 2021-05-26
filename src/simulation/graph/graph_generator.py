@@ -62,14 +62,14 @@ class GraphGenerator:
                 self.collect_sys_throughput(algo_result, kwargs['collect_unallo_ue'])
             except KeyError:
                 self.collect_sys_throughput(algo_result)
+        elif ' - used percentage' in self.graph_type:
+            self.collect_used_percentage(algo_result)
         elif ' - allocated ue' in self.graph_type:
             self.collect_allocated_ue(algo_result)
         elif ' - INI' in self.graph_type:
             self.collect_ini(algo_result)
         elif ' - fairness' in self.graph_type:
             self.collect_fairness(algo_result)
-        elif self.graph_type == 'layer - used percentage':
-            self.collect_used_percentage(algo_result)
         elif self.graph_type == 'layer - deployment':
             self.collect_deployment(algo_result)
         elif self.graph_type == 'NOMA':
@@ -85,14 +85,14 @@ class GraphGenerator:
                 self.gen_sys_throughput(file_path, kwargs['collect_unallo_ue'])
             except KeyError:
                 self.gen_sys_throughput(file_path)
+        elif 'used percentage' in self.graph_type:
+            self.gen_used_percentage(file_path)
         elif ' - allocated ue' in self.graph_type:
             self.gen_allocated_ue(file_path)
         elif ' - INI' in self.graph_type:
             self.gen_ini(file_path)
         elif ' - fairness' in self.graph_type:
             self.gen_fairness(file_path)
-        elif self.graph_type == 'layer - used percentage':
-            self.gen_used_percentage(file_path)
         elif self.graph_type == 'layer - deployment':
             self.gen_deployment(file_path)
         elif self.graph_type == 'NOMA':
@@ -162,7 +162,7 @@ class GraphGenerator:
     # ==================================================================================================================
     def collect_used_percentage(self, result: RESULT):
         # collect_data: Dict[str, Dict[str, [int,        int]]
-        #                    layer     algo  used BU     number of BU in gNBs
+        #                    topic     algo  used BU     number of BU in gNBs
         topic, algo = self._topic_and_algo(result)
         self.first_data(topic)
         gnb: Dict = result[topic][algo][0]
@@ -185,9 +185,9 @@ class GraphGenerator:
         #                   algo      percentage
         #              e.g. {'DC-RA': [0.98, 0.55, 0.32], 'Baseline': [0.97, 0.44, 0.22]}
         percentages: Dict[str, List[float]] = {algo: [] for algo in self.algorithm}
-        for layer in self.topic_parameter_str:
+        for topic in self.topic_parameter_str:
             for algo in self.algorithm:
-                percent: float = self.data[layer][algo][0] / self.data[layer][algo][1]
+                percent: float = self.data[topic][algo][0] / self.data[topic][algo][1]
                 assert 0.0 <= percent <= 1.0, 'Error in counting used BU.'
                 percentages[algo].append(percent)
 
