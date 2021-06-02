@@ -76,23 +76,17 @@ class Phase3(Undo):
         system_throughput: float = calc_system_throughput(tuple(allocated_ue))
         while (unallocated_ue or unallocated_next_round) and spaces:
             ue: UE = unallocated_ue.pop(0)
-            filtered_space: Tuple[Space] = self.filter_space(
-                spaces, nb.nb_type, ue.numerology_in_use, ue.request_data_rate)
-            is_allocated: bool = False
-            for space in filtered_space:
-                # from utils.assertion import check_undo_copy
-                # copy_ue = check_undo_copy(ue_allocated)
-                is_allocated: bool = self.allocate(ue, (space,), nb.nb_type, allocated_ue, worsen_threshold)
-                if is_allocated:
-                    spaces: Tuple[Space] = self.update_empty_space(nb)
-                    self.purge_undo()
-                    break
-                else:
-                    self.undo()
-                    # from utils.assertion import check_undo_compare
-                    # check_undo_compare(ue_allocated, copy_ue)
-                # from utils.assertion import assert_is_empty
-                # assert_is_empty(spaces, ue, is_allocated)
+            filtered_space: Tuple[Space] = self.filter_space(spaces, nb.nb_type, ue.numerology_in_use)
+            if not filtered_space:  # no suitable space for ue
+                continue
+
+            is_allocated: bool = self.allocate(ue, filtered_space, nb.nb_type, allocated_ue, worsen_threshold)
+            if is_allocated:
+                spaces: Tuple[Space] = self.update_empty_space(nb)
+                self.purge_undo()
+            else:
+                self.undo()
+
             (allocated_ue if is_allocated else unallocated_next_round).append(ue)
 
             if not unallocated_ue:  # is empty  TODO: similar to AllocateUEList
@@ -108,7 +102,7 @@ class Phase3(Undo):
                  ue_allocated: List[UE], worsen_threshold: float) -> bool:
         # allocate new ue
         allocate_ue: AllocateUE = AllocateUE(ue, spaces, self.channel_model)
-        is_allocated: bool = allocate_ue.allocate()
+        is_allocated: bool = allocate_ue.allocate(to_allow_non_continuous=True)
         self.append_undo(lambda a_u=allocate_ue: a_u.undo(), lambda a_u=allocate_ue: a_u.purge_undo())
 
         if is_allocated:
@@ -158,14 +152,13 @@ class Phase3(Undo):
 
     @staticmethod
     def filter_space(spaces: Tuple[Space], nb_type: NodeBType, rb_type: Union[Numerology, LTEResourceBlock],
-                     ue_request: float) -> Tuple[Space]:
+                     ) -> Tuple[Space]:
         if nb_type == NodeBType.E:
             rb_type: LTEResourceBlock = LTEResourceBlock.E  # TODO: refactor or redesign
 
         filter_spaces: List[Space] = list(spaces)
         for space in spaces:
-            best_mcs: Union[G_MCS, E_MCS] = (G_MCS if nb_type == NodeBType.G else E_MCS).get_best()
-            if not space.request_fits(ue_request, rb_type, best_mcs):
+            if rb_type not in space.rb_type:
                 filter_spaces.remove(space)
         return tuple(filter_spaces)
 
@@ -252,7 +245,7 @@ class CrossSpace(Undo):
             if spaces:
                 for space in spaces:
                     allocate_ue = AllocateUE(self.ue, (space,), self.channel_model)
-                    is_succeed: bool = allocate_ue.allocate()
+                    is_succeed: bool = allocate_ue.allocate(to_allow_non_continuous=True)
                     if is_succeed and (another_nb_info.mcs.efficiency > origin_mcs.efficiency):
                         # resource efficiency is improved
                         self.append_undo(lambda a_u=allocate_ue: a_u.undo(), lambda a_u=allocate_ue: a_u.purge_undo())
@@ -296,7 +289,7 @@ class CrossSpace(Undo):
         spaces: Tuple[Space] = tuple(space for layer in another_nb_info.nb.frame.layer for space in empty_space(layer))
         request: float = self.ue.request_data_rate - self.ue.calc_throughput()
         assert request > 0.0, 'No need to request more resource.'
-        return Phase3.filter_space(spaces, another_nb_info.nb_type, self.ue.numerology_in_use, request)
+        return Phase3.filter_space(spaces, another_nb_info.nb_type, self.ue.numerology_in_use)
 
     def adjust_mcs(self):
         adjust_mcs: AdjustMCS = AdjustMCS()
