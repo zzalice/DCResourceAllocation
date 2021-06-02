@@ -44,7 +44,7 @@ if __name__ == '__main__':
     date: str = datetime.today().strftime("%m%d-%H%M%S")
     output_folder: str = f'{date}UE_'  # <--- change
 
-    para = {'iteration': 100,
+    para = {'iteration': 500,
             'due_qos': [22_000, 100_000],
             'gue_qos': [22_000, 100_000],
             'eue_qos': [12_000, 60_000],
