@@ -40,7 +40,7 @@ class AllocateUEList(Undo):
         spaces: Tuple[Space] = self.update_empty_space(nb=self.nb)
         self.unallocated_next_round: List[UE] = []
         system_throughput: float = calc_system_throughput(tuple(self.allocated_ue))
-        while (self.unallocated_ue or self.unallocated_next_round) and spaces:
+        while self.unallocated_ue and spaces:
             # there are unallocated UE and empty space
             ue: UE = self.unallocated_ue.pop(0)
             is_allocated: bool = False

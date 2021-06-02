@@ -74,7 +74,7 @@ class Phase3(Undo):
         allocated_ue: List[UE] = list(allocated_ue)
         spaces: Tuple[Space] = self.update_empty_space(nb)
         system_throughput: float = calc_system_throughput(tuple(allocated_ue))
-        while (unallocated_ue or unallocated_next_round) and spaces:
+        while unallocated_ue and spaces:
             ue: UE = unallocated_ue.pop(0)
             filtered_space: Tuple[Space] = self.filter_space(spaces, nb.nb_type, ue.numerology_in_use)
             if not filtered_space:  # no suitable space for ue
