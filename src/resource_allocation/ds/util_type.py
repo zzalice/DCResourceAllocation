@@ -47,7 +47,7 @@ class CircularRegion:
         return included
 
     def area_overlapped(self, target: CircularRegion) -> bool:
-        return Coordinate.calc_distance(self, target) <= self.radius
+        return Coordinate.calc_distance(self, target) < self.radius + target.radius
 
 
 @dataclasses.dataclass
