@@ -28,7 +28,7 @@ if __name__ == '__main__':
     to_start_over: bool = False  # <-- change
 
     # ---Graphs for layer---
-    l: List[int] = [1, 2, 3, 4, 5]  # <-- change
+    l = [1, 2, 3, 4, 5]  # <-- change
     # IterateAlgo(iteration=i, algorithm=algo, folder_data=f_data, to_start_over=to_start_over).iter_layer(l)
     # GraphGenerator(graph_type='layer - throughput', topic_parameter=l, iteration=i, algorithm=algo, folder_result=(f'{f_data}/{f_mcs}',))
     # GraphGenerator(graph_type='layer - used percentage', topic_parameter=l, iteration=i, algorithm=algo, folder_result=(f'{f_data}/{f_mcs}',))
@@ -38,13 +38,13 @@ if __name__ == '__main__':
     # GraphGenerator(graph_type='layer - deployment', topic_parameter=l, iteration=i, algorithm=algo, folder_result=(f'{f_data}/{f_mcs}',))
 
     # ---Graphs for ue---
-    ut: List[int] = [j for j in range(300, 901, 100)]  # <-- change
+    ut = [j for j in range(300, 901, 100)]  # <-- change
     # IterateAlgo(iteration=i, algorithm=algo, folder_data=f_data, to_start_over=to_start_over).iter_ue(ut)
     # GraphGenerator(graph_type='ue - throughput', collect_unallo_ue=False, topic_parameter=ut, iteration=i, algorithm=algo, folder_result=(f'{f_data}/{f_mcs}',))
     # GraphGenerator(graph_type='ue - fairness', topic_parameter=ut, iteration=i, algorithm=algo, folder_result=(f'{f_data}/{f_mcs}',))
 
     # ---Graphs for due to all---
-    p_due: List[int] = [j for j in range(10, 91, 10)]  # <-- change
+    p_due = [j for j in range(10, 91, 10)]  # <-- change
     # IterateAlgo(iteration=i, algorithm=algo, folder_data=f_data, to_start_over=to_start_over).iter_due_to_all(p_due)
     # GraphGenerator(graph_type='proportion due - throughput', topic_parameter=p_due, iteration=i, algorithm=algo, folder_result=(f'{f_data}/{f_mcs}',))
     # GraphGenerator(graph_type='proportion due - fairness', topic_parameter=p_due, iteration=i, algorithm=algo, folder_result=(f'{f_data}/{f_mcs}',))
@@ -58,16 +58,21 @@ if __name__ == '__main__':
     # GraphGenerator(graph_type='gnb bw - fairness', topic_parameter=gnb_bw, iteration=i, algorithm=algo, folder_result=(f'{f_data}/{f_mcs}',))
 
     # ---Graphs for co-channel bandwidth---
-    cochannel_bw = [j for j in range(5, 51, 5)]  # <-- change
-    cochannel_bw = [GnbMhzBuConvertor.mhz_to_bu(i) for i in cochannel_bw]
-    # IterateAlgo(iteration=i, algorithm=algo, folder_data=f_data, to_start_over=to_start_over).iter_cochannel(cochannel_bw)
-    # GraphGenerator(graph_type='cochannel bw - throughput', topic_parameter=cochannel_bw, iteration=i, algorithm=algo, folder_result=(f'{f_data}/{f_mcs}',))
-    # GraphGenerator(graph_type='cochannel bw - used percentage', topic_parameter=cochannel_bw, iteration=i, algorithm=algo, folder_result=(f'{f_data}/{f_mcs}',))
-    # GraphGenerator(graph_type='cochannel bw - allocated ue', topic_parameter=cochannel_bw, iteration=i, algorithm=algo, folder_result=(f'{f_data}/{f_mcs}',))
-    # GraphGenerator(graph_type='cochannel bw - fairness', topic_parameter=cochannel_bw, iteration=i, algorithm=algo, folder_result=(f'{f_data}/{f_mcs}',))
+    co_bw = [j for j in range(5, 51, 5)]  # <-- change
+    co_bw = [GnbMhzBuConvertor.mhz_to_bu(i) for i in co_bw]
+    # IterateAlgo(iteration=i, algorithm=algo, folder_data=f_data, to_start_over=to_start_over).iter_cochannel(co_bw)
+    # GraphGenerator(graph_type='cochannel bw - throughput', topic_parameter=co_bw, iteration=i, algorithm=algo, folder_result=(f'{f_data}/{f_mcs}',))
+    # GraphGenerator(graph_type='cochannel bw - used percentage', topic_parameter=co_bw, iteration=i, algorithm=algo, folder_result=(f'{f_data}/{f_mcs}',))
+    # GraphGenerator(graph_type='cochannel bw - allocated ue', topic_parameter=co_bw, iteration=i, algorithm=algo, folder_result=(f'{f_data}/{f_mcs}',))
+    # GraphGenerator(graph_type='cochannel bw - fairness', topic_parameter=co_bw, iteration=i, algorithm=algo, folder_result=(f'{f_data}/{f_mcs}',))
 
     # ---Graphs for CQI/NOMA---            # FIXME: add topic_parameter
     l_or_u: int = 0  # 0 for layer, 1 for ue     <-- change
     layer_or_ue: List[str] = layer_or_ue(l_or_u, l, ut)
     # GraphGenerator(graph_type='NOMA', layer_or_ue=layer_or_ue, iteration=i, algorithm=algo, folder_result=(f'{f_data}/{f_mcs}',))
     # GraphGenerator(graph_type='CQI', layer_or_ue=layer_or_ue, iteration=i, algorithm=algo, folder_result=(f'{f_data}/{f_mcs}',))
+
+    # ---Graph for QoS---
+    t_p: List[int] = l  # <-- change  l, ut, p_due, gnb_bw, co_bw
+    topic: str = 'layer'  # <-- change  'layer', 'ue', 'proportion due', 'gnb bw', 'cochannel bw'
+    # GraphGenerator(graph_type=f'{topic} - QoS', topic_parameter=t_p, iteration=i, algorithm=algo, folder_result=(f'{f_data}/{f_mcs}',))

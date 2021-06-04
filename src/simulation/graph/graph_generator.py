@@ -76,6 +76,8 @@ class GraphGenerator:
             self.collect_noma(kwargs['layer_or_ue'], kwargs['algorithm'], algo_result)
         elif self.graph_type == 'CQI':
             self.collect_ue_cqi(kwargs['layer_or_ue'], kwargs['algorithm'], algo_result, file_path)
+        elif 'QoS' in self.graph_type:
+            self.collect_qos(algo_result)
         else:
             raise AssertionError('Undefined graph type.')
 
@@ -99,6 +101,8 @@ class GraphGenerator:
             self.gen_noma_overlap_status(kwargs['algorithm'], file_path)
         elif self.graph_type == 'CQI':
             self.gen_ue_cqi(file_path)
+        elif 'QoS' in self.graph_type:
+            self.gen_qos(file_path)
         else:
             raise AssertionError('Undefined graph type.')
 
@@ -562,6 +566,82 @@ class GraphGenerator:
         y_label: str = 'The Average Number of BU with ICI'
         bar_chart('', x_label, scale_x, y_label, avg_ini,
                   output_file_path, {'iteration': self.iteration})
+
+    # ==================================================================================================================
+    def collect_qos(self, result: RESULT):
+        # collect_data: Dict[str, Dict[str, List[float]]]
+        #                    topic     algo      ue request
+        topic, algo = self._topic_and_algo(result)
+        self.first_data(topic)
+
+        try:
+            self.collect_ue_qos(result[topic][algo][2], result[topic][algo][3], result[topic][algo][4],
+                                self.data[topic][algo])
+        except KeyError:
+            self.data[topic][algo] = {'dUE_in_gNB': [], 'dUE_in_eNB': [], 'dUE_cross_BS': [], 'eUE': [], 'gUE': []}
+            self.collect_ue_qos(result[topic][algo][2], result[topic][algo][3], result[topic][algo][4],
+                                self.data[topic][algo])
+
+    @staticmethod
+    def collect_ue_qos(due_list: List[Dict], gue_list: List[Dict], eue_list: List[Dict], collect_data):
+        for due in due_list:
+            if due['cross_nb']:
+                collect_data['dUE_cross_BS'].append(due['request_data_rate'])
+            elif due['gnb_info']['mcs']:
+                assert due['is_allocated'], 'Algorithm error.'
+                collect_data['dUE_in_gNB'].append(due['request_data_rate'])
+            elif due['enb_info']['mcs']:
+                assert due['is_allocated'], 'Algorithm error.'
+                collect_data['dUE_in_eNB'].append(due['request_data_rate'])
+        for gue in gue_list:
+            if gue['is_allocated']:
+                collect_data['gUE'].append(gue['request_data_rate'])
+        for eue in eue_list:
+            if eue['is_allocated']:
+                collect_data['eUE'].append(eue['request_data_rate'])
+
+    def gen_qos(self, output_file_path: str):
+        section: int = 10
+
+        avg_num_ue: Dict[str, List[float]] = {algo: [] for algo in self.algorithm}
+        first_time: bool = True
+        qos_bound = []
+        scale_x = []
+        for t in self.topic_parameter_str:
+            for algo in self.algorithm:
+                ue_list = self.data[t][algo]['dUE_cross_BS'] + self.data[t][algo]['dUE_in_gNB'] + self.data[t][algo][
+                    'dUE_in_eNB'] + self.data[t][algo]['gUE'] + self.data[t][algo]['eUE']
+                ue_list.sort()   # FIXME eNB/gNB/dUE
+
+                if first_time:
+                    first_time: bool = False
+                    qos_bound, scale_x = self.qos_scale(ue_list[0], ue_list[-1], section)
+
+                avg_num_ue[algo] = [0 for _ in range(section)]
+                bound_index: int = 0
+                for ue_qos in ue_list:
+                    if bound_index != section - 1 and ue_qos > qos_bound[bound_index]:
+                        bound_index += 1
+                    avg_num_ue[algo][bound_index] += 1
+
+                for i in range(section):
+                    avg_num_ue[algo][i] = avg_num_ue[algo][i] / self.iteration
+        bar_chart('', 'QoS range', scale_x, 'The number of allocated UE', avg_num_ue,
+                  output_file_path, {'iteration': self.iteration})
+
+    @staticmethod
+    def qos_scale(min_qos: float, max_qos: float, section: int) -> Tuple[List[float], List[str]]:
+        gap: float = (max_qos - min_qos) / section
+        qos_bound: List[float] = []
+        x_scale: List[str] = []
+        for i in range(1, section):
+            qos_bound.append(min_qos + gap * i)
+            if i == 1:
+                x_scale.append(f'{int(min_qos)}-{int(qos_bound[0])}')
+            else:
+                x_scale.append(f'{int(qos_bound[-2])}-{int(qos_bound[-1])}')
+        x_scale.append(f'{int(qos_bound[-1])}-{int(max_qos)}')
+        return qos_bound, x_scale
 
     # ==================================================================================================================
     def _topic_and_algo(self, result: RESULT) -> Tuple[str, str]:
