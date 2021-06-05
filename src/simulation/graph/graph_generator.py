@@ -7,7 +7,7 @@ from typing import Dict, List, Tuple, Union
 from main_gen_data_bw import GnbMhzBuConvertor
 from src.resource_allocation.algo.utils import bpframe_to_mbps, calc_system_throughput_json, divide_ue_json
 from src.resource_allocation.ds.util_enum import UEType
-from src.simulation.graph.util_graph import bar_chart, bar_chart_grouped_stacked, bar_charts, line_chart, scatter_chart
+from src.simulation.graph.util_graph import bar_chart, bar_chart_grouped_stacked, bar_charts, line_chart, scatter_charts
 from src.simulation.utils import fairness_index_json
 
 """           layer/ue  algo       gNB   eNB   dUE         gUE         eUE"""
@@ -69,7 +69,7 @@ class GraphGenerator:
             self.collect_ini(algo_result)
         elif ' - fairness' in self.graph_type:
             self.collect_fairness(algo_result)
-        elif self.graph_type == 'layer - deployment':
+        elif 'deployment' in self.graph_type:
             self.collect_deployment(algo_result)
         elif self.graph_type == 'NOMA':
             self.collect_noma(kwargs['layer_or_ue'], kwargs['algorithm'], algo_result)
@@ -94,7 +94,7 @@ class GraphGenerator:
             self.gen_ini(file_path)
         elif ' - fairness' in self.graph_type:
             self.gen_fairness(file_path)
-        elif self.graph_type == 'layer - deployment':
+        elif 'deployment' in self.graph_type:
             self.gen_deployment(file_path)
         elif self.graph_type == 'NOMA':
             self.gen_noma_overlap_status(kwargs['algorithm'], file_path)
@@ -203,22 +203,22 @@ class GraphGenerator:
     # ==================================================================================================================
     def collect_deployment(self, result: RESULT):
         # collect_data: Dict[str, Dict[str, Dict[str, Any]]
-        #                    layer     algo      nb   [nb_radius, nb_coordinate]
+        #                    topic     algo      nb   [nb_radius, nb_coordinate]
         #                                        ue   [[ue.x, ue.y], ...]
-        layer, algo = self._topic_and_algo(result)
-        self.first_data(layer)
+        topic, algo = self._topic_and_algo(result)
+        self.first_data(topic)
         try:
-            self.data[layer][algo]['allocated_ue'].extend(
-                self.purge_ue(result[layer][algo][2] + result[layer][algo][3] + result[layer][algo][4]))
+            self.data[topic][algo]['allocated_ue'].extend(
+                self.purge_ue(result[topic][algo][2] + result[topic][algo][3] + result[topic][algo][4]))
         except KeyError:
-            self.data[layer][algo] = {
-                'nb_info': [result[layer][algo][0]['radius'],  # gNB
-                            [result[layer][algo][0]['x'], result[layer][algo][0]['y']],
-                            result[layer][algo][1]['radius'],  # eNB
-                            [result[layer][algo][1]['x'], result[layer][algo][1]['y']]
+            self.data[topic][algo] = {
+                'nb_info': [result[topic][algo][0]['radius'],  # gNB
+                            [result[topic][algo][0]['x'], result[topic][algo][0]['y']],
+                            result[topic][algo][1]['radius'],  # eNB
+                            [result[topic][algo][1]['x'], result[topic][algo][1]['y']]
                             ],
                 'allocated_ue': self.purge_ue(
-                    result[layer][algo][2] + result[layer][algo][3] + result[layer][algo][4])}
+                    result[topic][algo][2] + result[topic][algo][3] + result[topic][algo][4])}
         return True
 
     @staticmethod
@@ -230,21 +230,33 @@ class GraphGenerator:
         return purged_ue
 
     def gen_deployment(self, output_file_path: str):
-        for layer in self.topic_parameter_str:
+        for topic in self.topic_parameter_str:
+            title_list: List[str] = []
+            x_list: List[List[float]] = []
+            y_list: List[List[float]] = []
+            color_list: List[List[str]] = []
+            x_lim_list: List[Tuple[float, float]] = []
+            y_lim_list: List[Tuple[float, float]] = []
             for algo in self.algorithm:
-                gnb_radius: float = self.data[layer][algo]['nb_info'][0]
-                gnb_coordinate: List[float] = self.data[layer][algo]['nb_info'][1]
-                enb_radius: float = self.data[layer][algo]['nb_info'][2]
-                enb_coordinate: List[float] = self.data[layer][algo]['nb_info'][3]
+                gnb_radius: float = self.data[topic][algo]['nb_info'][0]
+                gnb_coordinate: List[float] = self.data[topic][algo]['nb_info'][1]
+                enb_radius: float = self.data[topic][algo]['nb_info'][2]
+                enb_coordinate: List[float] = self.data[topic][algo]['nb_info'][3]
                 x = [gnb_coordinate[0], enb_coordinate[0]]
                 y = [gnb_coordinate[1], enb_coordinate[1]]
                 color = ['r'] * 2
-                x, y, color = self._ue_deployment(self.data[layer][algo]['allocated_ue'], x, y, color)
-                l: str = layer.replace('layer', '')
-                scatter_chart(f'The deployment of {l} layer gNBs, eNBs, and UE({algo})',
-                              x, y, color,
-                              (-enb_radius, gnb_coordinate[0] + gnb_radius), (-enb_radius, enb_radius),
-                              output_file_path, {'iteration': self.iteration})
+                x, y, color = self._ue_deployment(self.data[topic][algo]['allocated_ue'], x, y, color)
+
+                title_list.append(f'{topic}({algo})')
+                x_list.append(x)
+                y_list.append(y)
+                color_list.append(color)
+                x_lim_list.append((-enb_radius, gnb_coordinate[0] + gnb_radius))
+                y_lim_list.append((-enb_radius, enb_radius))
+            scatter_charts(title_list,
+                           x_list, y_list, color_list,
+                           x_lim_list, y_lim_list,
+                           f'deploy_{topic}', output_file_path, {'iteration': self.iteration})
 
     @staticmethod
     def _ue_deployment(all_ue: List[Tuple[UEType, float, float]],

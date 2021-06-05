@@ -80,7 +80,7 @@ def bar_charts(title: List[str],
     if file_name is None:
         file_name = f'{x_label[0]}_{y_label[0]}'
     dump_png_and_json(plt, file_name, output_folder,
-                      [title, x_label, x_tick_labels, y_label, data, output_folder, parameter], bbox_inches='tight')
+                      [title, x_label, x_tick_labels, y_label, data, output_folder, parameter, file_name], bbox_inches='tight')
 
 
 def subplot_bar_chart(ax, title: str, x_label: str, x_tick_labels: List[Any],
@@ -168,19 +168,32 @@ def bar_chart_grouped_stacked(title: str, x_label: str, x_index: List[str],
                       bbox_inches='tight')
 
 
-def scatter_chart(title, x, y, color, x_lim: Tuple[float, float], y_lim: Tuple[float, float],
-                  output_folder: str, parameter: Dict):
+def scatter_charts(title: List[str], x: List[List[float]], y: List[List[float]], color: List[List[str]],
+                   x_lim: List[Tuple[float, float]], y_lim: List[Tuple[float, float]],
+                   file_name: str, output_folder: str, parameter: Dict):
+    col = 2
+
+    fig, axs = plt.subplots(math.ceil(len(title) / col), col)
+    for i in range(len(title)):
+        subplot_scatter_chart(axs[i // col][i % col],
+                              title[i], x[i], y[i], color[i], x_lim[i], y_lim[i], output_folder, parameter)
+
+    fig.tight_layout()
+    fig.set_size_inches(7, 5, forward=True)
+
+    dump_png_and_json(plt, file_name, output_folder,
+                      [title, x, y, color, x_lim, y_lim, file_name, output_folder, parameter], bbox_inches='tight')
+
+
+def subplot_scatter_chart(ax, title: str, x: List[float], y: List[float], color: List[str],
+                          x_lim: Tuple[float, float], y_lim: Tuple[float, float]):
     # https://www.pythonpool.com/matplotlib-circle/
     # https://matplotlib.org/stable/gallery/shapes_and_collections/scatter.html
-    plt.scatter(x, y, c=color)
-    plt.xlim(x_lim[0], x_lim[1])
-    plt.ylim(y_lim[0], y_lim[1])
+    ax.scatter(x, y, c=color, s=[2 for _ in range(len(x))])
+    ax.set_xlim(x_lim[0], x_lim[1])
+    ax.set_ylim(y_lim[0], y_lim[1])
 
-    plt.title(title)
-
-    file_name = f'scatter-{title}'
-    dump_png_and_json(plt, file_name, output_folder,
-                      [title, x, y, color, x_lim, y_lim, output_folder, parameter])
+    ax.set_title(title)
 
 
 def dump_png_and_json(plot, file_name: str, output_folder: str, input_para: List[Any], bbox_inches=None):

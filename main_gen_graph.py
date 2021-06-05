@@ -35,7 +35,6 @@ if __name__ == '__main__':
     # GraphGenerator(graph_type='layer - allocated ue', topic_parameter=l, iteration=i, algorithm=algo, folder_result=(f'{f_data}/{f_mcs}',))
     # GraphGenerator(graph_type='layer - INI', topic_parameter=l, iteration=i, algorithm=algo, folder_result=(f'{f_data}/{f_mcs}',))
     # GraphGenerator(graph_type='layer - fairness', topic_parameter=l, iteration=i, algorithm=algo, folder_result=(f'{f_data}/{f_mcs}',))
-    # GraphGenerator(graph_type='layer - deployment', topic_parameter=l, iteration=i, algorithm=algo, folder_result=(f'{f_data}/{f_mcs}',))
 
     # ---Graphs for ue---
     ut = [j for j in range(300, 901, 100)]  # <-- change
@@ -72,8 +71,10 @@ if __name__ == '__main__':
     # GraphGenerator(graph_type='NOMA', layer_or_ue=layer_or_ue, iteration=i, algorithm=algo, folder_result=(f'{f_data}/{f_mcs}',))
     # GraphGenerator(graph_type='CQI', layer_or_ue=layer_or_ue, iteration=i, algorithm=algo, folder_result=(f'{f_data}/{f_mcs}',))
 
-    # ---Graph for QoS---
-    graph_of = [0, 1, 2, 3, 4]  # <-- change  0:all ue, 1:gNB, 2:eNB, 3:dUE, 4:cross dUE
+    # ---Graph for QoS and Deployment---
     t_p: List[int] = l  # <-- change  l, ut, p_due, gnb_bw, co_bw
     topic: str = 'layer'  # <-- change  'layer', 'ue', 'proportion due', 'gnb bw', 'cochannel bw'
+    # GraphGenerator(graph_type=f'{topic} - deployment', topic_parameter=t_p, iteration=i, algorithm=algo, folder_result=(f'{f_data}/{f_mcs}',))
+    graph_of = [0, 1, 2, 3, 4]  # <-- change  0:all ue, 1:gNB, 2:eNB, 3:dUE, 4:cross dUE
     # GraphGenerator(graph_type=f'{topic} - QoS', graph_of_ue=graph_of, topic_parameter=t_p, iteration=i, algorithm=algo, folder_result=(f'{f_data}/{f_mcs}',))
+
