@@ -175,8 +175,7 @@ def scatter_charts(title: List[str], x: List[List[float]], y: List[List[float]],
 
     fig, axs = plt.subplots(math.ceil(len(title) / col), col)
     for i in range(len(title)):
-        subplot_scatter_chart(axs[i // col][i % col],
-                              title[i], x[i], y[i], color[i], x_lim[i], y_lim[i], output_folder, parameter)
+        subplot_scatter_chart(axs[i // col][i % col], title[i], x[i], y[i], color[i], x_lim[i], y_lim[i])
 
     fig.tight_layout()
     fig.set_size_inches(7, 5, forward=True)
