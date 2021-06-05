@@ -1,4 +1,5 @@
 import json
+import math
 from datetime import datetime
 from typing import Any, Dict, List, Tuple
 
@@ -23,7 +24,7 @@ def line_chart(title: str, x_label: str, scale_x: List[Any], y_label: str, scale
     plt.ylabel(y_label)
     plt.legend(loc="best")
 
-    dump_png_and_json(plt, x_label, y_label, output_folder,
+    dump_png_and_json(plt, f'{x_label}-{y_label}', output_folder,
                       [title, x_label, scale_x, y_label, scale_y, output_folder, parameter])
 
 
@@ -54,8 +55,55 @@ def bar_chart(title: str, x_label: str, x_tick_labels: List[Any], y_label: str, 
 
     fig.tight_layout()
 
-    dump_png_and_json(plt, x_label, y_label, output_folder,
+    dump_png_and_json(plt, f'{x_label}-{y_label}', output_folder,
                       [title, x_label, x_tick_labels, y_label, data, output_folder, parameter])
+
+
+def bar_charts(title: List[str],
+               x_label: List[str], x_tick_labels: List[List[Any]],
+               y_label: List[str], data: List[Dict[str, List[float]]],
+               output_folder: str, parameter: Dict, file_name: str = None):
+    col = 2
+
+    fig, axs = plt.subplots(math.ceil(len(title) / col), col)
+    for i in range(len(title)):
+        subplot_bar_chart(axs[i // col][i % col],
+                          title[i], x_label[i], x_tick_labels[i], y_label[i], data[i])
+
+    # for ax in axs.flat:
+    #     ax.label_outer()
+    fig.tight_layout()
+    # fig.text(0.5, 0.04, x_label[0], ha="center", va="center")
+    # fig.text(0.05, 0.5, y_label[0], ha='center', va='center', rotation='vertical')
+    fig.set_size_inches(18, 18, forward=True)
+
+    if file_name is None:
+        file_name = f'{x_label[0]}_{y_label[0]}'
+    dump_png_and_json(plt, file_name, output_folder,
+                      [title, x_label, x_tick_labels, y_label, data, output_folder, parameter], bbox_inches='tight')
+
+
+def subplot_bar_chart(ax, title: str, x_label: str, x_tick_labels: List[Any],
+                      y_label: str, data: Dict[str, List[float]]):
+    x = np.arange(len(x_tick_labels))  # the label locations
+    width = 0.8 / len(data)  # the width of the bars
+    pos = np.array(range(len(next(iter(data.values())))))
+
+    rects = []
+    for i, label in enumerate(data):
+        data[label] = [round(j, 3) for j in data[label]]
+        rects.append(ax.bar(pos + i * width, data[label], width, label=label, color=color_unify[i]))
+
+    # Add some text for labels, title and custom x-axis tick labels, etc.
+    ax.set_title(title)
+    ax.set_xlabel(x_label)
+    ax.set_ylabel(y_label)
+    ax.set_xticks(x)
+    ax.set_xticklabels(x_tick_labels, rotation=45)
+    # ax.legend()
+
+    # for i in rects:
+    #     bar_chart_auto_label(i, ax)
 
 
 def bar_chart_auto_label(rects, ax):
@@ -115,7 +163,7 @@ def bar_chart_grouped_stacked(title: str, x_label: str, x_index: List[str],
 
     plt.tight_layout()
 
-    dump_png_and_json(plt, x_label, y_label, output_folder,
+    dump_png_and_json(plt, f'{x_label}-{y_label}', output_folder,
                       [title, x_label, y_label, output_folder, parameter, data, x_index, stack_label, labels, H],
                       bbox_inches='tight')
 
@@ -130,12 +178,13 @@ def scatter_chart(title, x, y, color, x_lim: Tuple[float, float], y_lim: Tuple[f
 
     plt.title(title)
 
-    dump_png_and_json(plt, '(km)', '(km)', output_folder,
+    file_name = f'scatter-{title}'
+    dump_png_and_json(plt, file_name, output_folder,
                       [title, x, y, color, x_lim, y_lim, output_folder, parameter])
 
 
-def dump_png_and_json(plot, x_label: str, y_label: str, output_folder: str, input_para: List[Any], bbox_inches=None):
-    file_name: str = f'{x_label}_{y_label}_{datetime.today().strftime("%m%d-%H%M")}'
+def dump_png_and_json(plot, file_name: str, output_folder: str, input_para: List[Any], bbox_inches=None):
+    file_name: str = f'{file_name}_{datetime.today().strftime("%m%d-%H%M")}'
     if bbox_inches:
         plot.savefig(f'{output_folder}/{file_name}.png', bbox_inches=bbox_inches)
     else:

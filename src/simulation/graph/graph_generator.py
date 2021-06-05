@@ -1,14 +1,13 @@
 import json
 import os
 import re
-from datetime import datetime
 from os import walk
 from typing import Dict, List, Tuple, Union
 
 from main_gen_data_bw import GnbMhzBuConvertor
 from src.resource_allocation.algo.utils import bpframe_to_mbps, calc_system_throughput_json, divide_ue_json
 from src.resource_allocation.ds.util_enum import UEType
-from src.simulation.graph.util_graph import bar_chart, bar_chart_grouped_stacked, line_chart, scatter_chart
+from src.simulation.graph.util_graph import bar_chart, bar_chart_grouped_stacked, bar_charts, line_chart, scatter_chart
 from src.simulation.utils import fairness_index_json
 
 """           layer/ue  algo       gNB   eNB   dUE         gUE         eUE"""
@@ -102,7 +101,7 @@ class GraphGenerator:
         elif self.graph_type == 'CQI':
             self.gen_ue_cqi(file_path)
         elif 'QoS' in self.graph_type:
-            self.gen_qos(file_path)
+            self.gen_qos(kwargs['graph_of_ue'], file_path)
         else:
             raise AssertionError('Undefined graph type.')
 
@@ -600,40 +599,88 @@ class GraphGenerator:
             if eue['is_allocated']:
                 collect_data['eUE'].append(eue['request_data_rate'])
 
-    def gen_qos(self, output_file_path: str):
+    def gen_qos(self, graph_of_ue: List[int], output_file_path: str):
+        if 0 in graph_of_ue:  # all
+            self._gen_qos('All allocated UE', 'The number of allocated UE',
+                          ['dUE_cross_BS', 'dUE_in_gNB', 'dUE_in_eNB', 'gUE', 'eUE'], output_file_path)
+        if 1 in graph_of_ue:  # in gNB
+            self._gen_qos('All UE in gNB', 'The number of allocated UE in gNB', ['dUE_cross_BS', 'dUE_in_gNB', 'gUE'],
+                          output_file_path)
+        if 2 in graph_of_ue:  # in eNB
+            self._gen_qos('All UE in eNB', 'The number of allocated UE in eNB', ['dUE_cross_BS', 'dUE_in_eNB', 'eUE'],
+                          output_file_path)
+        if 3 in graph_of_ue:  # dUE
+            self._gen_qos('All dUE', 'The number of allocated dUE', ['dUE_cross_BS', 'dUE_in_gNB', 'dUE_in_eNB'],
+                          output_file_path)
+        if 4 in graph_of_ue:  # cross BS dUE
+            self._gen_qos('Cross BS dUE', 'The number of allocated Cross BS dUE', ['dUE_cross_BS'], output_file_path)
+
+    def _gen_qos(self, title: str, y_label: str, ue_type: List[str], output_file_path: str):
+        qos_bound, scale_x = self.overall_scale(ue_type)
+
+        title_list: List[str] = []
+        data_list: List[Dict[str, List[float]]] = []
+        for t in self.topic_parameter_str:
+            # a subplot
+            avg_num_ue: Dict[str, List[float]] = {algo: [] for algo in self.algorithm}
+            for algo in self.algorithm:
+                avg_num_ue[algo] = [0 for _ in range(len(scale_x))]
+
+                # the UE
+                ue_list = []
+                for u_t in ue_type:
+                    ue_list.extend(self.data[t][algo][u_t])
+                ue_list.sort()
+
+                # count UE in each QoS range
+                if len(qos_bound) == 0:
+                    avg_num_ue[algo][0] = len(ue_list)
+                else:
+                    bound_index: int = 0
+                    for ue_qos in ue_list:
+                        if bound_index != len(qos_bound) and ue_qos > qos_bound[bound_index]:
+                            bound_index += 1
+                        avg_num_ue[algo][bound_index] += 1
+                for i in range(len(scale_x)):
+                    avg_num_ue[algo][i] = avg_num_ue[algo][i] / self.iteration
+            title_list.append(f'{t}')
+            data_list.append(avg_num_ue)
+        x_label_list: List[str] = ['QoS range' for _ in range(len(self.topic_parameter_str))]
+        scale_x_list: List[List[str]] = [scale_x for _ in range(len(self.topic_parameter_str))]
+        y_label_list: List[str] = [y_label for _ in range(len(self.topic_parameter_str))]
+        bar_charts(title_list, x_label_list, scale_x_list, y_label_list, data_list,
+                   output_file_path, {'iteration': self.iteration}, file_name=f'qos_{title}')
+
+    def overall_scale(self, ue_type: List[str]) -> Tuple[List[float], List[str]]:
         section: int = 10
 
-        avg_num_ue: Dict[str, List[float]] = {algo: [] for algo in self.algorithm}
-        first_time: bool = True
-        qos_bound = []
-        scale_x = []
+        ue_list = []
         for t in self.topic_parameter_str:
             for algo in self.algorithm:
-                ue_list = self.data[t][algo]['dUE_cross_BS'] + self.data[t][algo]['dUE_in_gNB'] + self.data[t][algo][
-                    'dUE_in_eNB'] + self.data[t][algo]['gUE'] + self.data[t][algo]['eUE']
-                ue_list.sort()   # FIXME eNB/gNB/dUE
+                for u_t in ue_type:
+                    ue_list.extend(self.data[t][algo][u_t])
 
-                if first_time:
-                    first_time: bool = False
-                    qos_bound, scale_x = self.qos_scale(ue_list[0], ue_list[-1], section)
-
-                avg_num_ue[algo] = [0 for _ in range(section)]
-                bound_index: int = 0
-                for ue_qos in ue_list:
-                    if bound_index != section - 1 and ue_qos > qos_bound[bound_index]:
-                        bound_index += 1
-                    avg_num_ue[algo][bound_index] += 1
-
-                for i in range(section):
-                    avg_num_ue[algo][i] = avg_num_ue[algo][i] / self.iteration
-        bar_chart('', 'QoS range', scale_x, 'The number of allocated UE', avg_num_ue,
-                  output_file_path, {'iteration': self.iteration})
+        ue_list.sort()
+        if len(ue_list) >= 2:
+            min_qos: float = ue_list[0]
+            max_qos: float = ue_list[-1]
+        elif len(ue_list) == 1:
+            min_qos = max_qos = ue_list[0]
+        else:
+            min_qos = max_qos = 0
+        qos_bound, scale_x = self.qos_scale(min_qos, max_qos, section)
+        assert len(qos_bound) + 1 == len(scale_x)
+        return qos_bound, scale_x
 
     @staticmethod
     def qos_scale(min_qos: float, max_qos: float, section: int) -> Tuple[List[float], List[str]]:
-        gap: float = (max_qos - min_qos) / section
         qos_bound: List[float] = []
         x_scale: List[str] = []
+
+        gap: float = (max_qos - min_qos) / section
+        if gap < 10:  # if the gap is too small
+            return qos_bound, [f'{int(min_qos)}-{int(max_qos)}']
+
         for i in range(1, section):
             qos_bound.append(min_qos + gap * i)
             if i == 1:

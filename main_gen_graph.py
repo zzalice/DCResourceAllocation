@@ -20,7 +20,7 @@ if __name__ == '__main__':
     MCS parameter can be set in resource_allocation/ds/util_enum.py
     and record in IterateAlgo output pickle.
     """
-    f_data: str = '0526-180322L_'  # <-- change
+    f_data: str = '0602-111803L_'  # <-- change
     f_mcs: str = 'gNBCQI1CQI15_eNBCQI1CQI15'  # <-- change
     i: int = 100  # <-- change
     algo: Tuple[str, ...] = ('DC-RA', 'FRSA', 'MSEMA', 'Baseline')  # <-- change
@@ -73,6 +73,7 @@ if __name__ == '__main__':
     # GraphGenerator(graph_type='CQI', layer_or_ue=layer_or_ue, iteration=i, algorithm=algo, folder_result=(f'{f_data}/{f_mcs}',))
 
     # ---Graph for QoS---
+    graph_of = [0, 1, 2, 3, 4]  # <-- change  0:all ue, 1:gNB, 2:eNB, 3:dUE, 4:cross dUE
     t_p: List[int] = l  # <-- change  l, ut, p_due, gnb_bw, co_bw
     topic: str = 'layer'  # <-- change  'layer', 'ue', 'proportion due', 'gnb bw', 'cochannel bw'
-    # GraphGenerator(graph_type=f'{topic} - QoS', topic_parameter=t_p, iteration=i, algorithm=algo, folder_result=(f'{f_data}/{f_mcs}',))
+    # GraphGenerator(graph_type=f'{topic} - QoS', graph_of_ue=graph_of, topic_parameter=t_p, iteration=i, algorithm=algo, folder_result=(f'{f_data}/{f_mcs}',))
