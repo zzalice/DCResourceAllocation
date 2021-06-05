@@ -1,7 +1,8 @@
 import json
+import math
 import os
 import random
-from typing import Dict, Tuple
+from typing import Dict, List, Tuple
 
 from src.resource_allocation.ds.util_enum import LTEResourceBlock, Numerology, UEType
 from src.resource_allocation.ds.util_type import CircularRegion, Coordinate
@@ -12,7 +13,9 @@ from src.simulation.data.util_type import HotSpot, UEProfiles
 class DataGenerator:
     def __init__(self, iteration: int, output_file_path: str,
                  total_num_ue: int,
-                 eue_qos_range: Tuple[int, int], gue_qos_range: Tuple[int, int], due_qos_range: Tuple[int, int],
+                 eue_qos_range: Tuple[Tuple[int, int, float], ...],
+                 gue_qos_range: Tuple[Tuple[int, int, float], ...],
+                 due_qos_range: Tuple[Tuple[int, int, float], ...],
                  enb_coordinate: Tuple[int, int], enb_radius: float, enb_tx_power: int, enb_freq: int, enb_time: int,
                  gnb_coordinate: Tuple[int, int], gnb_radius: float, gnb_tx_power: int, gnb_freq: int, gnb_time: int,
                  gnb_layer: int, inr_discount: float,
@@ -28,12 +31,22 @@ class DataGenerator:
         self.eue_num: int = 0
         self.gue_num: int = 0
         self.due_num: int = 0
-        assert eue_qos_range[0] <= eue_qos_range[1]
-        self.eue_qos_range: Tuple[int, int] = eue_qos_range  # bps
-        assert gue_qos_range[0] <= gue_qos_range[1]
-        self.gue_qos_range: Tuple[int, int] = gue_qos_range
-        assert due_qos_range[0] <= due_qos_range[1]
-        self.due_qos_range: Tuple[int, int] = due_qos_range
+
+        ratio: float = 0.0
+        for qos in eue_qos_range:
+            ratio += qos[2]
+        assert ratio == 1.0, 'Sum of eUE QoS ratio should be 1.'
+        self.eue_qos_range: Tuple[Tuple[int, int, float], ...] = eue_qos_range  # bps
+        ratio: float = 0.0
+        for qos in gue_qos_range:
+            ratio += qos[2]
+        assert ratio == 1.0, 'Sum of gUE QoS ratio should be 1.'
+        self.gue_qos_range: Tuple[Tuple[int, int, float], ...] = gue_qos_range
+        ratio: float = 0.0
+        for qos in due_qos_range:
+            ratio += qos[2]
+        assert ratio == 1.0, 'Sum of dUE QoS ratio should be 1.'
+        self.due_qos_range: Tuple[Tuple[int, int, float], ...] = due_qos_range
 
         self.enb_coordinate: Tuple[int, int] = enb_coordinate
         self.enb_radius: float = enb_radius
@@ -134,18 +147,36 @@ class DataGenerator:
 
         return g_ue_list, d_ue_list, e_ue_list
 
-    @staticmethod
-    def gen_ue_profile(ue_type: UEType, ue_num: int, qos_range: Tuple[int, int], coordinates: Tuple[Coordinate, ...],
-                       sec_to_frame: int) -> UEProfiles:
+    def gen_ue_profile(self, ue_type: UEType, ue_num: int, qos_range: Tuple[Tuple[int, int, float], ...],
+                       coordinates: Tuple[Coordinate, ...], sec_to_frame: int) -> UEProfiles:
         return UEProfiles(
             ue_num,
-            tuple(
-                random.randrange(qos_range[0] // sec_to_frame, qos_range[1] // sec_to_frame + 1, 10_000 // sec_to_frame)
-                for _ in range(ue_num)),
+            self.gen_qos(ue_num, qos_range, sec_to_frame),
             tuple(LTEResourceBlock.gen_candidate_set() for _ in range(ue_num)) if ue_type == UEType.E else (
                 tuple(Numerology.gen_candidate_set(random_pick=True) for _ in range(ue_num))),
             coordinates
         )
+
+    @staticmethod
+    def gen_qos(total_ue_num: int, qos_range: Tuple[Tuple[int, int, float], ...], sec_to_frame: int) -> Tuple[int, ...]:
+        qos_list: List[int] = []
+
+        # calculate the number of UE in each range
+        ue_num: List[int] = []
+        for q in qos_range[:-1]:
+            ue_num.append(math.ceil(total_ue_num * q[2]))
+        last_ue_num: int = total_ue_num - sum(ue_num)
+        assert last_ue_num >= 0, 'Please reassign the proportion of UE of QoS.'
+        ue_num.append(last_ue_num)
+        assert sum(ue_num) == total_ue_num
+
+        # random the QoS
+        for i, q in enumerate(qos_range):
+            qos_list.extend(
+                [random.randrange(q[0] // sec_to_frame, q[1] // sec_to_frame + 1, 10_000 // sec_to_frame) for _ in
+                 range(ue_num[i])])
+
+        return tuple(qos_list)
 
     @staticmethod
     def convert_ue_profile_to_json(ue_profile: UEProfiles) -> Dict:

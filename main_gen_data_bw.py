@@ -78,9 +78,10 @@ if __name__ == '__main__':
     para = {'iteration': 500,
 
             'total_num_ue': 600,
-            'due_qos': [22_000, 100_000],
-            'gue_qos': [22_000, 100_000],
-            'eue_qos': [12_000, 60_000],
+            # (lower bound, upper bound, proportion of ue) e.g. ((22_000, 40_000, 0.6), (40_000, 100_000, 0.4))
+            'due_qos': ((22_000, 100_000, 1.0),),
+            'gue_qos': ((22_000, 100_000, 1.0),),
+            'eue_qos': ((12_000, 60_000, 1.0),),
 
             # enb_freq(MHz/#): 1.4/6, 3/15, 5/25, 10/50, 15/75, 20/100
             'gnb_time': 8, 'gnb_layer': 5, 'gnb_tx_power': 46,
