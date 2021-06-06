@@ -75,6 +75,6 @@ if __name__ == '__main__':
     t_p: List[int] = l  # <-- change  l, ut, p_due, gnb_bw, co_bw
     topic: str = 'layer'  # <-- change  'layer', 'ue', 'proportion due', 'gnb bw', 'cochannel bw'
     # GraphGenerator(graph_type=f'{topic} - deployment', topic_parameter=t_p, iteration=i, algorithm=algo, folder_result=(f'{f_data}/{f_mcs}',))
-    graph_of = [0, 1, 2, 3, 4]  # <-- change  0:all ue, 1:gNB, 2:eNB, 3:dUE, 4:cross dUE
+    graph_of = [0, 1, 2, 3, 4, 5, 6]  # <-- change  0:all ue, 1:gNB, 2:eNB, 3:dUE, 4:cross dUE, 5:gUE, 6:eUE
     # GraphGenerator(graph_type=f'{topic} - QoS', graph_of_ue=graph_of, topic_parameter=t_p, iteration=i, algorithm=algo, folder_result=(f'{f_data}/{f_mcs}',))
 

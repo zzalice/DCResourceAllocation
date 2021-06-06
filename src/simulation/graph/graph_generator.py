@@ -626,6 +626,10 @@ class GraphGenerator:
                           output_file_path)
         if 4 in graph_of_ue:  # cross BS dUE
             self._gen_qos('Cross BS dUE', 'The number of allocated Cross BS dUE', ['dUE_cross_BS'], output_file_path)
+        if 5 in graph_of_ue:  # gUE
+            self._gen_qos('All gUE', 'The number of allocated gUE', ['gUE'], output_file_path)
+        if 6 in graph_of_ue:  # eUE
+            self._gen_qos('All eUE', 'The number of allocated eUE', ['eUE'], output_file_path)
 
     def _gen_qos(self, title: str, y_label: str, ue_type: List[str], output_file_path: str):
         qos_bound, scale_x = self.overall_scale(ue_type)
