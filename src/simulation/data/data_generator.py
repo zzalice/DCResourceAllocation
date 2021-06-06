@@ -35,17 +35,17 @@ class DataGenerator:
         ratio: float = 0.0
         for qos in eue_qos_range:
             ratio += qos[2]
-        assert ratio == 1.0, 'Sum of eUE QoS ratio should be 1.'
+        assert math.isclose(ratio, 1.0), 'Sum of eUE QoS ratio should be 1.'
         self.eue_qos_range: Tuple[Tuple[int, int, float], ...] = eue_qos_range  # bps
         ratio: float = 0.0
         for qos in gue_qos_range:
             ratio += qos[2]
-        assert ratio == 1.0, 'Sum of gUE QoS ratio should be 1.'
+        assert math.isclose(ratio, 1.0), 'Sum of gUE QoS ratio should be 1.'
         self.gue_qos_range: Tuple[Tuple[int, int, float], ...] = gue_qos_range
         ratio: float = 0.0
         for qos in due_qos_range:
             ratio += qos[2]
-        assert ratio == 1.0, 'Sum of dUE QoS ratio should be 1.'
+        assert math.isclose(ratio, 1.0), 'Sum of dUE QoS ratio should be 1.'
         self.due_qos_range: Tuple[Tuple[int, int, float], ...] = due_qos_range
 
         self.enb_coordinate: Tuple[int, int] = enb_coordinate
