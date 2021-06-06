@@ -157,8 +157,7 @@ class DataGenerator:
             coordinates
         )
 
-    @staticmethod
-    def gen_qos(total_ue_num: int, qos_range: Tuple[Tuple[int, int, float], ...], sec_to_frame: int) -> Tuple[int, ...]:
+    def gen_qos(self, total_ue_num: int, qos_range: Tuple[Tuple[int, int, float], ...], sec_to_frame: int) -> Tuple[int, ...]:
         qos_list: List[int] = []
 
         # calculate the number of UE in each range
@@ -166,9 +165,13 @@ class DataGenerator:
         for q in qos_range[:-1]:
             ue_num.append(math.ceil(total_ue_num * q[2]))
         last_ue_num: int = total_ue_num - sum(ue_num)
-        assert last_ue_num >= 0, 'Please reassign the proportion of UE of QoS.'
-        ue_num.append(last_ue_num)
-        assert sum(ue_num) == total_ue_num
+        if last_ue_num < 0:
+            ue_num.append(0)
+            ue_num: List[int] = self.minus_num_of_ue(ue_num, last_ue_num, -2, total_ue_num)
+        else:
+            ue_num.append(last_ue_num)
+        assert set(i >= 0 for i in ue_num) == {True}, 'Algorithm error.'
+        assert sum(ue_num) == total_ue_num, 'Algorithm error.'
 
         # random the QoS
         for i, q in enumerate(qos_range):
@@ -177,6 +180,16 @@ class DataGenerator:
                  range(ue_num[i])])
 
         return tuple(qos_list)
+
+    def minus_num_of_ue(self, each_num_ue: List[int], minus: int, minus_idx: int, total_ue_num: int) -> List[int]:
+        assert minus < 0
+        tmp: int = each_num_ue[minus_idx] + minus
+        if tmp >= 0:
+            each_num_ue[minus_idx] += minus
+            return each_num_ue
+        else:
+            each_num_ue[minus_idx] = 0
+            return self.minus_num_of_ue(each_num_ue, tmp, minus_idx - 1, total_ue_num)
 
     @staticmethod
     def convert_ue_profile_to_json(ue_profile: UEProfiles) -> Dict:
