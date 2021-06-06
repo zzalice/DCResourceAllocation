@@ -9,7 +9,8 @@ from src.simulation.data.data_loader import DataLoader
 
 
 def mcup_hm(g_nb: GNodeB, e_nb: ENodeB, g_ue_list: Tuple[GUserEquipment, ...], d_ue_list: Tuple[DUserEquipment, ...],
-            e_ue_list: Tuple[EUserEquipment, ...], gue_qos: Tuple[int, int], eue_qos: Tuple[int, int]
+            e_ue_list: Tuple[EUserEquipment, ...],
+            gue_qos: Tuple[Tuple[int, int, float], ...], eue_qos: Tuple[Tuple[int, int, float], ...]
             ) -> Tuple[Tuple[Union[GUserEquipment, DUserEquipment], ...],
                        Tuple[Union[EUserEquipment, DUserEquipment], ...],
                        Tuple[DUserEquipment, ...]]:
@@ -18,8 +19,8 @@ def mcup_hm(g_nb: GNodeB, e_nb: ENodeB, g_ue_list: Tuple[GUserEquipment, ...], d
     :return dc_ue: The dual connection UE that must connect to two BSs.
     """
     mcup = McupHm()
-    mcup.calc_max_serve_ue(g_nb, (gue_qos[0], gue_qos[1]))
-    mcup.calc_max_serve_ue(e_nb, (eue_qos[0], eue_qos[1]))
+    mcup.calc_max_serve_ue(g_nb, gue_qos)
+    mcup.calc_max_serve_ue(e_nb, eue_qos)
     mcup.due_preference_order(d_ue_list)
     mcup.algorithm(e_ue_list + g_ue_list + d_ue_list)
 
@@ -55,7 +56,7 @@ def main(data_set: str):
 
 
 if __name__ == '__main__':
-    file_path: str = '0526-180322L_/4layer/2'
+    file_path: str = '0606-225840P_DUE_improve0603-123244_qos/10p_due/0'
 
     if len(sys.argv) == 2:
         file_path: str = sys.argv[1]

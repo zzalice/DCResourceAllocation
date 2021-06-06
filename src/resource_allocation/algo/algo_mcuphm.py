@@ -15,10 +15,12 @@ class McupHm:
         self._gnb_ue_list: List[Union[GUserEquipment, DUserEquipment]] = []
         self._enb_ue_list: List[Union[EUserEquipment, DUserEquipment]] = []
 
-    def calc_max_serve_ue(self, nb: Union[GNodeB, ENodeB], qos: Tuple[int, int]):
+    def calc_max_serve_ue(self, nb: Union[GNodeB, ENodeB], qos: Tuple[Tuple[int, int, float], ...]):
         # count how many RB a UE will need
-        qos: List[float] = [i / (1000 // (nb.frame.frame_time // 8)) for i in qos]  # bps to bit per frame
-        qos_avg: float = (qos[0] + qos[1]) / 2  # bit per frame
+        min_qos: int = min(qos, key=lambda x: x[0])[0]
+        max_qos: int = max(qos, key=lambda x: x[1])[1]
+        qos_avg: float = (min_qos + max_qos) / 2  # bps
+        qos_avg /= (1000 // (nb.frame.frame_time // 8))  # bps to bit per frame
         rate_rb: float = G_MCS.get_best().value if nb.nb_type == NodeBType.G else E_MCS.get_best().value  # bit per RB
         count_ue_rb: int = ceil(qos_avg / rate_rb)
 

@@ -13,7 +13,7 @@ from src.resource_allocation.ds.util_type import CandidateSet, CircularRegion, C
 class DataLoader:
     def run(self, data_set_file_path: str) -> Tuple[
         GNodeB, ENodeB, ChannelModel, Tuple[GUserEquipment, ...], Tuple[DUserEquipment, ...], Tuple[
-            EUserEquipment, ...], Tuple[int, int], Tuple[int, int], float, float]:
+            EUserEquipment, ...], Tuple[Tuple[int, int, float], ...], Tuple[Tuple[int, int, float], ...], float, float]:
         """
         Load the json file to create objects.
         :param data_set_file_path: The file path to data parameter.

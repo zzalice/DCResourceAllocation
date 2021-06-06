@@ -32,20 +32,11 @@ class DataGenerator:
         self.gue_num: int = 0
         self.due_num: int = 0
 
-        ratio: float = 0.0
-        for qos in eue_qos_range:
-            ratio += qos[2]
-        assert math.isclose(ratio, 1.0), 'Sum of eUE QoS ratio should be 1.'
+        self.assert_qos(eue_qos_range)
         self.eue_qos_range: Tuple[Tuple[int, int, float], ...] = eue_qos_range  # bps
-        ratio: float = 0.0
-        for qos in gue_qos_range:
-            ratio += qos[2]
-        assert math.isclose(ratio, 1.0), 'Sum of gUE QoS ratio should be 1.'
+        self.assert_qos(gue_qos_range)
         self.gue_qos_range: Tuple[Tuple[int, int, float], ...] = gue_qos_range
-        ratio: float = 0.0
-        for qos in due_qos_range:
-            ratio += qos[2]
-        assert math.isclose(ratio, 1.0), 'Sum of dUE QoS ratio should be 1.'
+        self.assert_qos(due_qos_range)
         self.due_qos_range: Tuple[Tuple[int, int, float], ...] = due_qos_range
 
         self.enb_coordinate: Tuple[int, int] = enb_coordinate
@@ -260,3 +251,11 @@ class DataGenerator:
 
         with open(f'{self.output_file_path}/parameter_data.txt', 'w') as file:
             file.write(information)
+
+    @staticmethod
+    def assert_qos(qos_range: Tuple[Tuple[int, int, float], ...]):
+        ratio: float = 0.0
+        for qos in qos_range:
+            assert qos[0] <= qos[1], 'Illegal QoS range.'
+            ratio += qos[2]
+        assert math.isclose(ratio, 1.0), 'Sum of QoS ratio should be 1.'
