@@ -71,10 +71,6 @@ class Undo:
         while func_stack:
             (func_stack.pop()[undo_or_purge])()
 
-    def undo_in_last_func(self, last_move_times: int = 1):
-        for _ in range(last_move_times):
-            (self._func_stack[-1].pop()[0])()
-
     def __getstate__(self):
         return self.empty_undo_stake(self.__dict__)
 

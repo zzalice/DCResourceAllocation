@@ -14,7 +14,7 @@ from utils.assertion import ThroughputError
 class AllocateUE(Undo):
     """
     In this method, self.ue will be allocated to one BS only.
-    The new RBs can be continuous or non-continuous.
+    The new RBs will be continuous.
     :return: If the allocation has succeed.
     """
 
@@ -30,18 +30,18 @@ class AllocateUE(Undo):
         self.request: Optional[float] = request_data_rate
 
     @Undo.undo_func_decorator
-    def allocate(self, to_allow_non_continuous: bool = False) -> bool:
+    def allocate(self) -> bool:
         tmp_numerology: Numerology = self.ue.numerology_in_use
         if self.spaces[0].layer.nodeb.nb_type == NodeBType.E and self.ue.ue_type == UEType.D:
             self.ue.numerology_in_use = LTEResourceBlock.E  # TODO: refactor or redesign
 
-        is_succeed: bool = self._allocate(to_allow_non_continuous)
+        is_succeed: bool = self._allocate()
 
         self.ue.numerology_in_use = tmp_numerology  # restore
 
         return is_succeed
 
-    def _allocate(self, to_allow_non_continuous: bool) -> bool:
+    def _allocate(self) -> bool:
         # assert self.ue.calc_throughput() < self.ue.request_data_rate  # TODO: refactor, for MCUP combine RA algorithms
         nb_info: Union[GNBInfo, ENBInfo] = (
             self.ue.gnb_info if self.spaces[0].layer.nodeb.nb_type == NodeBType.G else self.ue.enb_info)
@@ -73,21 +73,13 @@ class AllocateUE(Undo):
             self.append_undo(lambda l=space.layer: l.undo(), lambda l=space.layer: l.purge_undo())
             if not rb:
                 # overlapped with itself
-                if to_allow_non_continuous:
-                    self.undo_in_last_func(last_move_times=1)
-                    continue
-                else:
-                    return False
+                return False
 
             self.channel_model.sinr_rb(rb)
             self.append_undo(lambda: self.channel_model.undo(), lambda: self.channel_model.purge_undo())
             if rb.mcs is (G_MCS if nb_info.nb_type == NodeBType.G else E_MCS).CQI0:
                 # SINR out of range
-                if to_allow_non_continuous:
-                    self.undo_in_last_func(last_move_times=2)
-                    continue
-                else:
-                    return False
+                return False
 
             # check if the allocated RBs fulfill request data rate
             if self.is_fulfilled(nb_info):
