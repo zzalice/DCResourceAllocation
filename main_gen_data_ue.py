@@ -44,7 +44,7 @@ if __name__ == '__main__':
     date: str = datetime.today().strftime("%m%d-%H%M%S")
     output_folder: str = f'{date}UE_'  # <--- change
 
-    para = {'iteration': 500,
+    para = {'iteration': 1000,
             # (lower bound, upper bound, proportion of ue) e.g. ((22_000, 40_000, 0.6), (40_000, 100_000, 0.4))
             'due_qos': ((22_000, 100_000, 1.0),),
             'gue_qos': ((22_000, 100_000, 1.0),),

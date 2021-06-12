@@ -31,7 +31,7 @@ if __name__ == '__main__':
     num_of_layer = [1, 2, 3, 4, 5]  # <--- change
     for i in num_of_layer:
         para = {'output_file_path': f'{output_folder}/{i}layer',
-                'iteration': 500,
+                'iteration': 1000,
 
                 'total_num_ue': 600,
                 # (lower bound, upper bound, proportion of ue) e.g. ((22_000, 40_000, 0.6), (40_000, 100_000, 0.4))

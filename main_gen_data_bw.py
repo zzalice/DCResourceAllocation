@@ -75,7 +75,7 @@ if __name__ == '__main__':
     date: str = datetime.today().strftime("%m%d-%H%M%S")
     output_folder: str = f'{date}BWGNB_'  # <--- change
 
-    para = {'iteration': 500,
+    para = {'iteration': 1000,
 
             'total_num_ue': 600,
             # (lower bound, upper bound, proportion of ue) e.g. ((22_000, 40_000, 0.6), (40_000, 100_000, 0.4))
