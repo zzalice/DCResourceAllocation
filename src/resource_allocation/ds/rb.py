@@ -88,6 +88,9 @@ class ResourceBlock(Undo):
 
     def to_json(self) -> Dict[str, Any]:
         rb: Dict[str, Any] = {
+            'layer': self.layer.layer_index,
+            'i_start': self.i_start,
+            'j_start': self.j_start,
             'numerology': self.numerology.name if self.numerology else None,
             'mcs': self.mcs.index if self.mcs else None
         }
