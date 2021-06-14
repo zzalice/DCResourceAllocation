@@ -40,8 +40,8 @@ if __name__ == '__main__':
     ut = [j for j in range(300, 901, 100)]  # <-- change
     # IterateAlgo(iteration=i, algorithm=algo, folder_data=f_data, to_start_over=to_start_over).iter_ue(ut)
     # GraphGenerator(graph_type='ue - throughput', collect_unallo_ue=False, topic_parameter=ut, iteration=i, algorithm=algo, folder_result=(f'{f_data}/{f_mcs}',))
-    # GraphGenerator(graph_type='layer - fairness', topic_parameter=ut, iteration=i, algorithm=algo, folder_result=(f'{f_data}/{f_mcs}',))
-    # GraphGenerator(graph_type='layer - allocated ue', topic_parameter=ut, iteration=i, algorithm=algo, folder_result=(f'{f_data}/{f_mcs}',))
+    # GraphGenerator(graph_type='ue - fairness', topic_parameter=ut, iteration=i, algorithm=algo, folder_result=(f'{f_data}/{f_mcs}',))
+    # GraphGenerator(graph_type='ue - allocated ue', topic_parameter=ut, iteration=i, algorithm=algo, folder_result=(f'{f_data}/{f_mcs}',))
 
     # ---Graphs for due to all---
     p_due = [j for j in range(10, 91, 10)]  # <-- change
