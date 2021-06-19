@@ -31,7 +31,7 @@ if __name__ == '__main__':
     l = [1, 2, 3, 4, 5]  # <-- change
     # IterateAlgo(iteration=i, algorithm=algo, folder_data=f_data, to_start_over=to_start_over).iter_layer(l)
     # GraphGenerator(graph_type='layer - throughput', topic_parameter=l, iteration=i, algorithm=algo, folder_result=(f'{f_data}/{f_mcs}',))
-    # GraphGenerator(graph_type='layer - used percentage', topic_parameter=l, iteration=i, algorithm=algo, folder_result=(f'{f_data}/{f_mcs}',))
+    # GraphGenerator(graph_type='layer - resource utility', topic_parameter=l, iteration=i, algorithm=algo, folder_result=(f'{f_data}/{f_mcs}',))
     # GraphGenerator(graph_type='layer - allocated ue', topic_parameter=l, iteration=i, algorithm=algo, folder_result=(f'{f_data}/{f_mcs}',))
     # GraphGenerator(graph_type='layer - INI', topic_parameter=l, iteration=i, algorithm=algo, folder_result=(f'{f_data}/{f_mcs}',))
     # GraphGenerator(graph_type='layer - fairness', topic_parameter=l, iteration=i, algorithm=algo, folder_result=(f'{f_data}/{f_mcs}',))
@@ -64,7 +64,7 @@ if __name__ == '__main__':
     co_bw = [GnbMhzBuConvertor.mhz_to_bu(i) for i in co_bw]
     # IterateAlgo(iteration=i, algorithm=algo, folder_data=f_data, to_start_over=to_start_over).iter_cochannel(co_bw)
     # GraphGenerator(graph_type='cochannel bw - throughput', topic_parameter=co_bw, iteration=i, algorithm=algo, folder_result=(f'{f_data}/{f_mcs}',))
-    # GraphGenerator(graph_type='cochannel bw - used percentage', topic_parameter=co_bw, iteration=i, algorithm=algo, folder_result=(f'{f_data}/{f_mcs}',))
+    # GraphGenerator(graph_type='cochannel bw - resource utility', topic_parameter=co_bw, iteration=i, algorithm=algo, folder_result=(f'{f_data}/{f_mcs}',))
     # GraphGenerator(graph_type='cochannel bw - allocated ue', topic_parameter=co_bw, iteration=i, algorithm=algo, folder_result=(f'{f_data}/{f_mcs}',))
     # GraphGenerator(graph_type='cochannel bw - fairness', topic_parameter=co_bw, iteration=i, algorithm=algo, folder_result=(f'{f_data}/{f_mcs}',))
 

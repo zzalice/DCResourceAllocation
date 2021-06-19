@@ -4,9 +4,11 @@ import re
 from os import walk
 from typing import Dict, List, Tuple, Union
 
+import numpy as np
+
 from main_gen_data_bw import GnbMhzBuConvertor
 from src.resource_allocation.algo.utils import bpframe_to_mbps, calc_system_throughput_json, divide_ue_json
-from src.resource_allocation.ds.util_enum import UEType
+from src.resource_allocation.ds.util_enum import E_MCS, UEType
 from src.simulation.graph.util_graph import bar_chart, bar_chart_grouped_stacked, bar_charts, line_chart, scatter_charts
 from src.simulation.utils import fairness_index_json
 
@@ -61,8 +63,8 @@ class GraphGenerator:
                 self.collect_sys_throughput(algo_result, kwargs['collect_unallo_ue'])
             except KeyError:
                 self.collect_sys_throughput(algo_result)
-        elif ' - used percentage' in self.graph_type:
-            self.collect_used_percentage(algo_result)
+        elif ' - resource utility' in self.graph_type:
+            self.collect_resource_utility(algo_result)
         elif ' - allocated ue' in self.graph_type:
             self.collect_allocated_ue(algo_result)
         elif ' - INI' in self.graph_type:
@@ -86,8 +88,8 @@ class GraphGenerator:
                 self.gen_sys_throughput(file_path, kwargs['collect_unallo_ue'])
             except KeyError:
                 self.gen_sys_throughput(file_path)
-        elif 'used percentage' in self.graph_type:
-            self.gen_used_percentage(file_path)
+        elif '- resource utility' in self.graph_type:
+            self.gen_resource_usage(file_path)
         elif ' - allocated ue' in self.graph_type:
             self.gen_allocated_ue(file_path)
         elif ' - INI' in self.graph_type:
@@ -163,41 +165,89 @@ class GraphGenerator:
                   output_file_path, {'iteration': self.iteration})
 
     # ==================================================================================================================
-    def collect_used_percentage(self, result: RESULT):
-        # collect_data: Dict[str, Dict[str, [int,        int]]
-        #                    topic     algo  used BU     number of BU in gNBs
+    def collect_resource_utility(self, result: RESULT):
+        # collect_data: Dict[str, Dict[str, float]
+        #                    topic     algo  avg data rate of a RB
+        # collect_data2: Dict[str, Dict[str, float]
+        #                    topic     algo  the utility of the resource grids
         topic, algo = self._topic_and_algo(result)
         self.first_data(topic)
+
+        self.calc_bu_rate(topic, algo, result)  # collect_data
+        self.utility_system_overall(topic, algo, result)  # collect_data2
+
+    def calc_bu_rate(self, topic: str, algo: str, result: RESULT):
+        system_throughput: float = calc_system_throughput_json(
+            result[topic][algo][2] + result[topic][algo][3] + result[topic][algo][4])
+
         gnb: Dict = result[topic][algo][0]
-
-        count_used_bu: int = 0
-        for layer in range(gnb['frame']['max_layer']):
-            for i in gnb['frame']['layer'][layer]['bu_status']:
-                for j in i:
-                    count_used_bu += 1 if j else 0
-
-        count_bu: int = gnb['frame']['frame_time'] * gnb['frame']['frame_freq'] * gnb['frame']['max_layer']
+        enb: Dict = result[topic][algo][1]
+        num_bu_gnb: int = gnb['frame']['frame_time'] * gnb['frame']['frame_freq']
+        num_bu_enb: int = enb['frame']['frame_time'] * enb['frame']['frame_freq']
+        bu_rate: float = system_throughput / (num_bu_gnb + num_bu_enb)  # avg data rate of a BU
+        assert 0.0 <= bu_rate <= (E_MCS.CQI15.value / (1 * 4)
+                                  ), "Error in the calculation of the average BU data rate."  # TODO: the accurate way is to pars from output_file_path to get the highest efficiency MCS
         try:
-            self.data[topic][algo][0] += count_used_bu
-            self.data[topic][algo][1] += count_bu
+            self.data[topic][algo] += bu_rate
         except KeyError:
-            self.data[topic][algo] = [count_used_bu, count_bu]
+            self.data[topic][algo] = bu_rate
 
-    def gen_used_percentage(self, output_file_path: str):
-        # percentages: Dict[str, List[float]]
-        #                   algo      percentage
-        #              e.g. {'DC-RA': [0.98, 0.55, 0.32], 'Baseline': [0.97, 0.44, 0.22]}
-        percentages: Dict[str, List[float]] = {algo: [] for algo in self.algorithm}
-        for topic in self.topic_parameter_str:
+    def utility_system_overall(self, topic: str, algo: str, result: RESULT):
+        gnb: Dict = result[topic][algo][0]
+        enb: Dict = result[topic][algo][1]
+        gnb_utility = self.utility_nb(gnb)
+        enb_utility = self.utility_nb(enb)
+        count_occupied_bu_gnb: int = np.count_nonzero(gnb_utility)
+        count_occupied_bu_enb: int = np.count_nonzero(enb_utility)
+        count_bu: int = gnb['frame']['frame_time'] * gnb['frame']['frame_freq'] + enb[
+            'frame']['frame_time'] * enb['frame']['frame_freq']
+        utility: float = (count_occupied_bu_gnb + count_occupied_bu_enb) / count_bu
+
+        try:
+            self.data2[topic][algo] += utility
+        except KeyError:
+            self.data2[topic][algo] = utility
+
+    @staticmethod
+    def utility_nb(nb: Dict):
+        """ If a BU is allocated to at least one RB, set frame_utility[i][j] to True. """
+        frame_utility = np.array([
+            [False for _ in range(nb['frame']['frame_time'])] for _ in range(nb['frame']['frame_freq'])])
+        for layer in nb['frame']['layer']:
+            for i in range(nb['frame']['frame_freq']):
+                for j in range(nb['frame']['frame_time']):
+                    if layer['bu_status'][i][j]:
+                        frame_utility[i][j] = True
+        return frame_utility
+
+    def gen_resource_usage(self, output_file_path: str):
+        self.gen_resource_efficiency(output_file_path)
+        self.gen_resource_utility(output_file_path)
+
+    def gen_resource_efficiency(self, output_file_path: str):
+        efficiency: Dict[str, List[float]] = {algo: [] for algo in self.algorithm}
+        for t in self.topic_parameter_str:
             for algo in self.algorithm:
-                percent: float = self.data[topic][algo][0] / self.data[topic][algo][1]
-                assert 0.0 <= percent <= 1.0, 'Error in counting used BU.'
-                percentages[algo].append(percent)
+                self.data[t][algo] /= self.iteration
+                efficiency[algo].append(self.data[t][algo])
 
         x_label: str = self._x_label()
         x_scale: List[str] = self._x_scale(self.topic_parameter_int)
-        y_label: str = 'Resource Usage(%)'
-        bar_chart('Resource Efficiency', x_label, x_scale, y_label, percentages,
+        y_label: str = 'Resource Efficiency(bit per BU)'
+        bar_chart('Resource Efficiency', x_label, x_scale, y_label, efficiency,
+                  output_file_path, {'iteration': self.iteration})
+
+    def gen_resource_utility(self, output_file_path: str):
+        utility: Dict[str, List[float]] = {algo: [] for algo in self.algorithm}
+        for t in self.topic_parameter_str:
+            for algo in self.algorithm:
+                self.data2[t][algo] /= self.iteration
+                utility[algo].append(self.data2[t][algo])
+
+        x_label: str = self._x_label()
+        x_scale: List[str] = self._x_scale(self.topic_parameter_int)
+        y_label: str = 'Resource Utility(%)'
+        bar_chart('Resource Utility', x_label, x_scale, y_label, utility,
                   output_file_path, {'iteration': self.iteration})
 
     # ==================================================================================================================
