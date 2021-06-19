@@ -71,6 +71,8 @@ class GraphGenerator:
             self.collect_ini(algo_result)
         elif ' - fairness' in self.graph_type:
             self.collect_fairness(algo_result)
+        elif ' - satisfaction' in self.graph_type:
+            self.collect_ue_satisfaction(algo_result)
         elif 'deployment' in self.graph_type:
             self.collect_deployment(algo_result)
         elif self.graph_type == 'NOMA':
@@ -96,6 +98,8 @@ class GraphGenerator:
             self.gen_ini(file_path)
         elif ' - fairness' in self.graph_type:
             self.gen_fairness(file_path)
+        elif ' - satisfaction' in self.graph_type:
+            self.gen_ue_satisfaction(file_path)
         elif 'deployment' in self.graph_type:
             self.gen_deployment(file_path)
         elif self.graph_type == 'NOMA':
@@ -594,6 +598,36 @@ class GraphGenerator:
         x_label: str = self._x_label()
         scale_x: List[str] = self._x_scale(self.topic_parameter_int)
         line_chart('', x_label, scale_x, "Jain's Fairness Index", avg_fairness,
+                   output_file_path, {'iteration': self.iteration})
+
+    # ==================================================================================================================
+    def collect_ue_satisfaction(self, result: RESULT):
+        # collect_data: Dict[str, Dict[str, float]]
+        #                    topic     algo sum of satisfaction ratio
+        topic, algo = self._topic_and_algo(result)
+        self.first_data(topic)
+
+        count_allocated_ue: int = 0
+        for ue in result[topic][algo][2] + result[topic][algo][3] + result[topic][algo][4]:
+            if ue['is_allocated']:
+                count_allocated_ue += 1
+        satisfaction: float = count_allocated_ue / len(
+            result[topic][algo][2] + result[topic][algo][3] + result[topic][algo][4])
+        try:
+            self.data[topic][algo] += satisfaction
+        except KeyError:
+            self.data[topic][algo] = satisfaction
+        return True
+
+    def gen_ue_satisfaction(self, output_file_path: str):
+        satisfaction: Dict[str, List[float]] = {algo: [] for algo in self.algorithm}
+        for t in self.topic_parameter_str:
+            for algo in self.algorithm:
+                satisfaction[algo].append(self.data[t][algo] / self.iteration)
+
+        x_label: str = self._x_label()
+        scale_x: List[str] = self._x_scale(self.topic_parameter_int)
+        line_chart('', x_label, scale_x, "Satisfaction Ratio(%)", satisfaction,
                    output_file_path, {'iteration': self.iteration})
 
     # ==================================================================================================================

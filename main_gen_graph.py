@@ -49,6 +49,7 @@ if __name__ == '__main__':
     # GraphGenerator(graph_type='proportion due - throughput', topic_parameter=p_due, iteration=i, algorithm=algo, folder_result=(f'{f_data}/{f_mcs}',))
     # GraphGenerator(graph_type='proportion due - fairness', topic_parameter=p_due, iteration=i, algorithm=algo, folder_result=(f'{f_data}/{f_mcs}',))
     # GraphGenerator(graph_type='proportion due - allocated ue', topic_parameter=p_due, iteration=i, algorithm=algo, folder_result=(f'{f_data}/{f_mcs}',))
+    # GraphGenerator(graph_type='proportion due - satisfaction', topic_parameter=p_due, iteration=i, algorithm=algo, folder_result=(f'{f_data}/{f_mcs}',))
 
     # ---Graphs for gNB bandwidth---
     gnb_bw = [j for j in range(10, 101, 10)]  # <-- change
@@ -58,6 +59,7 @@ if __name__ == '__main__':
     # GraphGenerator(graph_type='gnb bw - INI', topic_parameter=gnb_bw, iteration=i, algorithm=algo, folder_result=(f'{f_data}/{f_mcs}',))
     # GraphGenerator(graph_type='gnb bw - fairness', topic_parameter=gnb_bw, iteration=i, algorithm=algo, folder_result=(f'{f_data}/{f_mcs}',))
     # GraphGenerator(graph_type='gnb bw - allocated ue', topic_parameter=gnb_bw, iteration=i, algorithm=algo, folder_result=(f'{f_data}/{f_mcs}',))
+    # GraphGenerator(graph_type='gnb bw - satisfaction', topic_parameter=gnb_bw, iteration=i, algorithm=algo, folder_result=(f'{f_data}/{f_mcs}',))
 
     # ---Graphs for co-channel bandwidth---
     co_bw = [j for j in range(5, 51, 5)]  # <-- change
@@ -67,6 +69,7 @@ if __name__ == '__main__':
     # GraphGenerator(graph_type='cochannel bw - resource utility', topic_parameter=co_bw, iteration=i, algorithm=algo, folder_result=(f'{f_data}/{f_mcs}',))
     # GraphGenerator(graph_type='cochannel bw - allocated ue', topic_parameter=co_bw, iteration=i, algorithm=algo, folder_result=(f'{f_data}/{f_mcs}',))
     # GraphGenerator(graph_type='cochannel bw - fairness', topic_parameter=co_bw, iteration=i, algorithm=algo, folder_result=(f'{f_data}/{f_mcs}',))
+    # GraphGenerator(graph_type='cochannel bw - satisfaction', topic_parameter=co_bw, iteration=i, algorithm=algo, folder_result=(f'{f_data}/{f_mcs}',))
 
     # ---Graphs for CQI/NOMA---            # FIXME: add topic_parameter
     l_or_u: int = 0  # 0 for layer, 1 for ue     <-- change
