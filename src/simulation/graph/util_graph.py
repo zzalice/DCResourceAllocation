@@ -38,9 +38,22 @@ def bar_chart(title: str, x_label: str, x_tick_labels: List[Any], y_label: str, 
 
     fig, ax = plt.subplots()
     rects = []
+    low = 1_000_000_000
+    high = -1_000_000_000
     for i, label in enumerate(data):
+        # y limit
+        tmp_low = min(data[label])
+        tmp_hight = max(data[label])
+        if tmp_low < low:
+            low = tmp_low
+        if tmp_hight > high:
+            high = tmp_hight
+
+        # data
         data[label] = [round(j, 3) for j in data[label]]
         rects.append(ax.bar(pos + i * width, data[label], width, label=label, color=color_unify[i]))
+
+    ax.set_ylim([math.ceil(low - 0.5 * (high - low)), math.ceil(high + 0.5 * (high - low))])
 
     # Add some text for labels, title and custom x-axis tick labels, etc.
     ax.set_title(title)
@@ -57,6 +70,17 @@ def bar_chart(title: str, x_label: str, x_tick_labels: List[Any], y_label: str, 
 
     dump_png_and_json(plt, f'{x_label}-{y_label}', output_folder,
                       [title, x_label, x_tick_labels, y_label, data, output_folder, parameter])
+
+
+def bar_chart_auto_label(rects, ax):
+    """Attach a text label above each bar in *rects*, displaying its height."""
+    for rect in rects:
+        height = rect.get_height()
+        ax.annotate('{}'.format(height),
+                    xy=(rect.get_x() + rect.get_width() / 2, height),
+                    xytext=(0, 3),  # 3 points vertical offset
+                    textcoords="offset points",
+                    ha='center', va='bottom')
 
 
 def bar_charts(title: List[str],
@@ -104,17 +128,6 @@ def subplot_bar_chart(ax, title: str, x_label: str, x_tick_labels: List[Any],
 
     # for i in rects:
     #     bar_chart_auto_label(i, ax)
-
-
-def bar_chart_auto_label(rects, ax):
-    """Attach a text label above each bar in *rects*, displaying its height."""
-    for rect in rects:
-        height = rect.get_height()
-        ax.annotate('{}'.format(height),
-                    xy=(rect.get_x() + rect.get_width() / 2, height),
-                    xytext=(0, 3),  # 3 points vertical offset
-                    textcoords="offset points",
-                    ha='center', va='bottom')
 
 
 def bar_chart_grouped_stacked(title: str, x_label: str, x_index: List[str],
