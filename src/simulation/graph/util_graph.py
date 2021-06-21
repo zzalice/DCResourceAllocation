@@ -53,7 +53,10 @@ def bar_chart(title: str, x_label: str, x_tick_labels: List[Any], y_label: str, 
         data[label] = [round(j, 3) for j in data[label]]
         rects.append(ax.bar(pos + i * width, data[label], width, label=label, color=color_unify[i]))
 
-    ax.set_ylim([math.ceil(low - 0.5 * (high - low)), math.ceil(high + 0.5 * (high - low))])
+    ylim_low = math.ceil(low - 0.5 * (high - low))
+    if ylim_low < 0.0 <= low:
+        ylim_low = 0.0
+    ax.set_ylim([ylim_low, math.ceil(high + 0.5 * (high - low))])
 
     # Add some text for labels, title and custom x-axis tick labels, etc.
     ax.set_title(title)
