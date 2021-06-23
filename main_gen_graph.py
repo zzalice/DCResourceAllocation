@@ -21,7 +21,7 @@ if __name__ == '__main__':
     and record in IterateAlgo output pickle.
     """
     f_data: str = '0602-111803L_'  # <-- change
-    f_mcs: str = 'gNBCQI1CQI15_eNBCQI1CQI15'  # <-- change
+    f_mcs: str = 'gNBCQI1CQI7_eNBCQI1CQI7'  # <-- change
     i: int = 100  # <-- change
     algo: Tuple[str, ...] = ('DC-RA', 'FRSA', 'MSEMA', 'Baseline')  # <-- change
 
@@ -38,7 +38,7 @@ if __name__ == '__main__':
     # GraphGenerator(graph_type='layer - allocated ue', topic_parameter=l, iteration=i, algorithm=algo, folder_result=(f'{f_data}/{f_mcs}',))
 
     # ---Graphs for ue---
-    ut = [j for j in range(300, 901, 100)]  # <-- change
+    ut = [j for j in range(200, 601, 100)]  # <-- change
     # IterateAlgo(iteration=i, algorithm=algo, folder_data=f_data, to_start_over=to_start_over).iter_ue(ut)
     # GraphGenerator(graph_type='ue - throughput', collect_unallo_ue=False, topic_parameter=ut, iteration=i, algorithm=algo, folder_result=(f'{f_data}/{f_mcs}',))
     # GraphGenerator(graph_type='ue - satisfaction', topic_parameter=ut, iteration=i, algorithm=algo, folder_result=(f'{f_data}/{f_mcs}',))
@@ -46,7 +46,7 @@ if __name__ == '__main__':
     # GraphGenerator(graph_type='ue - allocated ue', topic_parameter=ut, iteration=i, algorithm=algo, folder_result=(f'{f_data}/{f_mcs}',))
 
     # ---Graphs for due to all---
-    p_due = [j for j in range(10, 91, 10)]  # <-- change
+    p_due = [j for j in range(10, 91, 20)]  # <-- change
     # IterateAlgo(iteration=i, algorithm=algo, folder_data=f_data, to_start_over=to_start_over).iter_due_to_all(p_due)
     # GraphGenerator(graph_type='proportion due - throughput', topic_parameter=p_due, iteration=i, algorithm=algo, folder_result=(f'{f_data}/{f_mcs}',))
     # GraphGenerator(graph_type='proportion due - satisfaction', topic_parameter=p_due, iteration=i, algorithm=algo, folder_result=(f'{f_data}/{f_mcs}',))
@@ -54,7 +54,7 @@ if __name__ == '__main__':
     # GraphGenerator(graph_type='proportion due - allocated ue', topic_parameter=p_due, iteration=i, algorithm=algo, folder_result=(f'{f_data}/{f_mcs}',))
 
     # ---Graphs for gNB bandwidth---
-    gnb_bw = [j for j in range(10, 101, 10)]  # <-- change
+    gnb_bw = [j for j in range(10, 61, 10)]  # <-- change
     gnb_bw = [GnbMhzBuConvertor.mhz_to_bu(i) for i in gnb_bw]
     # IterateAlgo(iteration=i, algorithm=algo, folder_data=f_data, to_start_over=to_start_over).iter_gnb_bw(gnb_bw)
     # GraphGenerator(graph_type='gnb bw - throughput', topic_parameter=gnb_bw, iteration=i, algorithm=algo, folder_result=(f'{f_data}/{f_mcs}',))
@@ -64,7 +64,7 @@ if __name__ == '__main__':
     # GraphGenerator(graph_type='gnb bw - allocated ue', topic_parameter=gnb_bw, iteration=i, algorithm=algo, folder_result=(f'{f_data}/{f_mcs}',))
 
     # ---Graphs for co-channel bandwidth---
-    co_bw = [j for j in range(5, 51, 5)]  # <-- change
+    co_bw = [j for j in range(0, 36, 5)]  # <-- change
     co_bw = [GnbMhzBuConvertor.mhz_to_bu(i) for i in co_bw]
     # IterateAlgo(iteration=i, algorithm=algo, folder_data=f_data, to_start_over=to_start_over).iter_cochannel(co_bw)
     # GraphGenerator(graph_type='cochannel bw - throughput', topic_parameter=co_bw, iteration=i, algorithm=algo, folder_result=(f'{f_data}/{f_mcs}',))
