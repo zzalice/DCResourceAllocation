@@ -77,15 +77,15 @@ if __name__ == '__main__':
 
     para = {'iteration': 1000,
 
-            'total_num_ue': 600,
+            'total_num_ue': 300,
             # (lower bound, upper bound, proportion of ue) e.g. ((22_000, 40_000, 0.6), (40_000, 100_000, 0.4))
-            'due_qos': ((22_000, 100_000, 1.0),),
-            'gue_qos': ((22_000, 100_000, 1.0),),
-            'eue_qos': ((12_000, 60_000, 1.0),),
+            'due_qos': ((100_000, 500_000, 1.0),),
+            'gue_qos': ((100_000, 500_000, 1.0),),
+            'eue_qos': ((100_000, 500_000, 1.0),),
 
             # enb_freq(MHz/#): 1.4/6, 3/15, 5/25, 10/50, 15/75, 20/100
-            'gnb_time': 8, 'gnb_layer': 5, 'gnb_tx_power': 46,
-            'enb_freq': 100,  # number of BU
+            'gnb_time': 8, 'gnb_layer': 4, 'gnb_tx_power': 46,
+            'enb_freq': 200,  # number of BU
             'enb_time': 8, 'enb_tx_power': 46,
 
             'gnb_radius': 0.5, 'gnb_coordinate': (0.5, 0.0),
@@ -96,7 +96,7 @@ if __name__ == '__main__':
             'hotspots': (),  # e.g. ((0.4, 0.0, 0.09, 0.4),) => (x, y, radius, proportion of ue)
             'dc_proportion': 50,  # [0, 100]
 
-            'inr_discount': 0.5,
+            'inr_discount': 0.7,
             'worsen_threshold': -100_000_000  # bps
             # range of MCS: in file resource_allocation/ds/util_enum.py
             }
@@ -104,12 +104,12 @@ if __name__ == '__main__':
     # # gnb_freq(MHz/#): 5/25, 10/52, 15/79, 20/106, 25/133, 30/160, 40/216, 50/270, 60/324, 70/378, 80/434, 90/490, 100/546
     # '''
     gen_data_bw_gnb(
-        gnb_bw=[i for i in range(10, 101, 10)],  # MHz
-        cochannel_bw=0,  # MHz
+        gnb_bw=[i for i in range(10, 101, 5)],  # MHz
+        cochannel_bw=5,  # MHz
         parameter=para, folder=output_folder)
     '''
     gen_data_bw_cochannel(
-        cochannel_bw=[i for i in range(5, 51, 5)],  # MHz
-        gnb_bw=50,  # MHz
+        cochannel_bw=[i for i in range(0, 36, 5)],  # MHz
+        gnb_bw=40,  # MHz
         parameter=para, folder=output_folder)
     # '''

@@ -207,7 +207,7 @@ class E_MCS(_MCS):
 
     @staticmethod
     def get_best() -> E_MCS:
-        return E_MCS.CQI15  # <-- change
+        return E_MCS.CQI7  # <-- change
 
 
 # noinspection PyPep8Naming, SpellCheckingInspection
@@ -258,4 +258,4 @@ class G_MCS(_MCS):
 
     @staticmethod
     def get_best() -> G_MCS:
-        return G_MCS.CQI15  # <-- change
+        return G_MCS.CQI7  # <-- change
