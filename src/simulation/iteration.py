@@ -46,6 +46,10 @@ class IterateAlgo:
         self.topic: Dict[str, Any] = {'topic': 'co-channel BW', 'item': cochannel_bw, 'folder description': 'bw_co'}
         self.large_iter()
 
+    def iter_inr_discount(self, inr_discount: List[int]):
+        self.topic: Dict[str, Any] = {'topic': 'INR discount', 'item': inr_discount, 'folder description': 'discount'}
+        self.large_iter()
+
     def large_iter(self):
         self.new_directory()
         threads = []

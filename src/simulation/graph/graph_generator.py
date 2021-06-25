@@ -149,7 +149,7 @@ class GraphGenerator:
                 avg_system_throughput[algo].append(self.data[t][algo])
 
         x_label: str = self._x_label()
-        scale_x: List[str] = self._x_scale(self.topic_parameter_int)
+        scale_x: List[str] = self._x_scale()
         line_chart('', x_label, scale_x,
                    'System throughput(Mbps)', avg_system_throughput,
                    output_file_path, {'iteration': self.iteration})
@@ -163,7 +163,7 @@ class GraphGenerator:
                 avg_unallocated_ue[algo].append(self.data2[t][algo])
 
         x_label: str = self._x_label()
-        scale_x: List[str] = self._x_scale(self.topic_parameter_int)
+        scale_x: List[str] = self._x_scale()
         y_label: str = 'The number of unallocated UE'
         bar_chart('', x_label, scale_x, y_label, avg_unallocated_ue,
                   output_file_path, {'iteration': self.iteration})
@@ -236,7 +236,7 @@ class GraphGenerator:
                 efficiency[algo].append(self.data[t][algo])
 
         x_label: str = self._x_label()
-        x_scale: List[str] = self._x_scale(self.topic_parameter_int)
+        x_scale: List[str] = self._x_scale()
         y_label: str = 'Resource Efficiency(bit per BU)'
         bar_chart('Resource Efficiency', x_label, x_scale, y_label, efficiency,
                   output_file_path, {'iteration': self.iteration})
@@ -249,7 +249,7 @@ class GraphGenerator:
                 utility[algo].append(self.data2[t][algo])
 
         x_label: str = self._x_label()
-        x_scale: List[str] = self._x_scale(self.topic_parameter_int)
+        x_scale: List[str] = self._x_scale()
         y_label: str = 'Resource Utility(%)'
         bar_chart('Resource Utility', x_label, x_scale, y_label, utility,
                   output_file_path, {'iteration': self.iteration})
@@ -387,7 +387,7 @@ class GraphGenerator:
                     num_of_allo_ue[algo][-1].append(self.data[layer][algo][ue])
 
         x_label: str = self._x_label()
-        x_scale: List[str] = self._x_scale(self.topic_parameter_int)
+        x_scale: List[str] = self._x_scale()
         bar_chart_grouped_stacked('The Allocated UE', x_label, x_scale,
                                   'The Number of Allocated UE', ue_label, num_of_allo_ue,
                                   output_file_path, {'iteration': self.iteration}, self.algorithm)
@@ -399,7 +399,7 @@ class GraphGenerator:
                 num_of_dc_ue[algo].append(self.data[layer][algo]['dUE_cross_BS'])
 
         x_label: str = self._x_label()
-        x_scale: List[str] = self._x_scale(self.topic_parameter_int)
+        x_scale: List[str] = self._x_scale()
         y_label: str = 'The Number of Allocated DC UE'
         bar_chart('The Allocated Cross BS UE', x_label, x_scale, y_label, num_of_dc_ue,
                   output_file_path, {'iteration': self.iteration})
@@ -411,7 +411,7 @@ class GraphGenerator:
                 num_of_total_ue[algo].append(self.data[layer][algo]['total'])
 
         x_label: str = self._x_label()
-        x_scale: List[str] = self._x_scale(self.topic_parameter_int)
+        x_scale: List[str] = self._x_scale()
         y_label: str = 'The Number of Total Allocated UE'
         bar_chart('The Total Allocated UE', x_label, x_scale, y_label, num_of_total_ue,
                   output_file_path, {'iteration': self.iteration})
@@ -596,7 +596,7 @@ class GraphGenerator:
                 avg_fairness[algo].append(self.data[t][algo] / self.iteration)
 
         x_label: str = self._x_label()
-        scale_x: List[str] = self._x_scale(self.topic_parameter_int)
+        scale_x: List[str] = self._x_scale()
         line_chart('', x_label, scale_x, "Jain's Fairness Index", avg_fairness,
                    output_file_path, {'iteration': self.iteration})
 
@@ -626,7 +626,7 @@ class GraphGenerator:
                 satisfaction[algo].append(self.data[t][algo] / self.iteration)
 
         x_label: str = self._x_label()
-        scale_x: List[str] = self._x_scale(self.topic_parameter_int)
+        scale_x: List[str] = self._x_scale()
         line_chart('', x_label, scale_x, "Satisfaction Ratio(%)", satisfaction,
                    output_file_path, {'iteration': self.iteration})
 
@@ -657,7 +657,7 @@ class GraphGenerator:
                 avg_ini[algo].append(self.data[t][algo] / self.iteration)
 
         x_label: str = self._x_label()
-        scale_x: List[str] = self._x_scale(self.topic_parameter_int)
+        scale_x: List[str] = self._x_scale()
         y_label: str = 'The Average Number of BU with ICI'
         bar_chart('', x_label, scale_x, y_label, avg_ini,
                   output_file_path, {'iteration': self.iteration})
@@ -809,6 +809,8 @@ class GraphGenerator:
             topic_description: str = 'bw_gnb'
         elif 'cochannel bw - ' in self.graph_type:
             topic_description: str = 'bw_co'
+        elif 'inr discount - ' in self.graph_type:
+            topic_description: str = 'discount'
         else:
             raise AssertionError("Undefined graph type.")
         return [str(i) + topic_description for i in self.topic_parameter_int]
@@ -824,17 +826,19 @@ class GraphGenerator:
             x_label: str = 'The Bandwidth of gNB(MHz)'
         elif 'cochannel bw - ' in self.graph_type:
             x_label: str = 'The Bandwidth of Sharing Spectrum(MHz)'
+        elif 'inr discount - ' in self.graph_type:
+            x_label: str = 'The INR discount'
         else:
             raise AssertionError("Undefined graph type.")
         return x_label
 
-    def _x_scale(self, parameter: List[int]) -> List[str]:
-        if 'proportion due - ' in self.graph_type:
-            scale_x: List[str] = [str(i / 100) for i in parameter]
+    def _x_scale(self) -> List[str]:
+        if ('proportion due - ' in self.graph_type) or ('inr discount - ' in self.graph_type):
+            scale_x: List[str] = [str(i / 100) for i in self.topic_parameter_int]
         elif ('layer - ' in self.graph_type) or ('ue - ' in self.graph_type):
-            scale_x: List[str] = [str(i) for i in parameter]
+            scale_x: List[str] = [str(i) for i in self.topic_parameter_int]
         elif ('gnb bw - ' in self.graph_type) or ('cochannel bw - ' in self.graph_type):
-            scale_x: List[str] = [str(GnbMhzBuConvertor.bu_to_mhz(i)) for i in parameter]  # MHz
+            scale_x: List[str] = [str(GnbMhzBuConvertor.bu_to_mhz(i)) for i in self.topic_parameter_int]  # MHz
         else:
             raise AssertionError("The graph type isn't defined.")
         return scale_x

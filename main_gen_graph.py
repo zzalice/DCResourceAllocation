@@ -20,7 +20,7 @@ if __name__ == '__main__':
     MCS parameter can be set in resource_allocation/ds/util_enum.py
     and record in IterateAlgo output pickle.
     """
-    f_data: str = '0602-111803L_'  # <-- change
+    f_data: str = '0625-235336INR_'  # <-- change
     f_mcs: str = 'gNBCQI1CQI7_eNBCQI1CQI7'  # <-- change
     i: int = 100  # <-- change
     algo: Tuple[str, ...] = ('DC-RA', 'FRSA', 'MSEMA', 'Baseline')  # <-- change
@@ -72,6 +72,13 @@ if __name__ == '__main__':
     # GraphGenerator(graph_type='cochannel bw - satisfaction', topic_parameter=co_bw, iteration=i, algorithm=algo, folder_result=(f'{f_data}/{f_mcs}',))
     # GraphGenerator(graph_type='cochannel bw - fairness', topic_parameter=co_bw, iteration=i, algorithm=algo, folder_result=(f'{f_data}/{f_mcs}',))
     # GraphGenerator(graph_type='cochannel bw - allocated ue', topic_parameter=co_bw, iteration=i, algorithm=algo, folder_result=(f'{f_data}/{f_mcs}',))
+
+    # ---Graphs for INR discount---
+    inr_dis = [j for j in range(10, 101, 10)]  # <-- change
+    # IterateAlgo(iteration=i, algorithm=algo, folder_data=f_data, to_start_over=to_start_over).iter_inr_discount(inr_dis)
+    # GraphGenerator(graph_type='inr discount - throughput', topic_parameter=inr_dis, iteration=i, algorithm=algo, folder_result=(f'{f_data}/{f_mcs}',))
+    # GraphGenerator(graph_type='inr discount - INI', topic_parameter=inr_dis, iteration=i, algorithm=algo, folder_result=(f'{f_data}/{f_mcs}',))
+    # GraphGenerator(graph_type='inr discount - allocated ue', topic_parameter=inr_dis, iteration=i, algorithm=algo, folder_result=(f'{f_data}/{f_mcs}',))
 
     # ---Graphs for CQI/NOMA---            # FIXME: add topic_parameter
     l_or_u: int = 0  # 0 for layer, 1 for ue     <-- change
