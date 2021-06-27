@@ -180,7 +180,7 @@ def bar_chart_grouped_stacked(title: str, x_label: str, x_index: List[str],
     plt.tight_layout()
 
     dump_png_and_json(plt, f'{x_label}-{y_label}', output_folder,
-                      [title, x_label, y_label, output_folder, parameter, data, x_index, stack_label, labels, H],
+                      [title, x_label, x_index, y_label, stack_label, data, output_folder, parameter, labels, H, color_gradient],
                       bbox_inches='tight')
 
 
@@ -214,9 +214,9 @@ def subplot_scatter_chart(ax, title: str, x: List[float], y: List[float], color:
 def dump_png_and_json(plot, file_name: str, output_folder: str, input_para: List[Any], bbox_inches=None):
     file_name: str = f'{file_name}_{datetime.today().strftime("%m%d-%H%M")}'
     if bbox_inches:
-        plot.savefig(f'{output_folder}/{file_name}.png', bbox_inches=bbox_inches)
+        plot.savefig(f'{output_folder}/{file_name}.pdf', bbox_inches=bbox_inches, format='pdf')
     else:
-        plot.savefig(f'{output_folder}/{file_name}.png')
+        plot.savefig(f'{output_folder}/{file_name}.pdf', format='pdf')
     plot.show()
     dump_json(f'{output_folder}/{file_name}', input_para)
 
@@ -233,4 +233,4 @@ if __name__ == '__main__':
         d = json.load(f)
         line_chart(d[0], d[1], d[2], d[3], d[4], folder_output, d[6])
         # bar_chart(d[0], d[1], d[2], d[3], d[4], folder_output, d[6])
-        # bar_chart_grouped_stacked(d[0], d[1], d[2], d[3], d[4], d[5], d[6], d[7], d[8])
+        # bar_chart_grouped_stacked(d[0], d[1], d[2], d[3], d[4], d[5], d[6], d[7], d[8], d[9], d[10])
