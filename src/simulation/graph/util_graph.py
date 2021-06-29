@@ -29,7 +29,7 @@ def line_chart(title: str, x_label: str, scale_x: List[Any], y_label: str, scale
 
 
 def bar_chart(title: str, x_label: str, x_tick_labels: List[Any], y_label: str, data: Dict[str, List[float]],
-              output_folder: str, parameter: Dict):
+              output_folder: str, parameter: Dict, ylim_low: float = None, ylim_high: float = None):
     # https://matplotlib.org/stable/gallery/lines_bars_and_markers/barchart.html
     # https://pylibraries.com/matplotlib/tutorials/grouped-bar-charts-with-matplotlib-pyplot/#Triple-grouped-bar-chart
     x = np.arange(len(x_tick_labels))  # the label locations
@@ -38,25 +38,15 @@ def bar_chart(title: str, x_label: str, x_tick_labels: List[Any], y_label: str, 
 
     fig, ax = plt.subplots()
     rects = []
-    low = 1_000_000_000
-    high = -1_000_000_000
     for i, label in enumerate(data):
-        # y limit
-        tmp_low = min(data[label])
-        tmp_hight = max(data[label])
-        if tmp_low < low:
-            low = tmp_low
-        if tmp_hight > high:
-            high = tmp_hight
-
         # data
         data[label] = [round(j, 3) for j in data[label]]
         rects.append(ax.bar(pos + i * width, data[label], width, label=label, color=color_unify[i]))
 
-    ylim_low = math.ceil(low - 0.5 * (high - low))
-    if ylim_low < 0.0 <= low:
-        ylim_low = 0.0
-    ax.set_ylim([ylim_low, math.ceil(high + 0.5 * (high - low))])
+    if ylim_low:
+        ax.set_ylim(bottom=ylim_low)
+    if ylim_high:
+        ax.set_ylim(top=ylim_high)
 
     # Add some text for labels, title and custom x-axis tick labels, etc.
     ax.set_title(title)
@@ -72,7 +62,7 @@ def bar_chart(title: str, x_label: str, x_tick_labels: List[Any], y_label: str, 
     fig.tight_layout()
 
     dump_png_and_json(plt, f'{x_label}-{y_label}', output_folder,
-                      [title, x_label, x_tick_labels, y_label, data, output_folder, parameter])
+                      [title, x_label, x_tick_labels, y_label, data, output_folder, parameter, ylim_low, ylim_high])
 
 
 def bar_chart_auto_label(rects, ax):
@@ -227,10 +217,10 @@ def dump_json(path: str, data: Any):
 
 
 if __name__ == '__main__':
-    folder_output: str = '0603-125541P_DUE_5mhz_qos300/gNBCQI1CQI5_eNBCQI1CQI5/'
-    file_name: str = "The Proportion of dUE_Jain's Fairness Index_0607-1253拷貝.json"
+    folder_output: str = '0624-083847BWCO_golden3-1/gNBCQI1CQI7_eNBCQI1CQI7/'
+    file_name: str = "The Bandwidth of Sharing Spectrum(MHz)-Resource Utility(%)_0629-1530.json"
     with open(f'{folder_output}{file_name}', 'r') as f:
         d = json.load(f)
-        line_chart(d[0], d[1], d[2], d[3], d[4], folder_output, d[6])
-        # bar_chart(d[0], d[1], d[2], d[3], d[4], folder_output, d[6])
+        # line_chart(d[0], d[1], d[2], d[3], d[4], folder_output, d[6])
+        bar_chart(d[0], d[1], d[2], d[3], d[4], folder_output, d[6], d[7], d[8])
         # bar_chart_grouped_stacked(d[0], d[1], d[2], d[3], d[4], d[5], d[6], d[7], d[8], d[9], d[10])

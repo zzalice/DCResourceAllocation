@@ -170,6 +170,7 @@ Temporary Items
 
 
 *.png
+*.pdf
 *.json
 *.txt
 *.zip
