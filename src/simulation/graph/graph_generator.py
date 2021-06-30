@@ -370,9 +370,9 @@ class GraphGenerator:
                 for ue in self.data[topic][algo]:
                     self.data[topic][algo][ue] /= self.iteration
 
-        self.gen_all_allocated_ue(output_file_path)
-        self.gen_allocated_due(output_file_path)
         self.gen_total_allocated_ue(output_file_path)
+        self.gen_allocated_due(output_file_path)
+        self.gen_all_allocated_ue(output_file_path)
 
     def gen_all_allocated_ue(self, output_file_path: str):
         ue_label = ['eUE', 'dUE_in_eNB', 'gUE', 'dUE_in_gNB',
