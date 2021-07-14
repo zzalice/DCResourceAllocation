@@ -40,7 +40,7 @@ def bar_chart(title: str, x_label: str, x_tick_labels: List[Any], y_label: str, 
     rects = []
     for i, label in enumerate(data):
         # data
-        data[label] = [round(j, 3) for j in data[label]]
+        data[label] = [round(j, 1) for j in data[label]]
         rects.append(ax.bar(pos + i * width, data[label], width, label=label, color=color_unify[i]))
 
     if ylim_low:
@@ -108,7 +108,7 @@ def subplot_bar_chart(ax, title: str, x_label: str, x_tick_labels: List[Any],
 
     rects = []
     for i, label in enumerate(data):
-        data[label] = [round(j, 3) for j in data[label]]
+        data[label] = [round(j, 1) for j in data[label]]
         rects.append(ax.bar(pos + i * width, data[label], width, label=label, color=color_unify[i]))
 
     # Add some text for labels, title and custom x-axis tick labels, etc.

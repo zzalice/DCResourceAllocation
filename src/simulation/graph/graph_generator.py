@@ -150,6 +150,7 @@ class GraphGenerator:
 
         x_label: str = self._x_label()
         scale_x: List[str] = self._x_scale()
+        avg_system_throughput = self.rename_legend(avg_system_throughput)
         line_chart('', x_label, scale_x,
                    'System throughput(Mbps)', avg_system_throughput,
                    output_file_path, {'iteration': self.iteration})
@@ -165,6 +166,7 @@ class GraphGenerator:
         x_label: str = self._x_label()
         scale_x: List[str] = self._x_scale()
         y_label: str = 'The number of unallocated UE'
+        avg_unallocated_ue = self.rename_legend(avg_unallocated_ue)
         bar_chart('', x_label, scale_x, y_label, avg_unallocated_ue,
                   output_file_path, {'iteration': self.iteration})
 
@@ -238,7 +240,8 @@ class GraphGenerator:
         x_label: str = self._x_label()
         x_scale: List[str] = self._x_scale()
         y_label: str = 'Resource Efficiency(bit per BU)'
-        bar_chart('Resource Efficiency', x_label, x_scale, y_label, efficiency,
+        efficiency = self.rename_legend(efficiency)
+        bar_chart('', x_label, x_scale, y_label, efficiency,
                   output_file_path, {'iteration': self.iteration})
 
     def gen_resource_utility(self, output_file_path: str):
@@ -251,7 +254,8 @@ class GraphGenerator:
         x_label: str = self._x_label()
         x_scale: List[str] = self._x_scale()
         y_label: str = 'Resource Utility(%)'
-        bar_chart('Resource Utility', x_label, x_scale, y_label, utility,
+        utility = self.rename_legend(utility)
+        bar_chart('', x_label, x_scale, y_label, utility,
                   output_file_path, {'iteration': self.iteration})
 
     # ==================================================================================================================
@@ -388,7 +392,8 @@ class GraphGenerator:
 
         x_label: str = self._x_label()
         x_scale: List[str] = self._x_scale()
-        bar_chart_grouped_stacked('The Allocated UE', x_label, x_scale,
+        num_of_allo_ue = self.rename_legend(num_of_allo_ue)
+        bar_chart_grouped_stacked('', x_label, x_scale,
                                   'The Number of Allocated UE', ue_label, num_of_allo_ue,
                                   output_file_path, {'iteration': self.iteration}, self.algorithm)
 
@@ -401,7 +406,8 @@ class GraphGenerator:
         x_label: str = self._x_label()
         x_scale: List[str] = self._x_scale()
         y_label: str = 'The Number of Allocated DC UE'
-        bar_chart('The Allocated Cross BS UE', x_label, x_scale, y_label, num_of_dc_ue,
+        num_of_dc_ue = self.rename_legend(num_of_dc_ue)
+        bar_chart('', x_label, x_scale, y_label, num_of_dc_ue,
                   output_file_path, {'iteration': self.iteration})
 
     def gen_total_allocated_ue(self, output_file_path: str):
@@ -413,7 +419,8 @@ class GraphGenerator:
         x_label: str = self._x_label()
         x_scale: List[str] = self._x_scale()
         y_label: str = 'The Number of Total Allocated UE'
-        bar_chart('The Total Allocated UE', x_label, x_scale, y_label, num_of_total_ue,
+        num_of_total_ue = self.rename_legend(num_of_total_ue)
+        bar_chart('', x_label, x_scale, y_label, num_of_total_ue,
                   output_file_path, {'iteration': self.iteration})
 
     # ==================================================================================================================
@@ -499,10 +506,12 @@ class GraphGenerator:
                 assert False not in [data_count_layer[algo][x] <= 1 for x in
                                      range(len(data_count_layer[algo]))], 'Data gathering error.'
 
+            data_count_layer = self.rename_legend(data_count_layer)
             bar_chart(f'Frame overlap of {topic}',
                       'The number of overlapped UE', [i for i in range(self.data[topic]['gnb_info']['max_layer'] + 1)],
                       'Percentage of BU(%)', data_count_layer,
                       output_file_path, {'iteration': self.iteration, 'layer_or_ue': topic})
+            data_count_bu = self.rename_legend(data_count_bu)
             bar_chart_grouped_stacked(f'The MCS used in a frame of {topic}',
                                       'The number of overlapped UE',
                                       [str(i + 1) for i in range(self.data[topic]['gnb_info']['max_layer'])],
@@ -566,10 +575,12 @@ class GraphGenerator:
             # draw two graphs
             gnb_cqi: List[int] = self.get_cqi(output_file_path, 'gNB')
             enb_cqi: List[int] = self.get_cqi(output_file_path, 'eNB')
+            gnb_cqi_data = self.rename_legend(gnb_cqi_data)
             bar_chart(f'The CQI in {topic}',
                       'The available CQI in gNB', [str(i) for i in range(gnb_cqi[0], gnb_cqi[1] + 1)],
                       'The number of allocated UE', gnb_cqi_data,
                       output_file_path, {'iteration': self.iteration, 'layer_or_ue': topic})
+            enb_cqi_data = self.rename_legend(enb_cqi_data)
             bar_chart(f'The CQI in {topic}',
                       'The available CQI in eNB', [str(i) for i in range(enb_cqi[0], enb_cqi[1] + 1)],
                       'The number of allocated UE', enb_cqi_data,
@@ -597,6 +608,7 @@ class GraphGenerator:
 
         x_label: str = self._x_label()
         scale_x: List[str] = self._x_scale()
+        avg_fairness = self.rename_legend(avg_fairness)
         line_chart('', x_label, scale_x, "Jain's Fairness Index", avg_fairness,
                    output_file_path, {'iteration': self.iteration})
 
@@ -627,6 +639,7 @@ class GraphGenerator:
 
         x_label: str = self._x_label()
         scale_x: List[str] = self._x_scale()
+        satisfaction = self.rename_legend(satisfaction)
         line_chart('', x_label, scale_x, "Satisfaction Ratio(%)", satisfaction,
                    output_file_path, {'iteration': self.iteration})
 
@@ -658,7 +671,8 @@ class GraphGenerator:
 
         x_label: str = self._x_label()
         scale_x: List[str] = self._x_scale()
-        y_label: str = 'The Average Number of BU with ICI'
+        y_label: str = 'The Number of BU with ICI'
+        avg_ini = self.rename_legend(avg_ini)
         bar_chart('', x_label, scale_x, y_label, avg_ini,
                   output_file_path, {'iteration': self.iteration})
 
@@ -817,9 +831,9 @@ class GraphGenerator:
 
     def _x_label(self) -> str:
         if 'layer - ' in self.graph_type:
-            x_label: str = 'The number of layers in gNB'
+            x_label: str = 'The Number of Layers in gNB'
         elif 'proportion due - ' in self.graph_type:
-            x_label: str = 'The Proportion of dUE'
+            x_label: str = 'The Ratio of UE in the Overlapped Area of Two BSs'
         elif 'ue - ' in self.graph_type:
             x_label: str = 'The Number of UE'
         elif 'gnb bw - ' in self.graph_type:
@@ -827,7 +841,7 @@ class GraphGenerator:
         elif 'cochannel bw - ' in self.graph_type:
             x_label: str = 'The Bandwidth of Sharing Spectrum(MHz)'
         elif 'inr discount - ' in self.graph_type:
-            x_label: str = 'The INR discount'
+            x_label: str = 'The INR Discount'
         else:
             raise AssertionError("Undefined graph type.")
         return x_label
@@ -870,3 +884,19 @@ class GraphGenerator:
             if i not in filenames:
                 raise AssertionError(f"Can't find the result of {i}.")
         return result_file_to_read
+
+    @staticmethod
+    def rename_legend(data: Dict) -> Dict:
+        renamed: Dict = {}
+        for key, value in data.items():
+            if key == 'DC-RA':
+                renamed['DC-SSRA'] = value
+            elif key == 'FRSA':
+                renamed['MCUP+FRSA'] = value
+            elif key == 'MSEMA':
+                renamed['MCUP+MSEMA'] = value
+            elif key == 'Baseline':
+                renamed['Baseline'] = value
+            else:
+                raise AssertionError('Undefined legend name.')
+        return renamed
