@@ -8,6 +8,7 @@ import numpy as np
 import pandas
 
 color_unify = ['#1f77b4', '#ff7f0e', '#2ca02c', '#d62728', '#9467bd', '#8c564b', '#e377c2', '#7f7f7f', '#bcbd22', '#17becf']
+font_family = 'Times New Roman'
 
 
 def line_chart(title: str, x_label: str, scale_x: List[Any], y_label: str, scale_y: Dict[str, List[Any]],
@@ -15,14 +16,19 @@ def line_chart(title: str, x_label: str, scale_x: List[Any], y_label: str, scale
     # https://newaurora.pixnet.net/blog/post/227933636-python-使用matplotlib畫折線圖%28line-chart%29
     marker = ['o', 's', '^', 'd', 'x']
     line_style = ['solid', 'dashdot', 'dashed', 'dotted']
-    plt.figure(linewidth=2)
-    for i, data_y in enumerate(scale_y):
-        plt.plot(scale_x, scale_y[data_y], label=data_y, marker=marker[i], color=color_unify[i], linestyle=line_style[i])
+    plt.rc('font', size=23)
+    plt.rcParams["font.family"] = font_family
+    plt.figure(figsize=(6.4, 5.5), linewidth=2)
 
-    plt.title(title)
+    for i, data_y in enumerate(scale_y):
+        plt.plot(scale_x, scale_y[data_y], label=data_y, marker=marker[i], color=color_unify[i], linestyle=line_style[i], markersize=10)
+
+    # plt.title(title)
     plt.xlabel(x_label)
     plt.ylabel(y_label)
-    plt.legend(loc="best")
+    plt.legend(bbox_to_anchor=(-0.15, 0.95, 1.2, 0), fontsize=22, loc="lower left", mode="expand", ncol=2, frameon=False)
+
+    plt.tight_layout(pad=0.6)
 
     dump_png_and_json(plt, f'{x_label}-{y_label}', output_folder,
                       [title, x_label, scale_x, y_label, scale_y, output_folder, parameter])
@@ -36,7 +42,10 @@ def bar_chart(title: str, x_label: str, x_tick_labels: List[Any], y_label: str, 
     width = 0.8 / len(data)  # the width of the bars
     pos = np.array(range(len(next(iter(data.values())))))
 
-    fig, ax = plt.subplots()
+    plt.rc('font', size=23)
+    plt.rcParams["font.family"] = font_family
+
+    fig, ax = plt.subplots(figsize=(7, 6))
     rects = []
     for i, label in enumerate(data):
         # data
@@ -49,17 +58,17 @@ def bar_chart(title: str, x_label: str, x_tick_labels: List[Any], y_label: str, 
         ax.set_ylim(top=ylim_high)
 
     # Add some text for labels, title and custom x-axis tick labels, etc.
-    ax.set_title(title)
+    # ax.set_title(title)
     ax.set_xlabel(x_label)
     ax.set_ylabel(y_label)
     ax.set_xticks(x)
     ax.set_xticklabels(x_tick_labels)
-    ax.legend()
+    ax.legend(bbox_to_anchor=(-0.11, 0.95, 1.2, 0), fontsize=22, loc="lower left", mode="expand", ncol=2, frameon=False)
 
-    for i in rects:
-        bar_chart_auto_label(i, ax)
+    # for i in rects:
+    #     bar_chart_auto_label(i, ax)
 
-    fig.tight_layout()
+    fig.tight_layout(pad=0.6)
 
     dump_png_and_json(plt, f'{x_label}-{y_label}', output_folder,
                       [title, x_label, x_tick_labels, y_label, data, output_folder, parameter, ylim_low, ylim_high])
@@ -217,10 +226,10 @@ def dump_json(path: str, data: Any):
 
 
 if __name__ == '__main__':
-    folder_output: str = '0624-083847BWCO_golden3-1/gNBCQI1CQI7_eNBCQI1CQI7/'
-    file_name: str = "The Bandwidth of Sharing Spectrum(MHz)-Resource Utility(%)_0629-1530.json"
+    folder_output: str = '0623-150101UE_golden3/gNBCQI1CQI7_eNBCQI1CQI7/'
+    file_name: str = "The Number of UE-System throughput(Mbps)_0716-1042.json"
     with open(f'{folder_output}{file_name}', 'r') as f:
         d = json.load(f)
-        # line_chart(d[0], d[1], d[2], d[3], d[4], folder_output, d[6])
-        bar_chart(d[0], d[1], d[2], d[3], d[4], folder_output, d[6], d[7], d[8])
+        line_chart(d[0], d[1], d[2], d[3], d[4], folder_output, d[6])
+        # bar_chart(d[0], d[1], d[2], d[3], d[4], folder_output, d[6], d[7], d[8])
         # bar_chart_grouped_stacked(d[0], d[1], d[2], d[3], d[4], d[5], d[6], d[7], d[8], d[9], d[10])
