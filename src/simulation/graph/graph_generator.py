@@ -833,7 +833,7 @@ class GraphGenerator:
         if 'layer - ' in self.graph_type:
             x_label: str = 'The Number of Layers in gNB'
         elif 'proportion due - ' in self.graph_type:
-            x_label: str = 'The Ratio of UE in the Overlapped Area of Two BSs'
+            x_label: str = 'The Ratio of UE in the Overlapped Area'
         elif 'ue - ' in self.graph_type:
             x_label: str = 'The Number of UE'
         elif 'gnb bw - ' in self.graph_type:
