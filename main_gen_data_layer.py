@@ -26,9 +26,9 @@ def main_gen_data(parameter: Dict):
 
 if __name__ == '__main__':
     date: str = datetime.today().strftime("%m%d-%H%M%S")
-    output_folder: str = f'{date}L_'  # <--- change
+    output_folder: str = f'{date}L_golden3_inr100'  # <--- change
 
-    num_of_layer = [1, 2, 3, 4, 5, 6]  # <--- change
+    num_of_layer = [1, 2, 3, 4, 5, 6, 7]  # <--- change
     for i in num_of_layer:
         para = {'output_file_path': f'{output_folder}/{i}layer',
                 'iteration': 1000,
@@ -53,7 +53,7 @@ if __name__ == '__main__':
                 'hotspots': (),  # e.g. ((0.4, 0.0, 0.09, 0.4),) => (x, y, radius, proportion of ue)
                 'dc_proportion': 50,   # [0, 100]
 
-                'inr_discount': 0.7,
+                'inr_discount': 1.0,
                 'worsen_threshold': -100_000_000  # bps
                 # range of MCS: in file resource_allocation/ds/util_enum.py
                 }

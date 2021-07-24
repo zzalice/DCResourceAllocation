@@ -73,7 +73,7 @@ def gen_data_bw_cochannel(cochannel_bw: List[int], gnb_bw: int, parameter: Dict[
 
 if __name__ == '__main__':
     date: str = datetime.today().strftime("%m%d-%H%M%S")
-    output_folder: str = f'{date}BWGNB_'  # <--- change
+    output_folder: str = f'{date}BWGNB_golden3_inr100'  # <--- change
 
     para = {'iteration': 1000,
 
@@ -96,7 +96,7 @@ if __name__ == '__main__':
             'hotspots': (),  # e.g. ((0.4, 0.0, 0.09, 0.4),) => (x, y, radius, proportion of ue)
             'dc_proportion': 50,  # [0, 100]
 
-            'inr_discount': 0.7,
+            'inr_discount': 1.0,
             'worsen_threshold': -100_000_000  # bps
             # range of MCS: in file resource_allocation/ds/util_enum.py
             }

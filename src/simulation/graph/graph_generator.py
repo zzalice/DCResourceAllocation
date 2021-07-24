@@ -671,7 +671,7 @@ class GraphGenerator:
 
         x_label: str = self._x_label()
         scale_x: List[str] = self._x_scale()
-        y_label: str = 'The Number of BU with ICI'
+        y_label: str = 'The Number of BU with INI'
         avg_ini = self.rename_legend(avg_ini)
         bar_chart('', x_label, scale_x, y_label, avg_ini,
                   output_file_path, {'iteration': self.iteration})

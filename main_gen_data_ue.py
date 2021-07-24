@@ -42,7 +42,7 @@ def gen_data_due_to_all(proportion_due_to_all: List[int], num_of_total_ue: int, 
 
 if __name__ == '__main__':
     date: str = datetime.today().strftime("%m%d-%H%M%S")
-    output_folder: str = f'{date}UE_'  # <--- change
+    output_folder: str = f'{date}UE_golden3_inr100'  # <--- change
 
     para = {'iteration': 1000,
             # (lower bound, upper bound, proportion of ue) e.g. ((22_000, 40_000, 0.6), (40_000, 100_000, 0.4))
@@ -59,7 +59,7 @@ if __name__ == '__main__':
             'gnb_radius': 0.5, 'gnb_coordinate': (0.5, 0.0),
             'enb_radius': 0.5, 'enb_coordinate': (0.0, 0.0),
 
-            'inr_discount': 0.7,
+            'inr_discount': 1.0,
             'worsen_threshold': -100_000_000  # bps
             # range of MCS: in file resource_allocation/ds/util_enum.py
             }
@@ -74,7 +74,7 @@ if __name__ == '__main__':
         parameter=para, folder=output_folder)
     '''
     gen_data_due_to_all(
-        proportion_due_to_all=[i for i in range(10, 91, 10)],  # [30, 40, 50] means 0.3, 0.4, 0.5
+        proportion_due_to_all=[i for i in range(0, 101, 5)],  # [30, 40, 50] means 0.3, 0.4, 0.5
         num_of_total_ue=300,
         parameter=para, folder=output_folder)
     '''
