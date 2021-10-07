@@ -16,19 +16,24 @@ def line_chart(title: str, x_label: str, scale_x: List[Any], y_label: str, scale
     # https://newaurora.pixnet.net/blog/post/227933636-python-使用matplotlib畫折線圖%28line-chart%29
     marker = ['o', 's', '^', 'd', 'x']
     line_style = ['solid', 'dashdot', 'dashed', 'dotted']
-    plt.rc('font', size=23)
+    plt.rc('font', size=29)
     plt.rcParams["font.family"] = font_family
-    plt.figure(figsize=(6.4, 5.5), linewidth=2)
+    plt.figure(figsize=(6.4, 5), linewidth=2)
 
     for i, data_y in enumerate(scale_y):
         plt.plot(scale_x, scale_y[data_y], label=data_y, marker=marker[i], color=color_unify[i], linestyle=line_style[i], markersize=10)
 
     # plt.title(title)
-    plt.xlabel(x_label)
-    plt.ylabel(y_label)
-    plt.legend(bbox_to_anchor=(-0.15, 0.95, 1.2, 0), fontsize=22, loc="lower left", mode="expand", ncol=2, frameon=False)
+    plt.xlabel(x_label, loc='right')
+    plt.ylabel(y_label, loc='top')
+    plt.yticks(rotation=90)
+    plt.legend(loc="best",
+               edgecolor='none',
+               borderpad=0.1,
+               fontsize=29, labelspacing=0.0, handletextpad=0.4)  # legned圖例/labelspacing行距/handletextpad小圖例跟文字的間距/borderpad字與框的間距
+    # plt.legend(bbox_to_anchor=(-0.15, 0.95, 1.2, 0), fontsize=22, loc="lower left", mode="expand", ncol=2, frameon=False)
 
-    plt.tight_layout(pad=0.6)
+    plt.tight_layout(pad=0.05)
 
     dump_png_and_json(plt, f'{x_label}-{y_label}', output_folder,
                       [title, x_label, scale_x, y_label, scale_y, output_folder, parameter])
@@ -226,8 +231,8 @@ def dump_json(path: str, data: Any):
 
 
 if __name__ == '__main__':
-    folder_output: str = '0623-150101UE_golden3/gNBCQI1CQI7_eNBCQI1CQI7/'
-    file_name: str = "The Number of UE-System throughput(Mbps)_0716-1042.json"
+    folder_output: str = '0724-223451BWGNB_golden3_inr100/gNBCQI1CQI7_eNBCQI1CQI7/'
+    file_name: str = "The Bandwidth of gNB(MHz)-System throughput(Mbps)_0811-0015拷貝.json"
     with open(f'{folder_output}{file_name}', 'r') as f:
         d = json.load(f)
         line_chart(d[0], d[1], d[2], d[3], d[4], folder_output, d[6])

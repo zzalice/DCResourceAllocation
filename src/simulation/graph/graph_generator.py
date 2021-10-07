@@ -890,7 +890,7 @@ class GraphGenerator:
         renamed: Dict = {}
         for key, value in data.items():
             if key == 'DC-RA':
-                renamed['DC-SSRA'] = value
+                renamed['DC-SSRM'] = value
             elif key == 'FRSA':
                 renamed['MCUP+FRSA'] = value
             elif key == 'MSEMA':
