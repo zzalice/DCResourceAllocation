@@ -27,7 +27,7 @@ def line_chart(title: str, x_label: str, scale_x: List[Any], y_label: str, scale
     plt.xlabel(x_label, loc='right')
     plt.ylabel(y_label, loc='top')
     plt.yticks(rotation=90)
-    # plt.legend(loc=(0.37, 0.2), #loc=(0.01, -0.01), #loc=(0.01, 0.58), #loc="best"
+    # plt.legend(loc=(0.385,0.01),#loc=(0.37, 0.2), #loc=(0.01, -0.01), #loc=(0.01, 0.58), #loc="best"
     #            edgecolor='none', facecolor='none',
     #            borderpad=0.1,
     #            fontsize=27, handlelength=1.0, handletextpad=0.4, labelspacing=0.0
@@ -48,10 +48,11 @@ def bar_chart(title: str, x_label: str, x_tick_labels: List[Any], y_label: str, 
     width = 0.8 / len(data)  # the width of the bars
     pos = np.array(range(len(next(iter(data.values())))))
 
-    plt.rc('font', size=23)
+    plt.rc('font', size=29)
     plt.rcParams["font.family"] = font_family
+    plt.figure(figsize=(6.4, 4.5), linewidth=2)
 
-    fig, ax = plt.subplots(figsize=(7, 6))
+    fig, ax = plt.subplots()
     rects = []
     for i, label in enumerate(data):
         # data
@@ -65,11 +66,17 @@ def bar_chart(title: str, x_label: str, x_tick_labels: List[Any], y_label: str, 
 
     # Add some text for labels, title and custom x-axis tick labels, etc.
     # ax.set_title(title)
-    ax.set_xlabel(x_label)
-    ax.set_ylabel(y_label)
+    ax.set_xlabel(x_label, loc='right')
+    ax.set_ylabel(y_label, loc='top')
     ax.set_xticks(x)
     ax.set_xticklabels(x_tick_labels)
-    ax.legend(bbox_to_anchor=(-0.11, 0.95, 1.2, 0), fontsize=22, loc="lower left", mode="expand", ncol=2, frameon=False)
+    plt.yticks(rotation=90)
+    ax.legend(loc="best",
+               edgecolor='none', facecolor='none',
+               borderpad=0.1,
+               fontsize=27, handlelength=1.0, handletextpad=0.4, labelspacing=0.0
+               )  # legned圖例/handlelength小圖例的長度/labelspacing行距/handletextpad小圖例跟文字的間距/borderpad字與框的間距
+    # ax.legend(bbox_to_anchor=(-0.11, 0.95, 1.2, 0), fontsize=22, loc="lower left", mode="expand", ncol=2, frameon=False)
 
     # for i in rects:
     #     bar_chart_auto_label(i, ax)
@@ -232,9 +239,9 @@ def dump_json(path: str, data: Any):
 
 
 if __name__ == '__main__':
-    folder_output: str = '0724-223933PDUE_golden3_inr100/gNBCQI1CQI7_eNBCQI1CQI7/'
-    file_name: str = "The Ratio of UE in the Overlapped Area-System throughput(Mbps)_0811-0010拷貝.json"
-    file_name: str = "The Ratio of UE in the Overlapped Area-Satisfaction Ratio(%)_0811-0010拷貝.json"
+    folder_output: str = '0724-224140UE_golden3_inr100/gNBCQI1CQI7_eNBCQI1CQI7/'
+    file_name: str = "The Number of Users-System Throughput(Mbps)_0925-1151拷貝.json"
+    file_name: str = "The Number of Users-Satisfaction Ratio(%)_0925-1151拷貝.json"
     with open(f'{folder_output}{file_name}', 'r') as f:
         d = json.load(f)
         line_chart(d[0], d[1], d[2], d[3], d[4], folder_output, d[6])
