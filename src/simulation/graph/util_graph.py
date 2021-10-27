@@ -24,10 +24,10 @@ def line_chart(title: str, x_label: str, scale_x: List[Any], y_label: str, scale
         plt.plot(scale_x, scale_y[data_y], label=data_y, marker=marker[i], color=color_unify[i], linestyle=line_style[i], markersize=10)
 
     # plt.title(title)
-    plt.xlabel(x_label, loc='right')
+    plt.xlabel(x_label, loc='center')
     plt.ylabel(y_label, loc='top')
     plt.yticks(rotation=90)
-    # plt.legend(loc=(0.385,0.01),#loc=(0.37, 0.2), #loc=(0.01, -0.01), #loc=(0.01, 0.58), #loc="best"
+    # plt.legend(loc=(0.385, 0.01),#loc=(0.37, 0.48), #loc=(0.385,0.01),#loc=(0.37, 0.2), #loc=(0.01, -0.01), #loc=(0.01, 0.58), #loc="best"
     #            edgecolor='none', facecolor='none',
     #            borderpad=0.1,
     #            fontsize=27, handlelength=1.0, handletextpad=0.4, labelspacing=0.0
@@ -44,20 +44,22 @@ def bar_chart(title: str, x_label: str, x_tick_labels: List[Any], y_label: str, 
               output_folder: str, parameter: Dict, ylim_low: float = None, ylim_high: float = None):
     # https://matplotlib.org/stable/gallery/lines_bars_and_markers/barchart.html
     # https://pylibraries.com/matplotlib/tutorials/grouped-bar-charts-with-matplotlib-pyplot/#Triple-grouped-bar-chart
+    patterns = ["", "/", ".", "-"]
+
     x = np.arange(len(x_tick_labels))  # the label locations
     width = 0.8 / len(data)  # the width of the bars
     pos = np.array(range(len(next(iter(data.values())))))
 
     plt.rc('font', size=29)
     plt.rcParams["font.family"] = font_family
-    plt.figure(figsize=(6.4, 4.5), linewidth=2)
+    fig = plt.figure(figsize=(6.4, 4.5), linewidth=2)
 
-    fig, ax = plt.subplots()
+    ax = fig.add_subplot(111)
     rects = []
     for i, label in enumerate(data):
         # data
         data[label] = [round(j, 1) for j in data[label]]
-        rects.append(ax.bar(pos + i * width, data[label], width, label=label, color=color_unify[i]))
+        rects.append(ax.bar(pos + i * width, data[label], width, label=label, color=color_unify[i], hatch=patterns[i]))
 
     if ylim_low:
         ax.set_ylim(bottom=ylim_low)
@@ -66,22 +68,22 @@ def bar_chart(title: str, x_label: str, x_tick_labels: List[Any], y_label: str, 
 
     # Add some text for labels, title and custom x-axis tick labels, etc.
     # ax.set_title(title)
-    ax.set_xlabel(x_label, loc='right')
+    ax.set_xlabel(x_label, loc='center')
     ax.set_ylabel(y_label, loc='top')
     ax.set_xticks(x)
     ax.set_xticklabels(x_tick_labels)
     plt.yticks(rotation=90)
-    ax.legend(loc="best",
-               edgecolor='none', facecolor='none',
-               borderpad=0.1,
-               fontsize=27, handlelength=1.0, handletextpad=0.4, labelspacing=0.0
-               )  # legned圖例/handlelength小圖例的長度/labelspacing行距/handletextpad小圖例跟文字的間距/borderpad字與框的間距
+    ax.legend(loc=(0.01, 0.58),#loc=(0.01, 0.58),#loc=(0.38, 0.58),
+              edgecolor='none', facecolor='none',
+              borderpad=0.1,
+              fontsize=27, handlelength=1.0, handletextpad=0.4, labelspacing=0.0
+              )  # legned圖例/handlelength小圖例的長度/labelspacing行距/handletextpad小圖例跟文字的間距/borderpad字與框的間距
     # ax.legend(bbox_to_anchor=(-0.11, 0.95, 1.2, 0), fontsize=22, loc="lower left", mode="expand", ncol=2, frameon=False)
 
     # for i in rects:
     #     bar_chart_auto_label(i, ax)
 
-    fig.tight_layout(pad=0.6)
+    plt.tight_layout(pad=0.05)
 
     dump_png_and_json(plt, f'{x_label}-{y_label}', output_folder,
                       [title, x_label, x_tick_labels, y_label, data, output_folder, parameter, ylim_low, ylim_high])
@@ -224,6 +226,8 @@ def subplot_scatter_chart(ax, title: str, x: List[float], y: List[float], color:
 
 
 def dump_png_and_json(plot, file_name: str, output_folder: str, input_para: List[Any], bbox_inches=None):
+    file_name: str = file_name.replace("(%)", "")
+    file_name: str = file_name.replace("/", "")
     file_name: str = f'{file_name}_{datetime.today().strftime("%m%d-%H%M")}'
     if bbox_inches:
         plot.savefig(f'{output_folder}/{file_name}.pdf', bbox_inches=bbox_inches, format='pdf')
@@ -241,7 +245,26 @@ def dump_json(path: str, data: Any):
 if __name__ == '__main__':
     folder_output: str = '0724-224140UE_golden3_inr100/gNBCQI1CQI7_eNBCQI1CQI7/'
     file_name: str = "The Number of Users-System Throughput(Mbps)_0925-1151拷貝.json"
-    file_name: str = "The Number of Users-Satisfaction Ratio(%)_0925-1151拷貝.json"
+    # file_name: str = "The Number of Users-Satisfaction Ratio(%)_0925-1151拷貝.json"
+
+    # folder_output: str = '0724-223933PDUE_golden3_inr100/gNBCQI1CQI7_eNBCQI1CQI7/'
+    # file_name: str = "The Ratio of UE in the Overlapped Area-System throughput(Mbps)_0811-0010拷貝.json"
+    # file_name: str = "The Ratio of UE in the Overlapped Area-Satisfaction Ratio(%)_0811-0010拷貝.json"
+
+    # folder_output: str = '0724-223619BWCO_golden3_inr100/gNBCQI1CQI7_eNBCQI1CQI7/'
+    # file_name: str = "Bandwidth of Co-channel(MHz)-System Throughput(Mbps)_1019-0126拷貝.json"
+    # file_name: str = "Bandwidth of Co-channel(MHz)-Satisfaction Ratio(%)_1019-0125拷貝.json"
+
+    # folder_output: str = '0724-223451BWGNB_golden3_inr100/gNBCQI1CQI7_eNBCQI1CQI7/'
+    # file_name: str = "The Bandwidth of gNB(MHz)-System throughput(Mbps)_0811-0015拷貝.json"
+    # file_name: str = "The Bandwidth of gNB(MHz)-Satisfaction Ratio(%)_0811-0012拷貝.json"
+    # file_name: str = "Bandwidth of gNB(MHz)-Number of BUs with INI_1025-0032.json"
+
+    # folder_output: str = "0619-125335L_golden1-2/gNBCQI1CQI7_eNBCQI1CQI7/"
+    # file_name: str = "The number of layers in gNB-Resource Efficiency(bit per BU)_0630-1647拷貝.json"
+
+    # folder_output: str = "0619-125703BWCO_golden1-2/gNBCQI1CQI7_eNBCQI1CQI7/"
+    # file_name: str = "The Bandwidth of Sharing Spectrum(MHz)-Resource Efficiency(bit per BU)_0630-1741拷貝.json"
     with open(f'{folder_output}{file_name}', 'r') as f:
         d = json.load(f)
         line_chart(d[0], d[1], d[2], d[3], d[4], folder_output, d[6])
