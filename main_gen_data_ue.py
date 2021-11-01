@@ -1,6 +1,7 @@
 from datetime import datetime
 from typing import Any, Dict, List, Tuple
 
+from main_gen_data_relate_para import gen_data_relate_para_pdue
 from main_gen_data_layer import main_gen_data
 
 
@@ -34,15 +35,21 @@ def gen_data_due_to_all(proportion_due_to_all: List[int], num_of_total_ue: int, 
     parameter['cell_edge_radius_proportion'] = None
     parameter['edge_ue_proportion'] = None
     parameter['hotspots'] = ()
-    for i in proportion_due_to_all:
-        parameter['output_file_path'] = f'{folder}/{i}p_due'
-        parameter['dc_proportion'] = i
-        main_gen_data(parameter)
+    flag_first: bool = True
+    for i, proportion in enumerate(proportion_due_to_all):
+        parameter['output_file_path'] = f'{folder}/{proportion}p_due'
+        parameter['dc_proportion'] = proportion
+        if flag_first:
+            flag_first: bool = False
+            main_gen_data(parameter)
+        else:
+            gen_data_relate_para_pdue(folder_of_para_to_follow=f'{folder}/{proportion_due_to_all[i - 1]}p_due',
+                                      dc_proportion=proportion, para=parameter)
 
 
 if __name__ == '__main__':
     date: str = datetime.today().strftime("%m%d-%H%M%S")
-    output_folder: str = f'{date}UE_golden3_inr100'  # <--- change
+    output_folder: str = f'{date}PDUE_golden3_inr100'  # <--- change
 
     para = {'iteration': 1000,
             # (lower bound, upper bound, proportion of ue) e.g. ((22_000, 40_000, 0.6), (40_000, 100_000, 0.4))
@@ -64,7 +71,7 @@ if __name__ == '__main__':
             # range of MCS: in file resource_allocation/ds/util_enum.py
             }
 
-    # '''
+    '''
     gen_data_number_ue(
         num_of_total_ue=[i for i in range(100, 901, 50)],
         deploy_type=0,  # 0: random, 1: cell edge, 2: hot spot
@@ -77,4 +84,4 @@ if __name__ == '__main__':
         proportion_due_to_all=[i for i in range(0, 101, 5)],  # [30, 40, 50] means 0.3, 0.4, 0.5
         num_of_total_ue=300,
         parameter=para, folder=output_folder)
-    '''
+    # '''
